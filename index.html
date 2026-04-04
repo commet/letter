@@ -12,7 +12,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200;300;400;500;600&family=Noto+Sans+KR:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200;300;400;500;600&family=Noto+Sans+KR:wght@300;400;500&family=Noto+Serif+SC:wght@200;300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,9 +45,11 @@
     }
 
     /* ===== Language Toggle ===== */
-    [data-en] { display: none !important; }
-    body.lang-en [data-ko] { display: none !important; }
+    [data-en], [data-zh] { display: none !important; }
+    body.lang-en [data-ko], body.lang-en [data-zh] { display: none !important; }
     body.lang-en [data-en] { display: revert !important; }
+    body.lang-zh [data-ko], body.lang-zh [data-en] { display: none !important; }
+    body.lang-zh [data-zh] { display: revert !important; }
 
     .lang-toggle {
       position: fixed;
@@ -196,6 +198,43 @@
       font-size: 22px;
       font-weight: 400;
       letter-spacing: 3px;
+    }
+
+    body.lang-zh .section-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: 2px;
+    }
+
+    body.lang-zh .greeting-text {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 2.4;
+    }
+
+    body.lang-zh .celebration-text {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 2.4;
+    }
+
+    body.lang-zh .parents-info {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 14px;
+      font-weight: 300;
+    }
+
+    body.lang-zh .gallery-tab {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 13px;
+    }
+
+    body.lang-zh .venue-name {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 18px;
     }
 
     .divider {
@@ -671,6 +710,7 @@
     <div class="opening-venue">
       <span data-ko>서울대학교 교수회관</span>
       <span data-en>Seoul National University Faculty Club</span>
+      <span data-zh>首尔大学教授会馆</span>
     </div>
     <button class="opening-btn" onclick="closeOpening()">Open</button>
   </div>
@@ -684,9 +724,9 @@
     <div class="hero-text">
       <div class="hero-eng">We're Getting Married</div>
       <div class="hero-names">
-        <span data-ko>예찬</span><span data-en>Yaechan</span>
+        <span data-ko>예찬</span><span data-en>Yaechan</span><span data-zh>叡瓒</span>
         <span class="amp">&</span>
-        <span data-ko>슬기</span><span data-en>Sulki</span>
+        <span data-ko>슬기</span><span data-en>Sulki</span><span data-zh>瑟琪</span>
       </div>
       <div class="hero-date">2026. 05. 05 Tue. PM 3:00</div>
     </div>
@@ -700,6 +740,7 @@
     <div class="section-title">
       <span data-ko>모시는 글</span>
       <span data-en>Our Invitation</span>
+      <span data-zh>诚挚邀请</span>
     </div>
 
     <div class="greeting-text">
@@ -714,15 +755,30 @@
         귀한 걸음으로 축복해 주세요.
       </span>
       <span data-en>
-        Two people who grew up together<br>
-        in the same church,<br>
-        growing side by side in God's grace,<br>
-        are now becoming one family.<br><br>
+        Having grown together<br>
+        within the same church<br>
+        and in the grace of God,<br>
+        we now come together<br>
+        to form a family of our own.<br><br>
         With the faith and love<br>
-        built over all these years,<br>
-        we will build a home<br>
-        overflowing with gratitude.<br><br>
-        Please bless us with your presence.
+        we have nurtured over many years,<br>
+        we will build a home filled with<br>
+        gratitude and devotion.<br><br>
+        We would be most honored<br>
+        by your presence as you bless<br>
+        this joyous occasion.
+      </span>
+      <span data-zh>
+        我们在同一教会中一起成长，<br>
+        在上帝的恩典中携手同行，<br>
+        如今决定共同组建<br>
+        属于我们的家庭。<br><br>
+        以多年来彼此守护中<br>
+        积淀的信仰与爱，<br>
+        我们将建立一个<br>
+        充满感恩的家。<br><br>
+        诚挚地邀请您<br>
+        莅临见证我们的幸福时刻。
       </span>
     </div>
 
@@ -752,6 +808,18 @@
         <span class="child-name"> — Sulki</span>
       </div>
     </div>
+    <div class="parents-info" data-zh>
+      <div>
+        <span class="names">李恩植 · 金智河</span>
+        <span class="role"> 之长子 </span>
+        <span class="child-name">叡瓒</span>
+      </div>
+      <div>
+        <span class="names">宋丰浩 · 赵顺爱</span>
+        <span class="role"> 之次女 </span>
+        <span class="child-name">瑟琪</span>
+      </div>
+    </div>
   </section>
 
   <!-- ===== Calendar ===== -->
@@ -760,6 +828,7 @@
     <div class="section-title">
       <span data-ko>예식 일시</span>
       <span data-en>Wedding Day</span>
+      <span data-zh>婚礼时间</span>
     </div>
 
     <div class="calendar">
@@ -820,6 +889,7 @@
     <div class="dday-text">
       <span data-ko>2026년 5월 5일 화요일 오후 3시</span>
       <span data-en>Tuesday, May 5, 2026 at 3:00 PM</span>
+      <span data-zh>2026年5月5日 星期二 下午3时</span>
     </div>
 
     <div class="countdown" id="countdown">
@@ -848,17 +918,18 @@
     <div class="section-title">
       <span data-ko>우리의 이야기</span>
       <span data-en>Our Story</span>
+      <span data-zh>我们的故事</span>
     </div>
 
     <div class="gallery-tabs">
       <button class="gallery-tab active" data-tab="all">
-        <span data-ko>전체</span><span data-en>All</span>
+        <span data-ko>전체</span><span data-en>All</span><span data-zh>全部</span>
       </button>
       <button class="gallery-tab" data-tab="couple">
-        <span data-ko>둘이서</span><span data-en>Together</span>
+        <span data-ko>둘이서</span><span data-en>Together</span><span data-zh>合照</span>
       </button>
       <button class="gallery-tab" data-tab="memory">
-        <span data-ko>추억</span><span data-en>Memories</span>
+        <span data-ko>추억</span><span data-en>Memories</span><span data-zh>回忆</span>
       </button>
     </div>
 
@@ -911,9 +982,6 @@
       <div class="gallery-item" data-category="memory">
         <img src="image/16.jpg" alt="" loading="lazy">
       </div>
-      <div class="gallery-item" data-category="couple">
-        <img src="image/17.jpg" alt="" loading="lazy">
-      </div>
       <div class="gallery-item" data-category="memory">
         <img src="image/18.jpg" alt="" loading="lazy">
       </div>
@@ -932,15 +1000,18 @@
     <div class="section-title">
       <span data-ko>오시는 길</span>
       <span data-en>Getting Here</span>
+      <span data-zh>交通指南</span>
     </div>
 
     <div class="venue-name">
       <span data-ko>서울대학교 교수회관</span>
       <span data-en>Seoul National University Faculty Club</span>
+      <span data-zh>首尔大学教授会馆</span>
     </div>
     <div class="venue-detail">
       <span data-ko>서울시 관악구 관악로1 서울대학교 내 65동 (신림동 산56-1)</span>
       <span data-en>Bldg. 65, Seoul National University, 1 Gwanak-ro, Gwanak-gu, Seoul</span>
+      <span data-zh>首尔市冠岳区冠岳路1号 首尔大学内65栋</span>
     </div>
     <div class="venue-tel"><a href="tel:02-3285-2115">Tel. 02-3285-2115</a></div>
 
@@ -948,13 +1019,13 @@
 
     <div class="venue-buttons">
       <a class="venue-btn" href="https://map.kakao.com/link/to/서울대학교 교수회관,37.4600,126.9498" target="_blank" rel="noopener">
-        <span data-ko>카카오맵</span><span data-en>Kakao Map</span>
+        <span data-ko>카카오맵</span><span data-en>Kakao Map</span><span data-zh>Kakao地图</span>
       </a>
       <a class="venue-btn" href="https://map.naver.com/v5/search/서울대학교 교수회관" target="_blank" rel="noopener">
-        <span data-ko>네이버지도</span><span data-en>Naver Map</span>
+        <span data-ko>네이버지도</span><span data-en>Naver Map</span><span data-zh>Naver地图</span>
       </a>
       <a class="venue-btn" href="https://apis.openapi.sk.com/tmap/app/routes?appKey=&name=서울대학교교수회관&lon=126.9498&lat=37.4600" target="_blank" rel="noopener">
-        <span data-ko>티맵</span><span data-en>T-Map</span>
+        <span data-ko>티맵</span><span data-en>T-Map</span><span data-zh>T-Map</span>
       </a>
     </div>
 
@@ -990,6 +1061,21 @@
         ※ Not "Hoam Faculty House" near Nakseongdae.
       </p>
     </div>
+    <div class="transport-info" data-zh>
+      <h4>地铁 & 公交</h4>
+      <p>
+        2号线落星垈站（4号出口）→ 在GS加油站左转后右转<br>
+        → 在面包店前乘坐村巴2-1路 → '共同机器院'站下车<br><br>
+        2号线首尔大入口站（3号出口）→ 乘坐5511路公交<br>
+        → '共同机器院'站下车
+      </p>
+      <h4>出租车 / 自驾</h4>
+      <p>
+        从落星垈站或首尔大入口站乘出租车约5–10分钟<br>
+        导航搜索：'首尔大学教授会馆'<br><br>
+        ※ 请注意，不是落星垈附近的"湖岩教授会馆"。
+      </p>
+    </div>
   </section>
 
   <!-- ===== Celebration ===== -->
@@ -997,7 +1083,8 @@
     <div class="section-label">Celebration</div>
     <div class="section-title">
       <span data-ko>축하의 마음</span>
-      <span data-en>Your Presence</span>
+      <span data-en>With Gratitude</span>
+      <span data-zh>温馨提示</span>
     </div>
 
     <div class="celebration-text">
@@ -1009,9 +1096,18 @@
       </span>
       <span data-en>
         We respectfully decline monetary gifts.<br><br>
-        Your presence alone<br>
-        is the greatest blessing to us.<br><br>
-        Please come with only your warm heart.
+        Your gracious presence at our wedding<br>
+        will be a blessing<br>
+        beyond measure to us.<br><br>
+        We kindly ask that you join us<br>
+        with your warmest wishes alone.
+      </span>
+      <span data-zh>
+        我们恳切地谢绝礼金。<br><br>
+        您的到来与祝福<br>
+        便是给我们最珍贵的礼物。<br><br>
+        恳请您带着一颗温暖的心<br>
+        前来见证我们的幸福。
       </span>
     </div>
   </section>
@@ -1022,24 +1118,25 @@
     <div class="section-title">
       <span data-ko>연락하기</span>
       <span data-en>Reach Us</span>
+      <span data-zh>联系方式</span>
     </div>
     <div style="display: flex; justify-content: center; gap: 48px;">
       <div>
         <div style="font-family: 'Noto Serif KR', serif; font-size: 15px; font-weight: 400; margin-bottom: 4px;">
-          <span data-ko>신랑 이예찬</span><span data-en>Groom Yaechan</span>
+          <span data-ko>신랑 이예찬</span><span data-en>Groom Yaechan</span><span data-zh>新郎 李叡瓒</span>
         </div>
         <a href="tel:010-7295-9119" style="font-size: 13px; color: var(--text-secondary); text-decoration: none;">010-7295-9119</a>
         <span onclick="copyPhone('01072959119')" style="font-size: 11px; color: var(--text-light); cursor: pointer; margin-left: 4px;">
-          <span data-ko>복사</span><span data-en>copy</span>
+          <span data-ko>복사</span><span data-en>copy</span><span data-zh>复制</span>
         </span>
       </div>
       <div>
         <div style="font-family: 'Noto Serif KR', serif; font-size: 15px; font-weight: 400; margin-bottom: 4px;">
-          <span data-ko>신부 송슬기</span><span data-en>Bride Sulki</span>
+          <span data-ko>신부 송슬기</span><span data-en>Bride Sulki</span><span data-zh>新娘 宋瑟琪</span>
         </div>
         <a href="tel:010-5471-9635" style="font-size: 13px; color: var(--text-secondary); text-decoration: none;">010-5471-9635</a>
         <span onclick="copyPhone('01054719635')" style="font-size: 11px; color: var(--text-light); cursor: pointer; margin-left: 4px;">
-          <span data-ko>복사</span><span data-en>copy</span>
+          <span data-ko>복사</span><span data-en>copy</span><span data-zh>复制</span>
         </span>
       </div>
     </div>
@@ -1069,12 +1166,16 @@
 
     function toggleLang() {
       const btn = document.getElementById('langToggle');
+      document.body.classList.remove('lang-en', 'lang-zh');
       if (currentLang === 'ko') {
         document.body.classList.add('lang-en');
-        btn.textContent = 'KR';
+        btn.textContent = 'ZH';
         currentLang = 'en';
+      } else if (currentLang === 'en') {
+        document.body.classList.add('lang-zh');
+        btn.textContent = 'KR';
+        currentLang = 'zh';
       } else {
-        document.body.classList.remove('lang-en');
         btn.textContent = 'EN';
         currentLang = 'ko';
       }
@@ -1224,7 +1325,7 @@
     // ===== Copy Phone =====
     function copyPhone(number) {
       navigator.clipboard.writeText(number).then(() => {
-        showToast(currentLang === 'ko' ? '번호가 복사되었습니다' : 'Number copied');
+        showToast({ko:'번호가 복사되었습니다', en:'Number copied', zh:'号码已复制'}[currentLang]);
       }).catch(() => {
         const textarea = document.createElement('textarea');
         textarea.value = number;
@@ -1232,7 +1333,7 @@
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        showToast(currentLang === 'ko' ? '번호가 복사되었습니다' : 'Number copied');
+        showToast({ko:'번호가 복사되었습니다', en:'Number copied', zh:'号码已复制'}[currentLang]);
       });
     }
 
