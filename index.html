@@ -587,6 +587,31 @@
       letter-spacing: 2px;
     }
 
+    /* ===== Music Toggle ===== */
+    .music-toggle {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 9000;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--taupe);
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      cursor: pointer;
+      font-size: 16px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .music-toggle.show { display: flex; }
+    .music-toggle:hover { border-color: var(--gold); }
+
     /* ===== Toast ===== */
     .toast {
       position: fixed; bottom: 40px; left: 50%;
@@ -631,6 +656,12 @@
 
   <!-- Language Toggle -->
   <button class="lang-toggle" id="langToggle" onclick="toggleLang()">EN</button>
+
+  <!-- Background Music -->
+  <audio id="bgm" loop preload="auto">
+    <source src="image/Bill %26 Gloria Gaither - Remind Me%2C Dear Lord %5BLive%5D ft. Terry Blackwood - Gaither Music TV (192k).mp3" type="audio/mpeg">
+  </audio>
+  <button class="music-toggle" id="musicToggle" onclick="toggleMusic()">♫</button>
 
   <!-- ===== Opening ===== -->
   <div class="opening" id="opening">
@@ -1050,8 +1081,27 @@
     function closeOpening() {
       document.getElementById('opening').classList.add('hide');
       document.getElementById('langToggle').classList.add('show');
+      document.getElementById('musicToggle').classList.add('show');
       document.body.style.overflow = 'auto';
       createPetals();
+      // Play background music on user interaction
+      var bgm = document.getElementById('bgm');
+      bgm.play().catch(function() {});
+    }
+
+    var isMusicPlaying = true;
+    function toggleMusic() {
+      var bgm = document.getElementById('bgm');
+      var btn = document.getElementById('musicToggle');
+      if (isMusicPlaying) {
+        bgm.pause();
+        btn.textContent = '♪';
+        isMusicPlaying = false;
+      } else {
+        bgm.play();
+        btn.textContent = '♫';
+        isMusicPlaying = true;
+      }
     }
 
     document.body.style.overflow = 'hidden';
