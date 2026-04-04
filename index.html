@@ -7,7 +7,7 @@
 
   <meta property="og:title" content="예찬 ♥ 슬기 결혼합니다">
   <meta property="og:description" content="2026년 5월 5일 오후 3시 | 서울대학교 교수회관">
-  <meta property="og:image" content="image/KakaoTalk_20260402_174746460_01.jpg">
+  <meta property="og:image" content="https://letter-nu-ten.vercel.app/image/Gemini_Generated_Image_st4la2st4la2st4l.png">
   <meta property="og:type" content="website">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -45,30 +45,33 @@
     }
 
     /* ===== Language Toggle ===== */
-    [data-en] { display: none; }
-    body.lang-en [data-ko] { display: none; }
-    body.lang-en [data-en] { display: inline; }
+    [data-en] { display: none !important; }
+    body.lang-en [data-ko] { display: none !important; }
+    body.lang-en [data-en] { display: revert !important; }
 
     .lang-toggle {
       position: fixed;
-      top: 16px;
-      right: 16px;
+      top: 12px;
+      right: 12px;
       z-index: 9000;
       font-family: 'Cormorant Garamond', serif;
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 500;
       letter-spacing: 2px;
-      color: var(--text-secondary);
-      background: rgba(255,255,255,0.85);
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.95);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 1px solid var(--line);
-      padding: 6px 14px;
+      border: 1px solid var(--taupe);
+      padding: 7px 14px;
+      border-radius: 4px;
       cursor: pointer;
       transition: all 0.3s ease;
       display: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
 
-    .lang-toggle:hover { color: var(--gold); border-color: var(--gold-light); }
+    .lang-toggle:hover { color: var(--gold); border-color: var(--gold); }
     .lang-toggle.show { display: block; }
 
     /* ===== Opening ===== */
@@ -516,7 +519,7 @@
 
     .venue-btn {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 11px 22px;
+      padding: 8px 20px;
       border: 1px solid var(--taupe);
       background: var(--warm-white);
       color: var(--text-primary);
@@ -644,7 +647,7 @@
   <!-- ===== Hero ===== -->
   <section class="hero section">
     <div class="hero-image-wrap">
-      <img src="image/KakaoTalk_20260402_174746460_01.jpg" alt="Yaechan & Seulgi">
+      <img src="image/Gemini_Generated_Image_st4la2st4la2st4l.png" alt="Yaechan & Seulgi">
       <div class="hero-overlay"></div>
     </div>
     <div class="hero-text">
@@ -694,31 +697,29 @@
 
     <div class="dot-divider">...</div>
 
-    <div class="parents-info">
-      <span data-ko>
-        <div>
-          <span class="names">이은식 · 김지하</span>
-          <span class="role"> 의 장남 </span>
-          <span class="child-name">예찬</span>
-        </div>
-        <div>
-          <span class="names">송풍호 · 조순애</span>
-          <span class="role"> 의 차녀 </span>
-          <span class="child-name">슬기</span>
-        </div>
-      </span>
-      <span data-en>
-        <div>
-          <span class="role">Son of </span>
-          <span class="names">Eunsik Lee & Jiha Kim</span>
-          <span class="child-name"> — Yaechan</span>
-        </div>
-        <div>
-          <span class="role">Daughter of </span>
-          <span class="names">Pungho Song & Sunae Cho</span>
-          <span class="child-name"> — Seulgi</span>
-        </div>
-      </span>
+    <div class="parents-info" data-ko>
+      <div>
+        <span class="names">이은식 · 김지하</span>
+        <span class="role"> 의 장남 </span>
+        <span class="child-name">예찬</span>
+      </div>
+      <div>
+        <span class="names">송풍호 · 조순애</span>
+        <span class="role"> 의 차녀 </span>
+        <span class="child-name">슬기</span>
+      </div>
+    </div>
+    <div class="parents-info" data-en>
+      <div>
+        <span class="role">Son of </span>
+        <span class="names">Eunsik Lee & Jiha Kim</span>
+        <span class="child-name"> — Yaechan</span>
+      </div>
+      <div>
+        <span class="role">Daughter of </span>
+        <span class="names">Pungho Song & Sunae Cho</span>
+        <span class="child-name"> — Seulgi</span>
+      </div>
     </div>
   </section>
 
@@ -832,16 +833,10 @@
 
     <div class="gallery-grid" id="galleryGrid">
       <div class="gallery-item" data-category="couple">
-        <img src="image/KakaoTalk_20260402_180339666_05.jpg" alt="" loading="lazy">
-      </div>
-      <div class="gallery-item" data-category="couple">
         <img src="image/KakaoTalk_20260401_161822595_05.jpg" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/0404.png" alt="" loading="lazy">
-      </div>
-      <div class="gallery-item" data-category="couple">
-        <img src="image/0404_02.png" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/KakaoTalk_20260402_174746460_02.jpg" alt="" loading="lazy">
@@ -851,6 +846,12 @@
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/KakaoTalk_20260401_161836602_06.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/0404_02.png" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260404_121620723_01.jpg" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/KakaoTalk_20260401_160812205_18.jpg" alt="" loading="lazy">
@@ -863,9 +864,6 @@
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/KakaoTalk_20260401_161922582_03.jpg" alt="" loading="lazy">
-      </div>
-      <div class="gallery-item" data-category="couple">
-        <img src="image/KakaoTalk_20260402_180339666_06.jpg" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="memory">
         <img src="image/KakaoTalk_20260404_143551690.jpg" alt="" loading="lazy">
@@ -880,7 +878,7 @@
         <img src="image/KakaoTalk_20260404_122440385_04.jpg" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="memory">
-        <img src="image/KakaoTalk_20260404_121611875_11.jpg" alt="" loading="lazy">
+        <img src="image/Gemini_Generated_Image_vjuvfdvjuvfdvjuv.png" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="memory">
         <img src="image/KakaoTalk_20260404_121616478_01.jpg" alt="" loading="lazy">
@@ -898,7 +896,7 @@
   </section>
 
   <!-- ===== Venue ===== -->
-  <section class="venue-section section">
+  <section class="venue-section section" style="padding-top: 48px;">
     <div class="section-label">Location</div>
     <div class="section-title">
       <span data-ko>오시는 길</span>
@@ -929,44 +927,42 @@
       </a>
     </div>
 
-    <div class="transport-info">
-      <span data-ko>
-        <h4>대중교통 이용안내</h4>
-        <p>
-          2호선 낙성대역 (4번출구) → GS주유소까지 좌회전 후 우회전<br>
-          → 제과점앞에서 마을버스 2-1번 → '공동기기원' 정류장에서 하차<br><br>
-          2호선 서울대입구역 (3번출구) → 5511버스<br>
-          → '공동기기원' 정류장에서 하차<br><br>
-          신림선 관악산역 (1번출구) → 5511, 5516버스<br>
-          → '공동기기원' 또는 '교수회관' 정류장에서 하차
-        </p>
-        <h4>자가용 이용안내</h4>
-        <p>
-          서울대입구역, 낙성대역에서 택시로 5~10분 소요<br>
-          내비게이션 : '서울대학교 교수회관' 또는 '서울대학교 학군단'<br><br>
-          ※ 낙성대 근처의 "호암교수회관"이 아닙니다.
-        </p>
-      </span>
-      <span data-en>
-        <h4>By Subway & Bus</h4>
-        <p>
-          Line 2 Nakseongdae Stn. (Exit 4) → turn left at GS gas station,<br>
-          then right → Village Bus 2-1 → get off at 'Gongdonggigiwon'<br><br>
-          Line 2 Seoul Nat'l Univ. Stn. (Exit 3) → Bus 5511<br>
-          → get off at 'Gongdonggigiwon'
-        </p>
-        <h4>By Taxi / Car</h4>
-        <p>
-          5–10 min by taxi from Nakseongdae or SNU Station<br>
-          Navigation: 'Seoul National University Faculty Club'<br><br>
-          ※ Not "Hoam Faculty House" near Nakseongdae.
-        </p>
-      </span>
+    <div class="transport-info" data-ko>
+      <h4>대중교통 이용안내</h4>
+      <p>
+        2호선 낙성대역 (4번출구) → GS주유소까지 좌회전 후 우회전<br>
+        → 제과점앞에서 마을버스 2-1번 → '공동기기원' 정류장에서 하차<br><br>
+        2호선 서울대입구역 (3번출구) → 5511버스<br>
+        → '공동기기원' 정류장에서 하차<br><br>
+        신림선 관악산역 (1번출구) → 5511, 5516버스<br>
+        → '공동기기원' 또는 '교수회관' 정류장에서 하차
+      </p>
+      <h4>자가용 이용안내</h4>
+      <p>
+        서울대입구역, 낙성대역에서 택시로 5~10분 소요<br>
+        내비게이션 : '서울대학교 교수회관' 또는 '서울대학교 학군단'<br><br>
+        ※ 낙성대 근처의 "호암교수회관"이 아닙니다.
+      </p>
+    </div>
+    <div class="transport-info" data-en>
+      <h4>By Subway & Bus</h4>
+      <p>
+        Line 2 Nakseongdae Stn. (Exit 4) → turn left at GS gas station,<br>
+        then right → Village Bus 2-1 → get off at 'Gongdonggigiwon'<br><br>
+        Line 2 Seoul Nat'l Univ. Stn. (Exit 3) → Bus 5511<br>
+        → get off at 'Gongdonggigiwon'
+      </p>
+      <h4>By Taxi / Car</h4>
+      <p>
+        5–10 min by taxi from Nakseongdae or SNU Station<br>
+        Navigation: 'Seoul National University Faculty Club'<br><br>
+        ※ Not "Hoam Faculty House" near Nakseongdae.
+      </p>
     </div>
   </section>
 
   <!-- ===== Celebration ===== -->
-  <section class="celebration-section section">
+  <section class="celebration-section section" style="padding-bottom: 36px;">
     <div class="section-label">Celebration</div>
     <div class="section-title">
       <span data-ko>축하의 마음</span>
@@ -986,6 +982,35 @@
         is the greatest blessing to us.<br><br>
         Please come with only your warm heart.
       </span>
+    </div>
+  </section>
+
+  <!-- ===== Contact ===== -->
+  <section class="section" style="text-align: center; padding-top: 36px; padding-bottom: 48px;">
+    <div class="section-label">Contact</div>
+    <div class="section-title">
+      <span data-ko>연락하기</span>
+      <span data-en>Reach Us</span>
+    </div>
+    <div style="display: flex; justify-content: center; gap: 48px;">
+      <div>
+        <div style="font-family: 'Noto Serif KR', serif; font-size: 15px; font-weight: 400; margin-bottom: 4px;">
+          <span data-ko>신랑 이예찬</span><span data-en>Groom Yaechan</span>
+        </div>
+        <a href="tel:010-7295-9119" style="font-size: 13px; color: var(--text-secondary); text-decoration: none;">010-7295-9119</a>
+        <span onclick="copyPhone('01072959119')" style="font-size: 11px; color: var(--text-light); cursor: pointer; margin-left: 4px;">
+          <span data-ko>복사</span><span data-en>copy</span>
+        </span>
+      </div>
+      <div>
+        <div style="font-family: 'Noto Serif KR', serif; font-size: 15px; font-weight: 400; margin-bottom: 4px;">
+          <span data-ko>신부 송슬기</span><span data-en>Bride Seulgi</span>
+        </div>
+        <a href="tel:010-5471-9635" style="font-size: 13px; color: var(--text-secondary); text-decoration: none;">010-5471-9635</a>
+        <span onclick="copyPhone('01054719635')" style="font-size: 11px; color: var(--text-light); cursor: pointer; margin-left: 4px;">
+          <span data-ko>복사</span><span data-en>copy</span>
+        </span>
+      </div>
     </div>
   </section>
 
@@ -1145,6 +1170,21 @@
       const diff = touchStartX - e.changedTouches[0].clientX;
       if (Math.abs(diff) > 50) navLightbox(diff > 0 ? 1 : -1);
     });
+
+    // ===== Copy Phone =====
+    function copyPhone(number) {
+      navigator.clipboard.writeText(number).then(() => {
+        showToast(currentLang === 'ko' ? '번호가 복사되었습니다' : 'Number copied');
+      }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = number;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast(currentLang === 'ko' ? '번호가 복사되었습니다' : 'Number copied');
+      });
+    }
 
     // ===== Toast =====
     function showToast(msg) {
