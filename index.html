@@ -56,25 +56,37 @@
       top: 12px;
       right: 12px;
       z-index: 9000;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 2px;
-      color: var(--text-primary);
+      display: none;
       background: rgba(255,255,255,0.95);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       border: 1px solid var(--taupe);
-      padding: 7px 14px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: none;
+      border-radius: 20px;
+      padding: 4px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
 
-    .lang-toggle:hover { color: var(--gold); border-color: var(--gold); }
-    .lang-toggle.show { display: block; }
+    .lang-toggle.show { display: flex; }
+
+    .lang-toggle button {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 1px;
+      color: var(--text-light);
+      background: none;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .lang-toggle button.active {
+      background: var(--gold);
+      color: white;
+      font-weight: 500;
+    }
 
     /* ===== Opening ===== */
     .opening {
@@ -694,7 +706,11 @@
 <body>
 
   <!-- Language Toggle -->
-  <button class="lang-toggle" id="langToggle" onclick="toggleLang()">EN</button>
+  <div class="lang-toggle" id="langToggle">
+    <button class="active" onclick="setLang('ko')">KR</button>
+    <button onclick="setLang('en')">EN</button>
+    <button onclick="setLang('zh')">中</button>
+  </div>
 
   <!-- Background Music -->
   <audio id="bgm" loop preload="auto">
@@ -967,7 +983,7 @@
         <img src="image/09.png" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="memory">
-        <img src="image/10.jpg" alt="" loading="lazy">
+        <img src="image/10.png" alt="" loading="lazy">
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/11.jpg" alt="" loading="lazy">
@@ -1172,21 +1188,14 @@
     // ===== Language Toggle =====
     let currentLang = 'ko';
 
-    function toggleLang() {
-      const btn = document.getElementById('langToggle');
+    function setLang(lang) {
+      currentLang = lang;
       document.body.classList.remove('lang-en', 'lang-zh');
-      if (currentLang === 'ko') {
-        document.body.classList.add('lang-en');
-        btn.textContent = 'ZH';
-        currentLang = 'en';
-      } else if (currentLang === 'en') {
-        document.body.classList.add('lang-zh');
-        btn.textContent = 'KR';
-        currentLang = 'zh';
-      } else {
-        btn.textContent = 'EN';
-        currentLang = 'ko';
-      }
+      if (lang === 'en') document.body.classList.add('lang-en');
+      if (lang === 'zh') document.body.classList.add('lang-zh');
+      document.querySelectorAll('#langToggle button').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() === {ko:'KR', en:'EN', zh:'中'}[lang]);
+      });
     }
 
     // ===== Opening =====
