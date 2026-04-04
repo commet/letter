@@ -487,6 +487,25 @@
       transition: transform 0.5s ease;
     }
 
+    .gallery-grid .gallery-item .year-label {
+      position: absolute;
+      bottom: 6px;
+      left: 6px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 10px;
+      font-weight: 300;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.7);
+      background: rgba(0,0,0,0.2);
+      padding: 2px 7px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    .gallery-grid .gallery-item {
+      position: relative;
+    }
+
     .gallery-grid .gallery-item:hover img { transform: scale(1.05); }
 
     /* Lightbox */
@@ -787,9 +806,9 @@
       <span data-zh>
         我们在同一教会中一起成长，<br>
         在上帝的恩典中携手同行，<br>
-        如今决定共同组建<br>
+        如今携手组建<br>
         属于我们的家庭。<br><br>
-        以多年来彼此守护中<br>
+        以多年来相守中<br>
         积淀的信仰与爱，<br>
         我们将建立一个<br>
         充满感恩的家。<br><br>
@@ -957,63 +976,83 @@
     <div class="gallery-grid" id="galleryGrid">
       <div class="gallery-item" data-category="couple">
         <img src="image/01.jpg" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/02.png" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/03.jpg" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/04.jpg" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/05.jpg" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/06.jpg" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/07.png" alt="" loading="lazy">
+        <span class="year-label">2019 Winter</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/08.png" alt="" loading="lazy">
+        <span class="year-label">2019 Summer</span>
       </div>
       <div class="gallery-item" data-category="memory">
-        <img src="image/09.png" alt="" loading="lazy">
+        <img src="image/09.jpg" alt="" loading="lazy">
+        <span class="year-label">2019 Summer</span>
       </div>
       <div class="gallery-item" data-category="memory">
         <img src="image/10.png" alt="" loading="lazy">
+        <span class="year-label">2018 Winter</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/11.jpg" alt="" loading="lazy">
+        <span class="year-label">2015 Winter</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/12.jpg" alt="" loading="lazy">
+        <span class="year-label">2015 Winter</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/13.jpg" alt="" loading="lazy">
+        <span class="year-label">2014 Winter</span>
       </div>
       <div class="gallery-item" data-category="couple">
         <img src="image/14.jpg" alt="" loading="lazy">
+        <span class="year-label">2014 Winter</span>
       </div>
       <div class="gallery-item" data-category="memory">
-        <img src="image/15.png" alt="" loading="lazy">
+        <img src="image/15.jpg" alt="" loading="lazy">
+        <span class="year-label">2022 Spring</span>
       </div>
       <div class="gallery-item" data-category="memory">
         <img src="image/16.jpg" alt="" loading="lazy">
+        <span class="year-label">2014 Spring</span>
       </div>
       <div class="gallery-item" data-category="memory">
-        <img src="image/17.jpg" alt="" loading="lazy">
+        <img src="image/17.png" alt="" loading="lazy">
+        <span class="year-label">1996 Summer</span>
       </div>
       <div class="gallery-item" data-category="memory">
-        <img src="image/18.jpg" alt="" loading="lazy">
+        <img src="image/18.png" alt="" loading="lazy">
+        <span class="year-label">1994 Autumn</span>
       </div>
       <div class="gallery-item" data-category="memory">
         <img src="image/19.jpg" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
       <div class="gallery-item" data-category="memory">
         <img src="image/20.jpg" alt="" loading="lazy">
+        <span class="year-label">2026 Spring</span>
       </div>
     </div>
   </section>
@@ -1089,7 +1128,7 @@
       <h4>地铁 & 公交</h4>
       <p>
         2号线落星垈站（4号出口）→ 在GS加油站左转后右转<br>
-        → 在面包店前乘坐村巴2-1路 → '共同机器院'站下车<br><br>
+        → 在面包店前乘坐社区巴士2-1路 → '共同机器院'站下车<br><br>
         2号线首尔大入口站（3号出口）→ 乘坐5511路公交<br>
         → '共同机器院'站下车
       </p>
@@ -1108,7 +1147,7 @@
     <div class="section-title">
       <span data-ko>축하의 마음</span>
       <span data-en>With Gratitude</span>
-      <span data-zh>温馨提示</span>
+      <span data-zh>衷心致谢</span>
     </div>
 
     <div class="celebration-text">
@@ -1127,7 +1166,7 @@
         with your warmest wishes alone.
       </span>
       <span data-zh>
-        我们恳切地谢绝礼金。<br><br>
+        我们诚挚地婉拒礼金。<br><br>
         您的到来与祝福<br>
         便是给我们最珍贵的礼物。<br><br>
         恳请您带着一颗温暖的心<br>
@@ -1179,6 +1218,16 @@
     <button class="lightbox-nav lightbox-prev" onclick="navLightbox(-1)">‹</button>
     <button class="lightbox-nav lightbox-next" onclick="navLightbox(1)">›</button>
     <img id="lightboxImg" src="" alt="">
+    <div id="lightboxYear" style="
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.6);
+    "></div>
   </div>
 
   <!-- Toast -->
@@ -1295,15 +1344,21 @@
     // ===== Lightbox =====
     let currentLightboxIndex = 0;
     let visibleImages = [];
+    let visibleYears = [];
 
     document.querySelectorAll('.gallery-item').forEach(item => {
       item.addEventListener('click', () => {
-        visibleImages = [...document.querySelectorAll('.gallery-item')]
-          .filter(i => i.style.display !== 'none')
-          .map(i => i.querySelector('img').src);
+        const visible = [...document.querySelectorAll('.gallery-item')]
+          .filter(i => i.style.display !== 'none');
+        visibleImages = visible.map(i => i.querySelector('img').src);
+        visibleYears = visible.map(i => {
+          const label = i.querySelector('.year-label');
+          return label ? label.textContent : '';
+        });
         const clickedSrc = item.querySelector('img').src;
         currentLightboxIndex = visibleImages.indexOf(clickedSrc);
         document.getElementById('lightboxImg').src = clickedSrc;
+        document.getElementById('lightboxYear').textContent = visibleYears[currentLightboxIndex];
         document.getElementById('lightbox').classList.add('show');
         document.body.style.overflow = 'hidden';
       });
@@ -1317,6 +1372,7 @@
     function navLightbox(dir) {
       currentLightboxIndex = (currentLightboxIndex + dir + visibleImages.length) % visibleImages.length;
       document.getElementById('lightboxImg').src = visibleImages[currentLightboxIndex];
+      document.getElementById('lightboxYear').textContent = visibleYears[currentLightboxIndex];
     }
 
     document.getElementById('lightbox').addEventListener('click', (e) => {
