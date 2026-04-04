@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>예찬 & 슬기 결혼합니다</title>
+
+  <meta property="og:title" content="예찬 ♥ 슬기 결혼합니다">
+  <meta property="og:description" content="2026년 5월 5일 오후 3시 | 서울대학교 교수회관">
+  <meta property="og:image" content="image/KakaoTalk_20260402_174746460_01.jpg">
+  <meta property="og:type" content="website">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200;300;400;500;600&family=Noto+Sans+KR:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --cream: #FAF8F5;
+      --warm-white: #FFFFFF;
+      --text-primary: #3A3A3A;
+      --text-secondary: #6B6B6B;
+      --text-light: #999999;
+      --gold: #B8956A;
+      --gold-light: #D4B896;
+      --taupe: #C5B9AD;
+      --line: #E8E2DC;
+      --sage: #A8B5A0;
+    }
+
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: var(--cream);
+      color: var(--text-primary);
+      max-width: 480px;
+      margin: 0 auto;
+      overflow-x: hidden;
+      line-height: 1.8;
+      font-weight: 300;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== Language Toggle ===== */
+    [data-en] { display: none; }
+    body.lang-en [data-ko] { display: none; }
+    body.lang-en [data-en] { display: inline; }
+
+    .lang-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9000;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--line);
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: none;
+    }
+
+    .lang-toggle:hover { color: var(--gold); border-color: var(--gold-light); }
+    .lang-toggle.show { display: block; }
+
+    /* ===== Opening ===== */
+    .opening {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: #F7F4F0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    .opening.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .opening-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px;
+      letter-spacing: 8px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 40px;
+      opacity: 0;
+      animation: fadeUp 1s ease 0.3s forwards;
+    }
+
+    .opening-names {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 32px;
+      font-weight: 200;
+      letter-spacing: 10px;
+      color: #2C2C2C;
+      opacity: 0;
+      animation: fadeUp 1s ease 0.6s forwards;
+    }
+
+    .opening-date {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 3px;
+      color: #4A4540;
+      margin-top: 24px;
+      opacity: 0;
+      animation: fadeUp 1s ease 0.9s forwards;
+    }
+
+    .opening-venue {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 13px;
+      font-weight: 300;
+      letter-spacing: 2px;
+      color: #6A645E;
+      margin-top: 8px;
+      opacity: 0;
+      animation: fadeUp 1s ease 1.0s forwards;
+    }
+
+    .opening-btn {
+      margin-top: 52px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #4A4540;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      cursor: pointer;
+      opacity: 0;
+      animation: fadeUp 1s ease 1.2s forwards;
+      transition: color 0.3s ease;
+      position: relative;
+    }
+
+    .opening-btn::after {
+      content: '';
+      display: block;
+      width: 100%;
+      height: 1px;
+      background: var(--gold-light);
+      margin-top: 6px;
+    }
+
+    .opening-btn:hover { color: var(--gold); }
+
+    /* ===== Common ===== */
+    .section {
+      padding: 72px 28px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .section.visible { opacity: 1; transform: translateY(0); }
+
+    .section-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--gold);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 20px;
+      font-weight: 300;
+      text-align: center;
+      margin-bottom: 36px;
+      letter-spacing: 2px;
+    }
+
+    body.lang-en .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 3px;
+    }
+
+    .divider {
+      width: 1px; height: 48px;
+      background: var(--taupe);
+      margin: 0 auto;
+      opacity: 0.5;
+    }
+
+    .dot-divider {
+      text-align: center;
+      color: var(--gold-light);
+      font-size: 8px;
+      letter-spacing: 12px;
+      margin: 28px 0;
+    }
+
+    /* ===== Hero ===== */
+    .hero { position: relative; width: 100%; padding: 0; opacity: 1; transform: none; }
+
+    .hero-image-wrap {
+      width: 100%;
+      aspect-ratio: 3/4;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-image-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center 20%;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(250,248,245,1) 0%, rgba(250,248,245,0) 100%);
+    }
+
+    .hero-text {
+      position: absolute;
+      bottom: 40px; left: 0; right: 0;
+      text-align: center;
+      z-index: 2;
+    }
+
+    .hero-eng {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 11px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: var(--text-light);
+      margin-bottom: 12px;
+    }
+
+    .hero-names {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 32px; font-weight: 200;
+      letter-spacing: 6px;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+    }
+
+    .hero-names .amp {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 24px; font-weight: 300;
+      font-style: italic;
+      color: var(--gold);
+      margin: 0 8px;
+      vertical-align: middle;
+    }
+
+    .hero-date {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px;
+      letter-spacing: 3px;
+      color: var(--text-secondary);
+    }
+
+    /* ===== Greeting ===== */
+    .greeting { text-align: center; background: var(--warm-white); }
+
+    .greeting-text {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 15px; font-weight: 200;
+      line-height: 2.4;
+      color: var(--text-primary);
+      word-break: keep-all;
+      margin-bottom: 40px;
+    }
+
+    body.lang-en .greeting-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px; font-weight: 400;
+      line-height: 2.2;
+    }
+
+    .parents-info {
+      font-size: 14px; font-weight: 300;
+      line-height: 2.2;
+      color: var(--text-secondary);
+    }
+
+    .parents-info .role { font-size: 12px; color: var(--text-light); }
+    .parents-info .names { letter-spacing: 1px; }
+    .parents-info .child-name { font-weight: 500; color: var(--text-primary); }
+
+    body.lang-en .parents-info {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 15px; font-weight: 400;
+    }
+
+    body.lang-en .parents-info .role {
+      font-size: 13px;
+    }
+
+    /* ===== Calendar ===== */
+    .calendar-section { text-align: center; }
+
+    .calendar { max-width: 320px; margin: 0 auto 32px; }
+
+    .calendar-month {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px; letter-spacing: 4px;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .calendar-grid .day-header {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 12px; color: var(--text-light);
+      padding: 8px 0; text-transform: uppercase;
+    }
+
+    .calendar-grid .day-header:first-child { color: #D4836A; }
+
+    .calendar-grid .day {
+      font-size: 13px; padding: 8px 0;
+      color: var(--text-secondary);
+      font-weight: 300; position: relative;
+    }
+
+    .calendar-grid .day.sun { color: #D4836A; }
+    .calendar-grid .day.sat { color: #6A8EB5; }
+
+    .calendar-grid .day.today { color: var(--warm-white); font-weight: 500; }
+
+    .calendar-grid .day.today::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 32px; height: 32px;
+      background: var(--gold);
+      border-radius: 50%;
+      z-index: -1;
+    }
+
+    .calendar-grid .day.empty { visibility: hidden; }
+
+    .dday-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14px; letter-spacing: 3px;
+      color: var(--gold);
+    }
+
+    .countdown {
+      display: flex;
+      justify-content: center;
+      gap: 24px; margin-top: 20px;
+    }
+
+    .countdown-item { text-align: center; }
+
+    .countdown-number {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px; font-weight: 400;
+      color: var(--text-primary);
+      display: block;
+    }
+
+    .countdown-label {
+      font-size: 10px; color: var(--text-light);
+      letter-spacing: 2px; text-transform: uppercase;
+    }
+
+    /* ===== Gallery ===== */
+    .gallery-section {
+      padding-left: 0; padding-right: 0;
+      background: var(--warm-white);
+    }
+
+    .gallery-section .section-label,
+    .gallery-section .section-title { padding: 0 28px; }
+
+    .gallery-tabs {
+      display: flex; justify-content: center;
+      gap: 20px; margin-bottom: 28px; padding: 0 28px;
+    }
+
+    .gallery-tab {
+      font-size: 12px; letter-spacing: 2px;
+      color: var(--text-light);
+      background: none; border: none; cursor: pointer;
+      padding: 6px 0;
+      border-bottom: 1px solid transparent;
+      font-family: 'Noto Sans KR', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    body.lang-en .gallery-tab {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px; letter-spacing: 3px;
+    }
+
+    .gallery-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px; padding: 0 3px;
+    }
+
+    .gallery-grid .gallery-item {
+      aspect-ratio: 1; overflow: hidden; cursor: pointer;
+    }
+
+    .gallery-grid .gallery-item img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .gallery-grid .gallery-item:hover img { transform: scale(1.05); }
+
+    /* Lightbox */
+    .lightbox {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92);
+      z-index: 10000;
+      display: none;
+      align-items: center; justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .lightbox.show { display: flex; opacity: 1; }
+
+    .lightbox img {
+      max-width: 95%; max-height: 85vh;
+      object-fit: contain; border-radius: 2px;
+    }
+
+    .lightbox-close {
+      position: absolute; top: 20px; right: 20px;
+      width: 40px; height: 40px;
+      background: none; border: none;
+      color: white; font-size: 24px;
+      cursor: pointer; z-index: 10001;
+    }
+
+    .lightbox-nav {
+      position: absolute; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: rgba(255,255,255,0.7);
+      font-size: 36px; cursor: pointer;
+      padding: 20px; z-index: 10001;
+    }
+
+    .lightbox-nav:hover { color: white; }
+    .lightbox-prev { left: 0; }
+    .lightbox-next { right: 0; }
+
+    /* ===== Venue ===== */
+    .venue-section { text-align: center; background: var(--warm-white); }
+
+    .venue-name {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 18px; font-weight: 400;
+      margin-bottom: 4px;
+    }
+
+    body.lang-en .venue-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px;
+    }
+
+    .venue-detail {
+      font-size: 13px; color: var(--text-secondary);
+      margin-bottom: 4px; line-height: 1.8;
+    }
+
+    .venue-tel {
+      font-size: 13px; color: var(--text-light);
+      margin-bottom: 28px;
+    }
+
+    .venue-tel a { color: var(--text-light); text-decoration: none; }
+
+    .map-image {
+      width: 100%; margin: 24px 0;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+    }
+
+    .venue-buttons {
+      display: flex; gap: 10px;
+      justify-content: center;
+      margin-top: 20px; flex-wrap: wrap;
+    }
+
+    .venue-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 11px 22px;
+      border: 1px solid var(--taupe);
+      background: var(--warm-white);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 400;
+      font-family: 'Noto Sans KR', sans-serif;
+      letter-spacing: 1px;
+      border-radius: 24px;
+      cursor: pointer; text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .venue-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    .transport-info {
+      text-align: left; margin-top: 32px;
+      padding: 24px; background: var(--cream);
+      border-radius: 8px;
+    }
+
+    .transport-info h4 {
+      font-size: 13px; font-weight: 500;
+      margin-bottom: 8px; color: var(--text-primary);
+    }
+
+    .transport-info p {
+      font-size: 12px; color: var(--text-secondary);
+      line-height: 1.9; margin-bottom: 16px;
+    }
+
+    .transport-info p:last-child { margin-bottom: 0; }
+
+    /* ===== Celebration ===== */
+    .celebration-section { text-align: center; }
+
+    .celebration-text {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 15px; font-weight: 200;
+      line-height: 2.4;
+      color: var(--text-primary);
+      word-break: keep-all;
+    }
+
+    body.lang-en .celebration-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px; font-weight: 400;
+      line-height: 2.2;
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      text-align: center;
+      padding: 48px 28px 64px;
+      background: var(--warm-white);
+    }
+
+    .footer-names {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 16px; letter-spacing: 4px;
+      color: var(--gold); margin-bottom: 8px;
+    }
+
+    .footer-date {
+      font-size: 12px; color: var(--text-light);
+      letter-spacing: 2px;
+    }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: fixed; bottom: 40px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text-primary);
+      color: white;
+      padding: 12px 24px; border-radius: 24px;
+      font-size: 13px; opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 10000; pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== Animations ===== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes floatDown {
+      0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+    }
+
+    .petal {
+      position: fixed;
+      width: 10px; height: 10px;
+      background: radial-gradient(ellipse at center, #F5C6C6 0%, #F0B0B0 50%, transparent 70%);
+      border-radius: 50% 0 50% 0;
+      pointer-events: none;
+      z-index: 9998; opacity: 0;
+      animation: floatDown linear forwards;
+    }
+
+    @media (min-width: 481px) {
+      body { box-shadow: 0 0 40px rgba(0,0,0,0.08); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Language Toggle -->
+  <button class="lang-toggle" id="langToggle" onclick="toggleLang()">EN</button>
+
+  <!-- ===== Opening ===== -->
+  <div class="opening" id="opening">
+    <div class="opening-text">Wedding Invitation</div>
+    <div class="opening-names">예찬 & 슬기</div>
+    <div class="opening-date">2026. 05. 05 Tue. PM 3:00</div>
+    <div class="opening-venue">
+      <span data-ko>서울대학교 교수회관</span>
+      <span data-en>Seoul National University Faculty Club</span>
+    </div>
+    <button class="opening-btn" onclick="closeOpening()">Open</button>
+  </div>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero section">
+    <div class="hero-image-wrap">
+      <img src="image/KakaoTalk_20260402_174746460_01.jpg" alt="Yaechan & Seulgi">
+      <div class="hero-overlay"></div>
+    </div>
+    <div class="hero-text">
+      <div class="hero-eng">We're Getting Married</div>
+      <div class="hero-names">
+        <span data-ko>예찬</span><span data-en>Yaechan</span>
+        <span class="amp">&</span>
+        <span data-ko>슬기</span><span data-en>Seulgi</span>
+      </div>
+      <div class="hero-date">2026. 05. 05 Tue. PM 3:00</div>
+    </div>
+  </section>
+
+  <div class="divider" style="margin: 40px auto;"></div>
+
+  <!-- ===== Greeting ===== -->
+  <section class="greeting section">
+    <div class="section-label">Invitation</div>
+    <div class="section-title">
+      <span data-ko>모시는 글</span>
+      <span data-en>Our Invitation</span>
+    </div>
+
+    <div class="greeting-text">
+      <span data-ko>
+        한 교회에서 함께 자라며<br>
+        하나님 안에서 성장해 온 두 사람이<br>
+        이제 하나의 가정을 이루려 합니다.<br><br>
+        오랜 세월 서로를 지켜보며<br>
+        쌓아온 믿음과 사랑으로<br>
+        감사가 넘치는 가정을<br>
+        만들어 가겠습니다.<br><br>
+        귀한 걸음으로 축복해 주세요.
+      </span>
+      <span data-en>
+        Two people who grew up together<br>
+        in the same church,<br>
+        growing side by side in God's grace,<br>
+        are now becoming one family.<br><br>
+        With the faith and love<br>
+        built over all these years,<br>
+        we will build a home<br>
+        overflowing with gratitude.<br><br>
+        Please bless us with your presence.
+      </span>
+    </div>
+
+    <div class="dot-divider">...</div>
+
+    <div class="parents-info">
+      <span data-ko>
+        <div>
+          <span class="names">이은식 · 김지하</span>
+          <span class="role"> 의 장남 </span>
+          <span class="child-name">예찬</span>
+        </div>
+        <div>
+          <span class="names">송풍호 · 조순애</span>
+          <span class="role"> 의 차녀 </span>
+          <span class="child-name">슬기</span>
+        </div>
+      </span>
+      <span data-en>
+        <div>
+          <span class="role">Son of </span>
+          <span class="names">Eunsik Lee & Jiha Kim</span>
+          <span class="child-name"> — Yaechan</span>
+        </div>
+        <div>
+          <span class="role">Daughter of </span>
+          <span class="names">Pungho Song & Sunae Cho</span>
+          <span class="child-name"> — Seulgi</span>
+        </div>
+      </span>
+    </div>
+  </section>
+
+  <!-- ===== Calendar ===== -->
+  <section class="calendar-section section">
+    <div class="section-label">When</div>
+    <div class="section-title">
+      <span data-ko>예식 일시</span>
+      <span data-en>Wedding Day</span>
+    </div>
+
+    <div class="calendar">
+      <div class="calendar-month">May 2026</div>
+      <div class="calendar-grid">
+        <div class="day-header">Sun</div>
+        <div class="day-header">Mon</div>
+        <div class="day-header">Tue</div>
+        <div class="day-header">Wed</div>
+        <div class="day-header">Thu</div>
+        <div class="day-header">Fri</div>
+        <div class="day-header">Sat</div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day">1</div>
+        <div class="day sat">2</div>
+        <div class="day sun">3</div>
+        <div class="day">4</div>
+        <div class="day today">5</div>
+        <div class="day">6</div>
+        <div class="day">7</div>
+        <div class="day">8</div>
+        <div class="day sat">9</div>
+        <div class="day sun">10</div>
+        <div class="day">11</div>
+        <div class="day">12</div>
+        <div class="day">13</div>
+        <div class="day">14</div>
+        <div class="day">15</div>
+        <div class="day sat">16</div>
+        <div class="day sun">17</div>
+        <div class="day">18</div>
+        <div class="day">19</div>
+        <div class="day">20</div>
+        <div class="day">21</div>
+        <div class="day">22</div>
+        <div class="day sat">23</div>
+        <div class="day sun">24</div>
+        <div class="day">25</div>
+        <div class="day">26</div>
+        <div class="day">27</div>
+        <div class="day">28</div>
+        <div class="day">29</div>
+        <div class="day sat">30</div>
+        <div class="day sun">31</div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+        <div class="day empty"></div>
+      </div>
+    </div>
+
+    <div class="dday-text">
+      <span data-ko>2026년 5월 5일 화요일 오후 3시</span>
+      <span data-en>Tuesday, May 5, 2026 at 3:00 PM</span>
+    </div>
+
+    <div class="countdown" id="countdown">
+      <div class="countdown-item">
+        <span class="countdown-number" id="cd-days">0</span>
+        <span class="countdown-label">Days</span>
+      </div>
+      <div class="countdown-item">
+        <span class="countdown-number" id="cd-hours">0</span>
+        <span class="countdown-label">Hours</span>
+      </div>
+      <div class="countdown-item">
+        <span class="countdown-number" id="cd-mins">0</span>
+        <span class="countdown-label">Min</span>
+      </div>
+      <div class="countdown-item">
+        <span class="countdown-number" id="cd-secs">0</span>
+        <span class="countdown-label">Sec</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Gallery ===== -->
+  <section class="gallery-section section">
+    <div class="section-label">Gallery</div>
+    <div class="section-title">
+      <span data-ko>우리의 이야기</span>
+      <span data-en>Our Story</span>
+    </div>
+
+    <div class="gallery-tabs">
+      <button class="gallery-tab active" data-tab="all">
+        <span data-ko>전체</span><span data-en>All</span>
+      </button>
+      <button class="gallery-tab" data-tab="couple">
+        <span data-ko>둘이서</span><span data-en>Together</span>
+      </button>
+      <button class="gallery-tab" data-tab="memory">
+        <span data-ko>추억</span><span data-en>Memories</span>
+      </button>
+    </div>
+
+    <div class="gallery-grid" id="galleryGrid">
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260402_180339666_05.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260401_161822595_05.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/0404.png" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260402_174746460_02.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260401_160812205_10.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260401_161836602_06.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260401_160812205_18.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260401_161822595_18.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260401_160646602_10.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260401_161922582_03.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="couple">
+        <img src="image/KakaoTalk_20260402_180339666_06.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_143551690.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_143422520.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_125827960_01.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_122440385_04.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_121611875_11.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_121616478_01.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_122440385_02.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_122440385_08.jpg" alt="" loading="lazy">
+      </div>
+      <div class="gallery-item" data-category="memory">
+        <img src="image/KakaoTalk_20260404_121611875_06.jpg" alt="" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Venue ===== -->
+  <section class="venue-section section">
+    <div class="section-label">Location</div>
+    <div class="section-title">
+      <span data-ko>오시는 길</span>
+      <span data-en>Getting Here</span>
+    </div>
+
+    <div class="venue-name">
+      <span data-ko>서울대학교 교수회관</span>
+      <span data-en>Seoul National University Faculty Club</span>
+    </div>
+    <div class="venue-detail">
+      <span data-ko>서울시 관악구 관악로1 서울대학교 내 65동 (신림동 산56-1)</span>
+      <span data-en>Bldg. 65, Seoul National University, 1 Gwanak-ro, Gwanak-gu, Seoul</span>
+    </div>
+    <div class="venue-tel"><a href="tel:02-3285-2115">Tel. 02-3285-2115</a></div>
+
+    <img src="map/map_2.png" alt="Map" class="map-image">
+
+    <div class="venue-buttons">
+      <a class="venue-btn" href="https://map.kakao.com/link/to/서울대학교 교수회관,37.4600,126.9498" target="_blank" rel="noopener">
+        <span data-ko>카카오맵</span><span data-en>Kakao Map</span>
+      </a>
+      <a class="venue-btn" href="https://map.naver.com/v5/search/서울대학교 교수회관" target="_blank" rel="noopener">
+        <span data-ko>네이버지도</span><span data-en>Naver Map</span>
+      </a>
+      <a class="venue-btn" href="https://apis.openapi.sk.com/tmap/app/routes?appKey=&name=서울대학교교수회관&lon=126.9498&lat=37.4600" target="_blank" rel="noopener">
+        <span data-ko>티맵</span><span data-en>T-Map</span>
+      </a>
+    </div>
+
+    <div class="transport-info">
+      <span data-ko>
+        <h4>대중교통 이용안내</h4>
+        <p>
+          2호선 낙성대역 (4번출구) → GS주유소까지 좌회전 후 우회전<br>
+          → 제과점앞에서 마을버스 2-1번 → '공동기기원' 정류장에서 하차<br><br>
+          2호선 서울대입구역 (3번출구) → 5511버스<br>
+          → '공동기기원' 정류장에서 하차<br><br>
+          신림선 관악산역 (1번출구) → 5511, 5516버스<br>
+          → '공동기기원' 또는 '교수회관' 정류장에서 하차
+        </p>
+        <h4>자가용 이용안내</h4>
+        <p>
+          서울대입구역, 낙성대역에서 택시로 5~10분 소요<br>
+          내비게이션 : '서울대학교 교수회관' 또는 '서울대학교 학군단'<br><br>
+          ※ 낙성대 근처의 "호암교수회관"이 아닙니다.
+        </p>
+      </span>
+      <span data-en>
+        <h4>By Subway & Bus</h4>
+        <p>
+          Line 2 Nakseongdae Stn. (Exit 4) → turn left at GS gas station,<br>
+          then right → Village Bus 2-1 → get off at 'Gongdonggigiwon'<br><br>
+          Line 2 Seoul Nat'l Univ. Stn. (Exit 3) → Bus 5511<br>
+          → get off at 'Gongdonggigiwon'
+        </p>
+        <h4>By Taxi / Car</h4>
+        <p>
+          5–10 min by taxi from Nakseongdae or SNU Station<br>
+          Navigation: 'Seoul National University Faculty Club'<br><br>
+          ※ Not "Hoam Faculty House" near Nakseongdae.
+        </p>
+      </span>
+    </div>
+  </section>
+
+  <!-- ===== Celebration ===== -->
+  <section class="celebration-section section">
+    <div class="section-label">Celebration</div>
+    <div class="section-title">
+      <span data-ko>축하의 마음</span>
+      <span data-en>Your Presence</span>
+    </div>
+
+    <div class="celebration-text">
+      <span data-ko>
+        축의금은 정중히 사양합니다.<br><br>
+        오셔서 자리를 빛내주시는 것만으로<br>
+        저희에게는 큰 축복이 됩니다.<br><br>
+        따뜻한 마음만 가지고 와주세요.
+      </span>
+      <span data-en>
+        We respectfully decline monetary gifts.<br><br>
+        Your presence alone<br>
+        is the greatest blessing to us.<br><br>
+        Please come with only your warm heart.
+      </span>
+    </div>
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <div class="footer">
+    <div class="divider" style="margin-bottom: 32px;"></div>
+    <div class="footer-names">Yaechan & Seulgi</div>
+    <div class="footer-date">2026. 05. 05</div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <button class="lightbox-nav lightbox-prev" onclick="navLightbox(-1)">‹</button>
+    <button class="lightbox-nav lightbox-next" onclick="navLightbox(1)">›</button>
+    <img id="lightboxImg" src="" alt="">
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ===== Language Toggle =====
+    let currentLang = 'ko';
+
+    function toggleLang() {
+      const btn = document.getElementById('langToggle');
+      if (currentLang === 'ko') {
+        document.body.classList.add('lang-en');
+        btn.textContent = 'KR';
+        currentLang = 'en';
+      } else {
+        document.body.classList.remove('lang-en');
+        btn.textContent = 'EN';
+        currentLang = 'ko';
+      }
+    }
+
+    // ===== Opening =====
+    function closeOpening() {
+      document.getElementById('opening').classList.add('hide');
+      document.getElementById('langToggle').classList.add('show');
+      document.body.style.overflow = 'auto';
+      createPetals();
+    }
+
+    document.body.style.overflow = 'hidden';
+
+    // ===== Petal Animation =====
+    function createPetals() {
+      for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+          const petal = document.createElement('div');
+          petal.className = 'petal';
+          petal.style.left = Math.random() * 100 + 'vw';
+          petal.style.width = (6 + Math.random() * 8) + 'px';
+          petal.style.height = petal.style.width;
+          petal.style.animationDuration = (4 + Math.random() * 4) + 's';
+          petal.style.animationDelay = '0s';
+          petal.style.opacity = 0.4 + Math.random() * 0.4;
+          document.body.appendChild(petal);
+          setTimeout(() => petal.remove(), 8000);
+        }, i * 300);
+      }
+    }
+
+    // ===== Scroll Reveal =====
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.section').forEach(el => observer.observe(el));
+
+    // ===== Countdown =====
+    function updateCountdown() {
+      const wedding = new Date('2026-05-05T15:00:00+09:00');
+      const now = new Date();
+      const diff = wedding - now;
+
+      if (diff <= 0) {
+        document.getElementById('cd-days').textContent = '0';
+        document.getElementById('cd-hours').textContent = '0';
+        document.getElementById('cd-mins').textContent = '0';
+        document.getElementById('cd-secs').textContent = '0';
+        return;
+      }
+
+      document.getElementById('cd-days').textContent = Math.floor(diff / (1000 * 60 * 60 * 24));
+      document.getElementById('cd-hours').textContent = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      document.getElementById('cd-mins').textContent = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      document.getElementById('cd-secs').textContent = Math.floor((diff % (1000 * 60)) / 1000);
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+    // ===== Gallery Tabs =====
+    const tabs = document.querySelectorAll('.gallery-tab');
+    const items = document.querySelectorAll('.gallery-item');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const category = tab.dataset.tab;
+        items.forEach(item => {
+          item.style.display = (category === 'all' || item.dataset.category === category) ? 'block' : 'none';
+        });
+      });
+    });
+
+    // ===== Lightbox =====
+    let currentLightboxIndex = 0;
+    let visibleImages = [];
+
+    document.querySelectorAll('.gallery-item').forEach(item => {
+      item.addEventListener('click', () => {
+        visibleImages = [...document.querySelectorAll('.gallery-item')]
+          .filter(i => i.style.display !== 'none')
+          .map(i => i.querySelector('img').src);
+        const clickedSrc = item.querySelector('img').src;
+        currentLightboxIndex = visibleImages.indexOf(clickedSrc);
+        document.getElementById('lightboxImg').src = clickedSrc;
+        document.getElementById('lightbox').classList.add('show');
+        document.body.style.overflow = 'hidden';
+      });
+    });
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('show');
+      document.body.style.overflow = 'auto';
+    }
+
+    function navLightbox(dir) {
+      currentLightboxIndex = (currentLightboxIndex + dir + visibleImages.length) % visibleImages.length;
+      document.getElementById('lightboxImg').src = visibleImages[currentLightboxIndex];
+    }
+
+    document.getElementById('lightbox').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeLightbox();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('lightbox').classList.contains('show')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') navLightbox(-1);
+      if (e.key === 'ArrowRight') navLightbox(1);
+    });
+
+    let touchStartX = 0;
+    document.getElementById('lightbox').addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+    });
+    document.getElementById('lightbox').addEventListener('touchend', (e) => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) navLightbox(diff > 0 ? 1 : -1);
+    });
+
+    // ===== Toast =====
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+  </script>
+</body>
+</html>
