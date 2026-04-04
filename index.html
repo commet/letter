@@ -1087,6 +1087,9 @@
       <a class="venue-btn" href="https://map.naver.com/v5/search/서울대학교 교수회관" target="_blank" rel="noopener">
         <span data-ko>네이버지도</span><span data-en>Naver Map</span><span data-zh>Naver地图</span>
       </a>
+      <a class="venue-btn" href="#" onclick="openTmap(); return false;">
+        <span data-ko>티맵</span><span data-en>T-Map</span><span data-zh>T-Map</span>
+      </a>
     </div>
 
     <div class="transport-info" data-ko>
@@ -1391,6 +1394,23 @@
       const diff = touchStartX - e.changedTouches[0].clientX;
       if (Math.abs(diff) > 50) navLightbox(diff > 0 ? 1 : -1);
     });
+
+    // ===== T-Map =====
+    function openTmap() {
+      const tmapScheme = 'tmap://route?goalname=서울대학교교수회관&goalx=126.9498&goaly=37.4600';
+      const isIOS = /iPhone|iPad/i.test(navigator.userAgent);
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const appStore = isIOS
+        ? 'https://apps.apple.com/kr/app/t-map/id431589174'
+        : 'https://play.google.com/store/apps/details?id=com.skt.tmap.ku';
+
+      if (isIOS || isAndroid) {
+        window.location.href = tmapScheme;
+        setTimeout(() => { window.location.href = appStore; }, 1500);
+      } else {
+        showToast({ko:'모바일에서 이용해주세요', en:'Please use on mobile', zh:'请在手机上使用'}[currentLang]);
+      }
+    }
 
     // ===== Copy Phone =====
     function copyPhone(number) {
