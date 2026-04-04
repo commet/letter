@@ -726,7 +726,7 @@
 
   <!-- Language Toggle -->
   <div class="lang-toggle" id="langToggle">
-    <button class="active" onclick="setLang('ko')">KR</button>
+    <button class="active" onclick="setLang('ko')">한</button>
     <button onclick="setLang('en')">EN</button>
     <button onclick="setLang('zh')">中</button>
   </div>
@@ -759,9 +759,9 @@
     <div class="hero-text">
       <div class="hero-eng">We're Getting Married</div>
       <div class="hero-names">
-        <span data-ko>예찬</span><span data-en>Yaechan</span><span data-zh>芮讚</span>
-        <span class="amp">&</span>
         <span data-ko>슬기</span><span data-en>Sulki</span><span data-zh>瑟琪</span>
+        <span class="amp">&</span>
+        <span data-ko>예찬</span><span data-en>Yaechan</span><span data-zh>芮讚</span>
       </div>
       <div class="hero-date">2026. 05. 05 Tue. PM 3:00</div>
     </div>
@@ -1243,7 +1243,7 @@
       if (lang === 'en') document.body.classList.add('lang-en');
       if (lang === 'zh') document.body.classList.add('lang-zh');
       document.querySelectorAll('#langToggle button').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.trim() === {ko:'KR', en:'EN', zh:'中'}[lang]);
+        btn.classList.toggle('active', btn.textContent.trim() === {ko:'한', en:'EN', zh:'中'}[lang]);
       });
     }
 
