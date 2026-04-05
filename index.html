@@ -523,8 +523,13 @@
 
     .lightbox.show { display: flex; opacity: 1; }
 
+    .lightbox-content {
+      display: flex; flex-direction: column; align-items: center;
+      max-width: 95%; max-height: 90vh;
+    }
+
     .lightbox img {
-      max-width: 95%; max-height: 85vh;
+      max-width: 100%; max-height: 85vh;
       object-fit: contain; border-radius: 2px;
     }
 
@@ -1225,17 +1230,16 @@
     <button class="lightbox-close" onclick="closeLightbox()">×</button>
     <button class="lightbox-nav lightbox-prev" onclick="navLightbox(-1)">‹</button>
     <button class="lightbox-nav lightbox-next" onclick="navLightbox(1)">›</button>
-    <img id="lightboxImg" src="" alt="">
-    <div id="lightboxYear" style="
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 13px;
-      letter-spacing: 2px;
-      color: rgba(255,255,255,0.6);
-    "></div>
+    <div class="lightbox-content">
+      <img id="lightboxImg" src="" alt="">
+      <div id="lightboxYear" style="
+        margin-top: 10px;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 13px;
+        letter-spacing: 2px;
+        color: rgba(255,255,255,0.6);
+      "></div>
+    </div>
   </div>
 
   <!-- Toast -->
