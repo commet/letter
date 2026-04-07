@@ -738,7 +738,7 @@
 
   <!-- Background Music -->
   <audio id="bgm" loop preload="auto">
-    <source src="image/Remind Me%2C Dear Lord (Live At Indiana Roof Ballroom%2C Indianapolis%2C IN _ 2001) (Official) - (192 Kbps).mp3" type="audio/mpeg">
+    <source src="image/Bill %26 Gloria Gaither - Remind Me%2C Dear Lord %5BLive%5D ft. Terry Blackwood - Gaither Music TV (192k).mp3" type="audio/mpeg">
   </audio>
   <button class="music-toggle" id="musicToggle" onclick="toggleMusic()">♫</button>
 
@@ -1258,10 +1258,18 @@
       document.getElementById('musicToggle').classList.add('show');
       document.body.style.overflow = 'auto';
       createPetals();
-      // Play background music on user interaction
+      // Play background music with fade-in
       var bgm = document.getElementById('bgm');
-      bgm.volume = 0.3;
+      bgm.volume = 0;
+      bgm.currentTime = 3.5;
       bgm.play().catch(function() {});
+      var fadeIn = setInterval(function() {
+        if (bgm.volume < 0.3) {
+          bgm.volume = Math.min(bgm.volume + 0.01, 0.3);
+        } else {
+          clearInterval(fadeIn);
+        }
+      }, 100);
     }
 
     var isMusicPlaying = true;
