@@ -1261,13 +1261,13 @@
       // Play background music with fade-in
       var bgm = document.getElementById('bgm');
       bgm.volume = 0;
-      bgm.currentTime = 3.5;
+      bgm.currentTime = 3;
       bgm.play().catch(function() {});
-      var fadeStep = 0.0005;
+      var fadeStep = 0.0001;
       var fadeIn = setInterval(function() {
         if (bgm.volume < 0.3) {
           bgm.volume = Math.min(bgm.volume + fadeStep, 0.3);
-          fadeStep += 0.0005;
+          fadeStep += 0.0001;
         } else {
           clearInterval(fadeIn);
         }
