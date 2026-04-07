@@ -737,7 +737,7 @@
   </div>
 
   <!-- Background Music -->
-  <audio id="bgm" loop preload="auto">
+  <audio id="bgm" loop preload="auto" crossorigin="anonymous">
     <source src="image/Bill %26 Gloria Gaither - Remind Me%2C Dear Lord %5BLive%5D ft. Terry Blackwood - Gaither Music TV (192k).mp3" type="audio/mpeg">
   </audio>
   <button class="music-toggle" id="musicToggle" onclick="toggleMusic()">♫</button>
@@ -1258,15 +1258,23 @@
       document.getElementById('musicToggle').classList.add('show');
       document.body.style.overflow = 'auto';
       createPetals();
-      // Play background music with fade-in
+      // Play background music with fade-in (Web Audio API for iOS)
       var bgm = document.getElementById('bgm');
-      bgm.volume = 0;
       bgm.currentTime = 3;
+      var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var source = audioCtx.createMediaElementSource(bgm);
+      var gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0;
+      source.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      window._bgmGain = gainNode;
+      window._bgmAudioCtx = audioCtx;
       bgm.play().catch(function() {});
       var fadeStep = 0.0001;
       var fadeIn = setInterval(function() {
-        if (bgm.volume < 0.3) {
-          bgm.volume = Math.min(bgm.volume + fadeStep, 0.3);
+        var g = window._bgmGain;
+        if (g.gain.value < 0.3) {
+          g.gain.value = Math.min(g.gain.value + fadeStep, 0.3);
           fadeStep += 0.0001;
         } else {
           clearInterval(fadeIn);
@@ -1280,9 +1288,11 @@
       var btn = document.getElementById('musicToggle');
       if (isMusicPlaying) {
         bgm.pause();
+        if (window._bgmAudioCtx) window._bgmAudioCtx.suspend();
         btn.textContent = '♪';
         isMusicPlaying = false;
       } else {
+        if (window._bgmAudioCtx) window._bgmAudioCtx.resume();
         bgm.play();
         btn.textContent = '♫';
         isMusicPlaying = true;
