@@ -1265,7 +1265,7 @@
       bgm.play().catch(function() {});
       var fadeIn = setInterval(function() {
         if (bgm.volume < 0.3) {
-          bgm.volume = Math.min(bgm.volume + 0.01, 0.3);
+          bgm.volume = Math.min(bgm.volume + 0.005, 0.3);
         } else {
           clearInterval(fadeIn);
         }
