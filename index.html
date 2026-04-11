@@ -645,38 +645,89 @@
     }
 
     /* ===== RSVP ===== */
-    .rsvp-section { text-align: center; background: var(--warm-white); }
+    .rsvp-section {
+      text-align: center;
+      background: var(--warm-white);
+      padding: 36px 28px 48px !important;
+    }
+
+    .rsvp-open-btn {
+      display: inline-block;
+      padding: 12px 36px;
+      border: 1px solid var(--taupe);
+      background: transparent;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--text-secondary);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    body.lang-en .rsvp-open-btn {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 15px;
+      letter-spacing: 2px;
+    }
+
+    .rsvp-open-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    .rsvp-open-btn .chevron {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 10px;
+      transition: transform 0.3s ease;
+    }
+
+    .rsvp-open-btn.opened .chevron { transform: rotate(180deg); }
+
+    .rsvp-collapse {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+      opacity: 0;
+    }
+
+    .rsvp-collapse.show {
+      max-height: 800px;
+      opacity: 1;
+    }
 
     .rsvp-form {
-      max-width: 320px;
+      max-width: 300px;
       margin: 0 auto;
+      padding-top: 28px;
       text-align: left;
     }
 
-    .rsvp-field { margin-bottom: 24px; }
+    .rsvp-field { margin-bottom: 18px; }
 
     .rsvp-label {
-      font-family: 'Noto Serif KR', serif;
-      font-size: 13px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 12px;
       font-weight: 400;
-      color: var(--text-secondary);
-      margin-bottom: 10px;
+      color: var(--text-light);
+      margin-bottom: 8px;
       display: block;
       text-align: center;
     }
 
     body.lang-en .rsvp-label {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 15px;
+      font-size: 14px;
     }
 
     body.lang-zh .rsvp-label {
       font-family: 'Noto Serif SC', serif;
+      font-size: 12px;
     }
 
     .rsvp-input {
       width: 100%;
-      padding: 10px 0;
+      padding: 8px 0;
       border: none;
       border-bottom: 1px solid var(--line);
       background: transparent;
@@ -690,23 +741,19 @@
     }
 
     .rsvp-input:focus { border-bottom-color: var(--gold); }
-    .rsvp-input::placeholder { color: var(--text-light); }
 
-    .rsvp-toggle-group {
-      display: flex;
-      gap: 8px;
-    }
+    .rsvp-toggle-group { display: flex; gap: 8px; }
 
     .rsvp-toggle {
       flex: 1;
-      padding: 10px 0;
+      padding: 8px 0;
       border: 1px solid var(--line);
       background: transparent;
       font-family: 'Noto Sans KR', sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 300;
       color: var(--text-secondary);
-      border-radius: 24px;
+      border-radius: 20px;
       cursor: pointer;
       transition: all 0.3s ease;
       text-align: center;
@@ -721,75 +768,63 @@
     .rsvp-details {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.5s ease, opacity 0.4s ease;
+      transition: max-height 0.4s ease, opacity 0.3s ease;
       opacity: 0;
     }
 
-    .rsvp-details.show {
-      max-height: 400px;
-      opacity: 1;
-    }
+    .rsvp-details.show { max-height: 300px; opacity: 1; }
 
     .rsvp-textarea {
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: transparent;
       font-family: 'Noto Sans KR', sans-serif;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 300;
       color: var(--text-primary);
       outline: none;
       resize: none;
-      height: 80px;
+      height: 64px;
       transition: border-color 0.3s ease;
     }
 
     .rsvp-textarea:focus { border-color: var(--gold); }
-    .rsvp-textarea::placeholder { color: var(--text-light); }
 
     .rsvp-submit {
       width: 100%;
-      padding: 14px 0;
+      padding: 12px 0;
       border: 1px solid var(--gold);
       background: var(--gold);
       color: white;
       font-family: 'Cormorant Garamond', serif;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 400;
       letter-spacing: 3px;
       text-transform: uppercase;
-      border-radius: 24px;
+      border-radius: 20px;
       cursor: pointer;
       transition: all 0.3s ease;
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
-    .rsvp-submit:hover {
-      background: transparent;
-      color: var(--gold);
-    }
-
-    .rsvp-submit:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    .rsvp-submit:hover { background: transparent; color: var(--gold); }
+    .rsvp-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .rsvp-count {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 20px;
+      gap: 16px;
     }
 
     .rsvp-count-btn {
-      width: 36px;
-      height: 36px;
+      width: 32px; height: 32px;
       border: 1px solid var(--line);
       background: transparent;
       border-radius: 50%;
-      font-size: 18px;
+      font-size: 16px;
       color: var(--text-secondary);
       cursor: pointer;
       transition: all 0.3s ease;
@@ -799,48 +834,46 @@
       line-height: 1;
     }
 
-    .rsvp-count-btn:hover {
-      border-color: var(--gold);
-      color: var(--gold);
-    }
+    .rsvp-count-btn:hover { border-color: var(--gold); color: var(--gold); }
 
     .rsvp-count-num {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 22px;
+      font-size: 20px;
       color: var(--text-primary);
-      min-width: 28px;
+      min-width: 24px;
       text-align: center;
     }
 
-    .rsvp-success { text-align: center; padding: 24px 0; }
+    .rsvp-success { text-align: center; padding: 16px 0; }
 
     .rsvp-success-icon {
-      width: 48px; height: 48px;
-      border: 2px solid var(--gold);
+      width: 40px; height: 40px;
+      border: 1.5px solid var(--gold);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 20px;
-      font-size: 20px;
+      margin: 0 auto 16px;
+      font-size: 18px;
       color: var(--gold);
     }
 
     .rsvp-success-text {
       font-family: 'Noto Serif KR', serif;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 200;
-      line-height: 2.2;
+      line-height: 2.0;
       color: var(--text-primary);
     }
 
     body.lang-en .rsvp-success-text {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 17px;
+      font-size: 16px;
     }
 
     body.lang-zh .rsvp-success-text {
       font-family: 'Noto Serif SC', serif;
+      font-size: 14px;
     }
 
     /* ===== Footer ===== */
@@ -1402,131 +1435,91 @@
   </section>
 
   <!-- ===== RSVP ===== -->
-  <section class="rsvp-section section" style="padding-top: 36px;">
-    <div class="divider" style="margin-bottom: 48px;"></div>
+  <section class="rsvp-section section">
+    <div class="divider" style="margin-bottom: 32px;"></div>
     <div class="section-label">RSVP</div>
-    <div class="section-title">
+    <div class="section-title" style="margin-bottom: 20px;">
       <span data-ko>참석 여부 전달</span>
       <span data-en>Attendance</span>
       <span data-zh>出席确认</span>
     </div>
 
-    <div id="rsvpForm" class="rsvp-form">
-      <!-- Name -->
-      <div class="rsvp-field">
-        <label class="rsvp-label">
-          <span data-ko>성함</span>
-          <span data-en>Name</span>
-          <span data-zh>姓名</span>
-        </label>
-        <input type="text" id="rsvpName" class="rsvp-input">
-      </div>
+    <button type="button" class="rsvp-open-btn" id="rsvpOpenBtn" onclick="openRsvpForm()">
+      <span data-ko>참석의사 전달하기</span>
+      <span data-en>Send RSVP</span>
+      <span data-zh>填写出席意向</span>
+      <span class="chevron">&#9660;</span>
+    </button>
 
-      <!-- Side -->
-      <div class="rsvp-field">
-        <label class="rsvp-label">
-          <span data-ko>구분</span>
-          <span data-en>Side</span>
-          <span data-zh>宾客方</span>
-        </label>
-        <div class="rsvp-toggle-group">
-          <button type="button" class="rsvp-toggle" data-name="side" data-value="groom" onclick="toggleRsvp(this)">
-            <span data-ko>신랑측</span>
-            <span data-en>Groom</span>
-            <span data-zh>新郎方</span>
-          </button>
-          <button type="button" class="rsvp-toggle" data-name="side" data-value="bride" onclick="toggleRsvp(this)">
-            <span data-ko>신부측</span>
-            <span data-en>Bride</span>
-            <span data-zh>新娘方</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Attendance -->
-      <div class="rsvp-field">
-        <label class="rsvp-label">
-          <span data-ko>참석 여부</span>
-          <span data-en>Will you attend?</span>
-          <span data-zh>是否出席</span>
-        </label>
-        <div class="rsvp-toggle-group">
-          <button type="button" class="rsvp-toggle" data-name="attend" data-value="yes" onclick="toggleRsvp(this)">
-            <span data-ko>참석</span>
-            <span data-en>Attending</span>
-            <span data-zh>出席</span>
-          </button>
-          <button type="button" class="rsvp-toggle" data-name="attend" data-value="no" onclick="toggleRsvp(this)">
-            <span data-ko>불참</span>
-            <span data-en>Regretfully Decline</span>
-            <span data-zh>不出席</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Attending details (progressive disclosure) -->
-      <div id="rsvpDetails" class="rsvp-details">
-        <!-- Guest count -->
+    <div id="rsvpCollapse" class="rsvp-collapse">
+      <div id="rsvpForm" class="rsvp-form">
         <div class="rsvp-field">
-          <label class="rsvp-label">
-            <span data-ko>참석 인원</span>
-            <span data-en>Number of Guests</span>
-            <span data-zh>出席人数</span>
-          </label>
-          <div class="rsvp-count">
-            <button type="button" class="rsvp-count-btn" onclick="adjustCount(-1)">−</button>
-            <span id="rsvpCount" class="rsvp-count-num">1</span>
-            <button type="button" class="rsvp-count-btn" onclick="adjustCount(1)">+</button>
-          </div>
+          <label class="rsvp-label"><span data-ko>성함</span><span data-en>Name</span><span data-zh>姓名</span></label>
+          <input type="text" id="rsvpName" class="rsvp-input">
         </div>
-
-        <!-- Meal -->
         <div class="rsvp-field">
-          <label class="rsvp-label">
-            <span data-ko>식사 여부</span>
-            <span data-en>Joining for the meal?</span>
-            <span data-zh>是否用餐</span>
-          </label>
+          <label class="rsvp-label"><span data-ko>구분</span><span data-en>Side</span><span data-zh>宾客方</span></label>
           <div class="rsvp-toggle-group">
-            <button type="button" class="rsvp-toggle" data-name="meal" data-value="yes" onclick="toggleRsvp(this)">
-              <span data-ko>예정</span>
-              <span data-en>Yes</span>
-              <span data-zh>用餐</span>
+            <button type="button" class="rsvp-toggle" data-name="side" data-value="groom" onclick="toggleRsvp(this)">
+              <span data-ko>신랑측</span><span data-en>Groom</span><span data-zh>新郎方</span>
             </button>
-            <button type="button" class="rsvp-toggle" data-name="meal" data-value="no" onclick="toggleRsvp(this)">
-              <span data-ko>안 함</span>
-              <span data-en>No</span>
-              <span data-zh>不用餐</span>
+            <button type="button" class="rsvp-toggle" data-name="side" data-value="bride" onclick="toggleRsvp(this)">
+              <span data-ko>신부측</span><span data-en>Bride</span><span data-zh>新娘方</span>
             </button>
           </div>
         </div>
+        <div class="rsvp-field">
+          <label class="rsvp-label"><span data-ko>참석 여부</span><span data-en>Attending?</span><span data-zh>是否出席</span></label>
+          <div class="rsvp-toggle-group">
+            <button type="button" class="rsvp-toggle" data-name="attend" data-value="yes" onclick="toggleRsvp(this)">
+              <span data-ko>참석</span><span data-en>Yes</span><span data-zh>出席</span>
+            </button>
+            <button type="button" class="rsvp-toggle" data-name="attend" data-value="no" onclick="toggleRsvp(this)">
+              <span data-ko>불참</span><span data-en>No</span><span data-zh>不出席</span>
+            </button>
+          </div>
+        </div>
+        <div id="rsvpDetails" class="rsvp-details">
+          <div class="rsvp-field">
+            <label class="rsvp-label"><span data-ko>참석 인원</span><span data-en>Guests</span><span data-zh>人数</span></label>
+            <div class="rsvp-count">
+              <button type="button" class="rsvp-count-btn" onclick="adjustCount(-1)">−</button>
+              <span id="rsvpCount" class="rsvp-count-num">1</span>
+              <button type="button" class="rsvp-count-btn" onclick="adjustCount(1)">+</button>
+            </div>
+          </div>
+          <div class="rsvp-field">
+            <label class="rsvp-label"><span data-ko>식사 여부</span><span data-en>Meal?</span><span data-zh>用餐</span></label>
+            <div class="rsvp-toggle-group">
+              <button type="button" class="rsvp-toggle" data-name="meal" data-value="yes" onclick="toggleRsvp(this)">
+                <span data-ko>예정</span><span data-en>Yes</span><span data-zh>用餐</span>
+              </button>
+              <button type="button" class="rsvp-toggle" data-name="meal" data-value="no" onclick="toggleRsvp(this)">
+                <span data-ko>안 함</span><span data-en>No</span><span data-zh>不用</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="rsvp-field">
+          <label class="rsvp-label">
+            <span data-ko>축하 메시지 <span style="color:var(--text-light);">(선택)</span></span>
+            <span data-en>Message <span style="color:var(--text-light);">(optional)</span></span>
+            <span data-zh>祝福留言 <span style="color:var(--text-light);">(选填)</span></span>
+          </label>
+          <textarea id="rsvpMessage" class="rsvp-textarea"></textarea>
+        </div>
+        <button type="button" class="rsvp-submit" id="rsvpSubmitBtn" onclick="submitRsvp()">
+          <span data-ko>전달하기</span><span data-en>Submit</span><span data-zh>提交</span>
+        </button>
       </div>
 
-      <!-- Message -->
-      <div class="rsvp-field">
-        <label class="rsvp-label">
-          <span data-ko>축하 메시지 <span style="font-weight: 200; color: var(--text-light);">(선택)</span></span>
-          <span data-en>Message <span style="font-weight: 300; color: var(--text-light);">(optional)</span></span>
-          <span data-zh>祝福留言 <span style="font-weight: 200; color: var(--text-light);">(选填)</span></span>
-        </label>
-        <textarea id="rsvpMessage" class="rsvp-textarea"></textarea>
-      </div>
-
-      <!-- Submit -->
-      <button type="button" class="rsvp-submit" id="rsvpSubmitBtn" onclick="submitRsvp()">
-        <span data-ko>전달하기</span>
-        <span data-en>Submit</span>
-        <span data-zh>提交</span>
-      </button>
-    </div>
-
-    <!-- Success message -->
-    <div id="rsvpSuccess" class="rsvp-success" style="display: none;">
-      <div class="rsvp-success-icon">&#10003;</div>
-      <div class="rsvp-success-text">
-        <span data-ko>참석 여부가 전달되었습니다.<br>감사합니다.</span>
-        <span data-en>Your response has been received.<br>Thank you.</span>
-        <span data-zh>您的回复已提交。<br>谢谢您。</span>
+      <div id="rsvpSuccess" class="rsvp-success" style="display: none;">
+        <div class="rsvp-success-icon">&#10003;</div>
+        <div class="rsvp-success-text">
+          <span data-ko>참석 여부가 전달되었습니다.<br>감사합니다.</span>
+          <span data-en>Your response has been received.<br>Thank you.</span>
+          <span data-zh>您的回复已提交。<br>谢谢您。</span>
+        </div>
       </div>
     </div>
   </section>
@@ -1779,6 +1772,14 @@
       toast.textContent = msg;
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // ===== RSVP =====
+    function openRsvpForm() {
+      var collapse = document.getElementById('rsvpCollapse');
+      var btn = document.getElementById('rsvpOpenBtn');
+      collapse.classList.toggle('show');
+      btn.classList.toggle('opened');
     }
 
     // ===== RSVP (Supabase) =====
