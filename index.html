@@ -1499,7 +1499,7 @@
       <div id="rsvpForm" class="rsvp-form">
         <div class="rsvp-field">
           <label class="rsvp-label"><span data-ko>성함</span><span data-en>Name</span><span data-zh>姓名</span></label>
-          <input type="text" id="rsvpName" class="rsvp-input" placeholder="이름을 입력해주세요">
+          <input type="text" id="rsvpName" class="rsvp-input" data-ph-ko="이름을 입력해주세요" data-ph-en="Enter your name" data-ph-zh="请输入姓名">
         </div>
         <div class="rsvp-field">
           <label class="rsvp-label"><span data-ko>구분</span><span data-en>Side</span><span data-zh>宾客方</span></label>
@@ -1607,6 +1607,9 @@
       document.querySelectorAll('#langToggle button').forEach(btn => {
         btn.classList.toggle('active', btn.textContent.trim() === {ko:'한', en:'EN', zh:'中'}[lang]);
       });
+      document.querySelectorAll('[data-ph-' + lang + ']').forEach(el => {
+        el.placeholder = el.getAttribute('data-ph-' + lang);
+      });
     }
 
     // ===== Opening =====
@@ -1708,6 +1711,11 @@
 
     updateCountdown();
     setInterval(updateCountdown, 1000);
+
+    // Init placeholders
+    document.querySelectorAll('[data-ph-ko]').forEach(el => {
+      el.placeholder = el.getAttribute('data-ph-ko');
+    });
 
     // ===== Gallery Tabs =====
     const tabs = document.querySelectorAll('.gallery-tab');
