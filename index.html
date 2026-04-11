@@ -727,9 +727,9 @@
 
     .rsvp-input {
       width: 100%;
-      padding: 8px 0;
+      padding: 9px 0 8px;
       border: none;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid var(--taupe);
       background: transparent;
       font-family: 'Noto Sans KR', sans-serif;
       font-size: 14px;
@@ -738,9 +738,16 @@
       outline: none;
       transition: border-color 0.3s ease;
       text-align: center;
+      letter-spacing: 2px;
     }
 
     .rsvp-input:focus { border-bottom-color: var(--gold); }
+
+    .rsvp-input::placeholder {
+      color: var(--text-light);
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
 
     .rsvp-toggle-group { display: flex; gap: 8px; }
 
@@ -1436,7 +1443,7 @@
 
   <!-- ===== RSVP ===== -->
   <section class="rsvp-section section">
-    <div class="divider" style="margin-bottom: 32px;"></div>
+    <div class="divider" style="height: 28px; margin-bottom: 24px;"></div>
     <div class="section-label">RSVP</div>
     <div class="section-title" style="margin-bottom: 20px;">
       <span data-ko>참석 여부 전달</span>
@@ -1455,7 +1462,7 @@
       <div id="rsvpForm" class="rsvp-form">
         <div class="rsvp-field">
           <label class="rsvp-label"><span data-ko>성함</span><span data-en>Name</span><span data-zh>姓名</span></label>
-          <input type="text" id="rsvpName" class="rsvp-input">
+          <input type="text" id="rsvpName" class="rsvp-input" placeholder="이름을 입력해주세요">
         </div>
         <div class="rsvp-field">
           <label class="rsvp-label"><span data-ko>구분</span><span data-en>Side</span><span data-zh>宾客方</span></label>
