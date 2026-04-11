@@ -1532,19 +1532,6 @@
             <button type="button" class="rsvp-count-btn" onclick="adjustCount(1)">+</button>
           </div>
         </div>
-        <div id="rsvpDetails" class="rsvp-details">
-          <div class="rsvp-field">
-            <label class="rsvp-label"><span data-ko>식사 여부</span><span data-en>Meal?</span><span data-zh>用餐</span></label>
-            <div class="rsvp-toggle-group">
-              <button type="button" class="rsvp-toggle" data-name="meal" data-value="yes" onclick="toggleRsvp(this)">
-                <span data-ko>예정</span><span data-en>Yes</span><span data-zh>用餐</span>
-              </button>
-              <button type="button" class="rsvp-toggle" data-name="meal" data-value="no" onclick="toggleRsvp(this)">
-                <span data-ko>안 함</span><span data-en>No</span><span data-zh>不用</span>
-              </button>
-            </div>
-          </div>
-        </div>
         <div class="rsvp-field">
           <label class="rsvp-label">
             <span data-ko>축하 메시지 <span style="color:var(--text-light);">(선택)</span></span>
@@ -1839,7 +1826,7 @@
     const SUPABASE_URL = 'https://hgltvdshuyfffskvjmst.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnbHR2ZHNodXlmZmZza3ZqbXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0ODk1MzEsImV4cCI6MjA2ODA2NTUzMX0.PyoZ0e0P5NtWjMimxGimsJQ6nfFNRFmT4i0bRMEjxTk';
 
-    let rsvpData = { side: '', attend: '', meal: '', count: 1 };
+    let rsvpData = { side: '', attend: '', count: 1 };
 
     function toggleRsvp(btn) {
       const name = btn.dataset.name;
@@ -1849,14 +1836,6 @@
       btn.classList.add('active');
       rsvpData[name] = value;
 
-      if (name === 'attend') {
-        const details = document.getElementById('rsvpDetails');
-        if (value === 'yes') {
-          details.classList.add('show');
-        } else {
-          details.classList.remove('show');
-        }
-      }
     }
 
     function adjustCount(delta) {
@@ -1880,17 +1859,13 @@
         showToast({ko:'참석 여부를 선택해주세요', en:'Please select attendance', zh:'请选择是否出席'}[currentLang]);
         return;
       }
-      if (rsvpData.attend === 'yes' && !rsvpData.meal) {
-        showToast({ko:'식사 여부를 선택해주세요', en:'Please select meal option', zh:'请选择是否用餐'}[currentLang]);
-        return;
-      }
 
       const payload = {
         name: name,
         side: rsvpData.side === 'groom' ? '신랑측' : '신부측',
         attend: rsvpData.attend === 'yes' ? '참석' : '불참',
         count: rsvpData.attend === 'yes' ? rsvpData.count : 0,
-        meal: rsvpData.attend === 'yes' ? (rsvpData.meal === 'yes' ? '예정' : '안 함') : '',
+        meal: '',
         message: message
       };
 
