@@ -27,7 +27,7 @@ const sources = [
   V("KakaoTalk_Photo_2026-04-15-10-11-38 003.jpeg"),       // 002 Be The Reds 신랑
   V("KakaoTalk_Photo_2026-04-15-10-09-12 024.jpeg"),       // 003 책상 앞 어린 신부
   V("KakaoTalk_Photo_2026-04-15-10-11-37 001.jpeg"),       // 004 태극기 얼굴 COREA 신부
-  I("16.png"),                                              // 005 ★ 고궁 두 아이
+  I("16.jpg"),                                              // 005 ★ 고궁 두 아이 (jpg로 압축됨)
   I("15.png"),                                              // 006 ★ 생일파티 두 아이
 
   // Act 2 — 교회 유년기

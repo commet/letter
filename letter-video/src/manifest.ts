@@ -52,7 +52,7 @@ export const photos: PhotoEntry[] = [
   { tag: "Be The Reds 신랑",          act: 1, file: "photos/002.jpeg", durationSec: D.act1, effect: "zoomOut" },
   { tag: "책상 앞 어린 신부",         act: 1, file: "photos/003.jpeg", durationSec: D.act1, effect: "zoomIn" },
   { tag: "태극기 얼굴 COREA 신부",    act: 1, file: "photos/004.jpeg", durationSec: D.act1, effect: "zoomOut" },
-  { tag: "★ 어린시절 고궁 (두 아이)", act: 1, file: "photos/005.png",  durationSec: 5.0,    effect: "zoomIn" },
+  { tag: "★ 어린시절 고궁 (두 아이)", act: 1, file: "photos/005.jpg",  durationSec: 5.0,    effect: "zoomIn" },
   { tag: "★ 어린시절 생일파티",       act: 1, file: "photos/006.png",  durationSec: 5.0,    effect: "zoomIn" },
 
   // ── Act 2: 교회 유년기 ────────────────────────────────
