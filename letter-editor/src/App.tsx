@@ -16,6 +16,7 @@ import {
   SpotlightConfig,
   defaultConfig,
   computeTotalFrames,
+  getPhotoIndexAtFrame,
 } from "./data";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
 
@@ -261,8 +262,20 @@ export const App: React.FC = () => {
   const [openEnding, setOpenEnding] = useState(false);
   const [editorTarget, setEditorTarget] = useState<number | null>(null);
   const [panelTab, setPanelTab] = useState<"edit" | "assets">("edit");
-  const [assetTarget, setAssetTarget] = useState<"global" | "selected">("global");
-  const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
+  const [assetTarget, setAssetTarget] = useState<"global" | "current">("current");
+  const [currentFrame, setCurrentFrame] = useState(0);
+
+  // Track current frame from player
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    const handler = (e: { detail: { frame: number } }) => setCurrentFrame(e.detail.frame);
+    player.addEventListener("frameupdate", handler);
+    return () => player.removeEventListener("frameupdate", handler);
+  }, [loading]);
+
+  const currentPhotoIdx = getPhotoIndexAtFrame(currentFrame, config);
+  const currentPhoto = currentPhotoIdx !== null ? config.photos[currentPhotoIdx] : null;
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window === "undefined") return "dark";
     return (localStorage.getItem("theme") as "dark" | "light") ?? "dark";
@@ -518,37 +531,31 @@ export const App: React.FC = () => {
               <div className="asset-group asset-target-group">
                 <h4 className="asset-group-title">적용 대상</h4>
                 <div className="target-tabs">
+                  <button className={`target-tab ${assetTarget === "current" ? "target-tab--active" : ""}`}
+                    onClick={() => setAssetTarget("current")}>현재 사진</button>
                   <button className={`target-tab ${assetTarget === "global" ? "target-tab--active" : ""}`}
                     onClick={() => setAssetTarget("global")}>전체 영상</button>
-                  <button className={`target-tab ${assetTarget === "selected" ? "target-tab--active" : ""}`}
-                    onClick={() => setAssetTarget("selected")}>선택한 사진 ({selectedPhotos.size})</button>
                 </div>
-                {assetTarget === "selected" && (
-                  <div className="photo-picker">
-                    <div className="photo-picker-hint">
-                      {selectedPhotos.size === 0
-                        ? "아래 사진들 클릭해서 선택하세요"
-                        : `${selectedPhotos.size}장 선택됨 — 아래 에셋 클릭하면 적용됩니다`}
-                    </div>
-                    <div className="photo-picker-grid">
-                      {config.photos.map((p, i) => (
-                        <div key={i}
-                          className={`photo-pick ${selectedPhotos.has(i) ? "photo-pick--active" : ""}`}
-                          onClick={() => setSelectedPhotos((s) => {
-                            const n = new Set(s);
-                            n.has(i) ? n.delete(i) : n.add(i);
-                            return n;
-                          })}
-                          title={p.tag}>
-                          <img src={photoSrc(p.file)} alt={p.tag} />
+                {assetTarget === "current" && (
+                  <div className="current-photo-preview">
+                    {currentPhoto ? (
+                      <>
+                        <img src={photoSrc(currentPhoto.file)} alt={currentPhoto.tag} />
+                        <div className="current-photo-info">
+                          <div className="current-photo-tag">{currentPhoto.tag}</div>
+                          <div className="current-photo-hint">아래 에셋 클릭하면 이 사진에만 적용됩니다</div>
                         </div>
-                      ))}
-                    </div>
-                    <div className="photo-picker-actions">
-                      <button className="btn btn-xs" onClick={() => setSelectedPhotos(new Set(config.photos.map((_, i) => i)))}>전체 선택</button>
-                      <button className="btn btn-xs" onClick={() => setSelectedPhotos(new Set())}>선택 해제</button>
-                    </div>
+                      </>
+                    ) : (
+                      <div className="current-photo-empty">
+                        타이틀 / 엔딩 구간입니다.<br />
+                        사진 구간으로 이동해주세요.
+                      </div>
+                    )}
                   </div>
+                )}
+                {assetTarget === "global" && (
+                  <div className="target-hint">영상 전체에 적용됩니다 (기본값)</div>
                 )}
               </div>
 
@@ -559,23 +566,24 @@ export const App: React.FC = () => {
                   {FRAMES.map((f) => {
                     const active = assetTarget === "global"
                       ? config.frame === f.value
-                      : selectedPhotos.size > 0 && [...selectedPhotos].every((i) => config.photos[i].frameOverride === f.value);
+                      : currentPhoto?.frameOverride === f.value;
+                    const disabled = assetTarget === "current" && !currentPhoto;
                     return (
                       <button key={f.value} className={`asset-chip ${active ? "asset-chip--active" : ""}`}
-                        disabled={assetTarget === "selected" && selectedPhotos.size === 0}
+                        disabled={disabled}
                         onClick={() => {
                           if (assetTarget === "global") {
                             setConfig((c) => ({ ...c, frame: f.value }));
-                          } else {
-                            setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, frameOverride: f.value } : p) }));
+                          } else if (currentPhotoIdx !== null) {
+                            updatePhoto(currentPhotoIdx, { frameOverride: f.value });
                           }
                         }}>{f.label}</button>
                     );
                   })}
-                  {assetTarget === "selected" && selectedPhotos.size > 0 && (
+                  {assetTarget === "current" && currentPhoto?.frameOverride !== undefined && (
                     <button className="asset-chip asset-chip--reset"
-                      onClick={() => setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, frameOverride: undefined } : p) }))}>
-                      기본값
+                      onClick={() => currentPhotoIdx !== null && updatePhoto(currentPhotoIdx, { frameOverride: undefined })}>
+                      기본값으로
                     </button>
                   )}
                 </div>
@@ -588,23 +596,24 @@ export const App: React.FC = () => {
                   {OVERLAYS.map((o) => {
                     const active = assetTarget === "global"
                       ? config.overlay === o.value
-                      : selectedPhotos.size > 0 && [...selectedPhotos].every((i) => config.photos[i].overlayOverride === o.value);
+                      : currentPhoto?.overlayOverride === o.value;
+                    const disabled = assetTarget === "current" && !currentPhoto;
                     return (
                       <button key={o.value} className={`asset-chip ${active ? "asset-chip--active" : ""}`}
-                        disabled={assetTarget === "selected" && selectedPhotos.size === 0}
+                        disabled={disabled}
                         onClick={() => {
                           if (assetTarget === "global") {
                             setConfig((c) => ({ ...c, overlay: o.value }));
-                          } else {
-                            setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, overlayOverride: o.value } : p) }));
+                          } else if (currentPhotoIdx !== null) {
+                            updatePhoto(currentPhotoIdx, { overlayOverride: o.value });
                           }
                         }}>{o.label}</button>
                     );
                   })}
-                  {assetTarget === "selected" && selectedPhotos.size > 0 && (
+                  {assetTarget === "current" && currentPhoto?.overlayOverride !== undefined && (
                     <button className="asset-chip asset-chip--reset"
-                      onClick={() => setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, overlayOverride: undefined } : p) }))}>
-                      기본값
+                      onClick={() => currentPhotoIdx !== null && updatePhoto(currentPhotoIdx, { overlayOverride: undefined })}>
+                      기본값으로
                     </button>
                   )}
                 </div>
@@ -617,23 +626,24 @@ export const App: React.FC = () => {
                   {PARTICLES.map((p) => {
                     const active = assetTarget === "global"
                       ? config.particles === p.value
-                      : selectedPhotos.size > 0 && [...selectedPhotos].every((i) => config.photos[i].particlesOverride === p.value);
+                      : currentPhoto?.particlesOverride === p.value;
+                    const disabled = assetTarget === "current" && !currentPhoto;
                     return (
                       <button key={p.value} className={`asset-chip ${active ? "asset-chip--active" : ""}`}
-                        disabled={assetTarget === "selected" && selectedPhotos.size === 0}
+                        disabled={disabled}
                         onClick={() => {
                           if (assetTarget === "global") {
                             setConfig((c) => ({ ...c, particles: p.value }));
-                          } else {
-                            setConfig((c) => ({ ...c, photos: c.photos.map((ph, i) => selectedPhotos.has(i) ? { ...ph, particlesOverride: p.value } : ph) }));
+                          } else if (currentPhotoIdx !== null) {
+                            updatePhoto(currentPhotoIdx, { particlesOverride: p.value });
                           }
                         }}>{p.label}</button>
                     );
                   })}
-                  {assetTarget === "selected" && selectedPhotos.size > 0 && (
+                  {assetTarget === "current" && currentPhoto?.particlesOverride !== undefined && (
                     <button className="asset-chip asset-chip--reset"
-                      onClick={() => setConfig((c) => ({ ...c, photos: c.photos.map((ph, i) => selectedPhotos.has(i) ? { ...ph, particlesOverride: undefined } : ph) }))}>
-                      기본값
+                      onClick={() => currentPhotoIdx !== null && updatePhoto(currentPhotoIdx, { particlesOverride: undefined })}>
+                      기본값으로
                     </button>
                   )}
                 </div>
@@ -717,8 +727,19 @@ export const App: React.FC = () => {
                         <div className="photo-body">
                           <div className="photo-row-top">
                             <span className="photo-tag">
-                              {photo.splitPair && <span className="pair-badge pair-badge--left" title="다음 사진과 좌우 분할">← 좌</span>}
-                              {localIdx > 0 && actPhotos[localIdx - 1].photo.splitPair && <span className="pair-badge pair-badge--right" title="이전 사진과 좌우 분할">우 →</span>}
+                              {(() => {
+                                const isLeft = !!photo.splitPair;
+                                const prev = localIdx > 0 ? actPhotos[localIdx - 1] : null;
+                                const isRight = !isLeft && prev?.photo.splitPair === true;
+                                if (isLeft) return <button className="pair-badge pair-badge--paired" onClick={() => toggleSplitPair(idx)} title="클릭해서 짝 해제">↔ 좌</button>;
+                                if (isRight) return <button className="pair-badge pair-badge--paired" onClick={() => prev && toggleSplitPair(prev.idx)} title="클릭해서 짝 해제">↔ 우</button>;
+                                // Unpaired — offer pair with next (if same act)
+                                const next = localIdx < actPhotos.length - 1 ? actPhotos[localIdx + 1] : null;
+                                if (next) {
+                                  return <button className="pair-badge pair-badge--unpaired" onClick={() => toggleSplitPair(idx)} title="다음 사진과 좌우 분할로 짝짓기">+ 짝</button>;
+                                }
+                                return null;
+                              })()}
                               {photo.tag}
                             </span>
                             <div className="photo-actions">
