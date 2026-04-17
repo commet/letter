@@ -142,16 +142,17 @@ body {
 .btn-xs:hover { background: #222; color: #aaa; }
 .btn-upload {
   width: 100%;
-  padding: 8px;
-  border: 1px dashed #3a3a48;
+  padding: 10px;
+  border: 1px dashed #e8d09b88;
   border-radius: 6px;
-  background: transparent;
-  color: #777;
-  font-size: 12px;
+  background: rgba(232,208,155,0.06);
+  color: #e8d09b;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
-.btn-upload:hover { border-color: #e8d09b; color: #e8d09b; background: rgba(232,208,155,0.05); }
+.btn-upload:hover { border-color: #e8d09b; background: rgba(232,208,155,0.12); }
 
 /* ─── Icon buttons ─── */
 .btn-icon {
@@ -239,17 +240,16 @@ body {
   color: #555;
 }
 .btn-merge {
-  padding: 3px 10px;
-  border: 1px solid #666;
+  padding: 2px 8px;
+  border: 1px solid #333;
   border-radius: 4px;
-  background: #2a2a3a;
-  color: #ddd;
+  background: transparent;
+  color: #666;
   font-size: 10px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
 }
-.btn-merge:hover { background: #3a3a4a; color: #e8d09b; border-color: #e8d09b; }
+.btn-merge:hover { background: #1e1e2a; color: #999; border-color: #444; }
 .section-arrow {
   font-size: 10px;
   color: #555;
