@@ -47,8 +47,14 @@ body {
   font-size: 11px;
   margin-left: 8px;
 }
-.save-dot.saving { color: #e8d09b; }
-.save-dot.saved { color: #6bc76b; }
+.save-dot {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+.save-dot.saving { color: #e8d09b; background: rgba(232,208,155,0.1); }
+.save-dot.saved { color: #6bc76b; background: rgba(107,199,107,0.1); }
+.save-dot.idle { color: #777; background: rgba(255,255,255,0.05); }
 
 /* ─── AI prompt bar ─── */
 .ai-bar {
@@ -102,27 +108,28 @@ body {
 /* ─── Buttons ─── */
 .btn {
   padding: 6px 14px;
-  border: 1px solid #3a3a48;
+  border: 1px solid #555;
   border-radius: 6px;
-  background: #1e1e2a;
-  color: #ccc;
+  background: #2a2a3a;
+  color: #eee;
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
 }
-.btn:hover { background: #2a2a3a; }
+.btn:hover { background: #3a3a4a; }
 .btn-primary {
   background: #e8d09b;
   color: #111;
   border-color: #e8d09b;
-  font-weight: 600;
+  font-weight: 700;
 }
 .btn-primary:hover { background: #d4b878; }
 .btn-ghost {
-  border-color: transparent;
-  color: #666;
+  border-color: #444;
+  color: #aaa;
 }
-.btn-ghost:hover { color: #aaa; background: #1e1e2a; }
+.btn-ghost:hover { color: #ddd; background: #2a2a3a; }
 .btn-xs {
   padding: 3px 10px;
   border: 1px solid #333;
@@ -148,13 +155,13 @@ body {
 
 /* ─── Icon buttons ─── */
 .btn-icon {
-  width: 22px;
-  height: 22px;
-  border: 1px solid #2a2a3a;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #555;
   border-radius: 4px;
-  background: transparent;
-  color: #777;
-  font-size: 9px;
+  background: #2a2a3a;
+  color: #ccc;
+  font-size: 10px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -162,9 +169,9 @@ body {
   padding: 0;
   transition: all 0.12s;
 }
-.btn-icon:hover { background: #2a2a3a; color: #ccc; }
-.btn-icon:disabled { opacity: 0.3; cursor: default; }
-.btn-icon--danger:hover { background: #3a2020; color: #e88; border-color: #5a2020; }
+.btn-icon:hover { background: #3a3a4a; color: #fff; }
+.btn-icon:disabled { opacity: 0.25; cursor: default; }
+.btn-icon--danger:hover { background: #4a2020; color: #f99; border-color: #6a2020; }
 
 /* ─── Main layout ─── */
 .main {
@@ -232,16 +239,17 @@ body {
   color: #555;
 }
 .btn-merge {
-  padding: 2px 8px;
-  border: 1px solid #3a3a48;
+  padding: 3px 10px;
+  border: 1px solid #666;
   border-radius: 4px;
-  background: transparent;
-  color: #888;
+  background: #2a2a3a;
+  color: #ddd;
   font-size: 10px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
 }
-.btn-merge:hover { background: #2a2a3a; color: #e8d09b; border-color: #e8d09b; }
+.btn-merge:hover { background: #3a3a4a; color: #e8d09b; border-color: #e8d09b; }
 .section-arrow {
   font-size: 10px;
   color: #555;
