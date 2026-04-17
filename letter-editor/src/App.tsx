@@ -435,12 +435,11 @@ export const App: React.FC = () => {
         <h1 className="logo">식전영상 에디터</h1>
         <div className="header-info">
           {Math.floor(totalSec / 60)}분 {Math.round(totalSec % 60)}초 &middot; {config.photos.length}장 &middot; {acts.length} Acts
-          {saveStatus === "saving" && <span className="save-dot saving"> 저장 중...</span>}
-          {saveStatus === "saved" && <span className="save-dot saved"> 저장됨</span>}
+          {saveStatus === "saving" && <span className="save-dot saving">저장 중...</span>}
+          {saveStatus === "saved" && <span className="save-dot saved">저장 완료</span>}
+          {saveStatus === "idle" && <span className="save-dot idle">자동 저장</span>}
         </div>
         <div className="header-actions">
-          <button className="btn" onClick={importJSON}>불러오기</button>
-          <button className="btn btn-primary" onClick={exportJSON}>저장</button>
           <button className="btn btn-ghost" onClick={resetConfig}>초기화</button>
         </div>
       </header>
