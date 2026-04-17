@@ -72,6 +72,10 @@ export type EndingConfig = {
   message: string;
 };
 
+export type OverlayType = "none" | "film-grain" | "light-leak" | "bokeh" | "vignette";
+export type ParticleType = "none" | "sparkle" | "petals" | "hearts" | "snow";
+export type FrameType = "none" | "polaroid" | "film-strip" | "rounded" | "classic";
+
 export type VideoConfig = {
   photos: PhotoEntry[];
   actTitles: Record<number, ActTitle>;
@@ -80,6 +84,10 @@ export type VideoConfig = {
   endingSec: number;
   crossfadeSec: number;
   fps: number;
+  overlay: OverlayType;
+  particles: ParticleType;
+  frame: FrameType;
+  bgmUrl?: string;
 };
 
 // ─────────────────────────────────────────────
@@ -315,4 +323,7 @@ export const defaultConfig: VideoConfig = {
   endingSec: 6.5,
   crossfadeSec: 0.5,
   fps: 30,
+  overlay: "none",
+  particles: "none",
+  frame: "none",
 };
