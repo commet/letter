@@ -266,7 +266,8 @@ export const App: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const playerRef = useRef<PlayerRef>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipFirstSave = useRef(true);
 
   const totalFrames = computeTotalFrames(config);
   const totalSec = totalFrames / config.fps;
@@ -282,14 +283,16 @@ export const App: React.FC = () => {
   // ── Auto-save to Supabase (debounced 2s) ────
   useEffect(() => {
     if (loading) return;
-    setSaveStatus("saving");
+    if (skipFirstSave.current) { skipFirstSave.current = false; return; }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      setSaveStatus("saving");
       saveConfig(config).then((ok) => {
         setSaveStatus(ok ? "saved" : "idle");
         if (ok) setTimeout(() => setSaveStatus("idle"), 2000);
       });
     }, 2000);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [config, loading]);
 
   // ── updaters ────────────────────────────────
@@ -388,34 +391,6 @@ export const App: React.FC = () => {
       next.has(act) ? next.delete(act) : next.add(act);
       return next;
     });
-  };
-
-  // ── save / load ─────────────────────────────
-
-  const exportJSON = () => {
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "video-config.json";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
-  const importJSON = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try { setConfig(JSON.parse(reader.result as string)); }
-        catch { alert("설정 파일을 읽을 수 없습니다."); }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
   };
 
   const resetConfig = () => {
@@ -611,7 +586,7 @@ export const App: React.FC = () => {
                           <img src={photoSrc(photo.file)} alt={photo.tag} className="photo-thumb" />
                           <div className="focal-dot" style={{ left: `${photo.focalPoint.x * 100}%`, top: `${photo.focalPoint.y * 100}%` }} />
                           {(photo.spotlights?.length ?? 0) > 0 && (
-                            <div className="spot-badge">{photo.spotlights.length}</div>
+                            <div className="spot-badge">{photo.spotlights?.length}</div>
                           )}
                           <div className="thumb-hint">편집</div>
                         </div>

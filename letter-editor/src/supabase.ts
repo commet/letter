@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { VideoConfig } from "./data";
+import { VideoConfig, defaultConfig } from "./data";
 
 const SUPABASE_URL = "https://hgltvdshuyfffskvjmst.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -21,10 +21,21 @@ export async function loadConfig(): Promise<VideoConfig | null> {
   if (error || !data?.config) return null;
 
   // If config is an empty object (initial state), return null so defaults are used
-  const cfg = data.config as VideoConfig;
-  if (!cfg.photos || cfg.photos.length === 0) return null;
+  const raw = data.config as Partial<VideoConfig>;
+  if (!raw.photos || raw.photos.length === 0) return null;
 
-  return cfg;
+  // Merge with defaults to ensure all fields exist (handles schema evolution)
+  return {
+    ...defaultConfig,
+    ...raw,
+    photos: raw.photos.map((p) => ({
+      focalPoint: { x: 0.5, y: 0.5 },
+      transition: "fade" as const,
+      filter: "none" as const,
+      spotlights: [],
+      ...p,
+    })),
+  };
 }
 
 export async function saveConfig(config: VideoConfig): Promise<boolean> {
