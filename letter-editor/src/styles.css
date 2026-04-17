@@ -87,7 +87,7 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .ai-input:focus { border-color: #e8d09b; box-shadow: 0 0 0 2px rgba(232, 208, 155, 0.15); }
-.ai-input::placeholder { color: #666; }
+.ai-input::placeholder { color: #aaa; }
 .ai-input:disabled { opacity: 0.5; }
 .ai-btn {
   white-space: nowrap;
