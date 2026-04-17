@@ -261,6 +261,8 @@ export const App: React.FC = () => {
   const [openEnding, setOpenEnding] = useState(false);
   const [editorTarget, setEditorTarget] = useState<number | null>(null);
   const [panelTab, setPanelTab] = useState<"edit" | "assets">("edit");
+  const [assetTarget, setAssetTarget] = useState<"global" | "selected">("global");
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window === "undefined") return "dark";
     return (localStorage.getItem("theme") as "dark" | "light") ?? "dark";
@@ -512,35 +514,134 @@ export const App: React.FC = () => {
 
           {panelTab === "assets" && (
             <div className="assets-panel">
-              <div className="asset-group">
-                <h4 className="asset-group-title">오버레이</h4>
-                <div className="asset-options">
-                  {OVERLAYS.map((o) => (
-                    <button key={o.value} className={`asset-chip ${config.overlay === o.value ? "asset-chip--active" : ""}`}
-                      onClick={() => setConfig((c) => ({ ...c, overlay: o.value }))}>{o.label}</button>
-                  ))}
+              {/* Target selector */}
+              <div className="asset-group asset-target-group">
+                <h4 className="asset-group-title">적용 대상</h4>
+                <div className="target-tabs">
+                  <button className={`target-tab ${assetTarget === "global" ? "target-tab--active" : ""}`}
+                    onClick={() => setAssetTarget("global")}>전체 영상</button>
+                  <button className={`target-tab ${assetTarget === "selected" ? "target-tab--active" : ""}`}
+                    onClick={() => setAssetTarget("selected")}>선택한 사진 ({selectedPhotos.size})</button>
                 </div>
+                {assetTarget === "selected" && (
+                  <div className="photo-picker">
+                    <div className="photo-picker-hint">
+                      {selectedPhotos.size === 0
+                        ? "아래 사진들 클릭해서 선택하세요"
+                        : `${selectedPhotos.size}장 선택됨 — 아래 에셋 클릭하면 적용됩니다`}
+                    </div>
+                    <div className="photo-picker-grid">
+                      {config.photos.map((p, i) => (
+                        <div key={i}
+                          className={`photo-pick ${selectedPhotos.has(i) ? "photo-pick--active" : ""}`}
+                          onClick={() => setSelectedPhotos((s) => {
+                            const n = new Set(s);
+                            n.has(i) ? n.delete(i) : n.add(i);
+                            return n;
+                          })}
+                          title={p.tag}>
+                          <img src={photoSrc(p.file)} alt={p.tag} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="photo-picker-actions">
+                      <button className="btn btn-xs" onClick={() => setSelectedPhotos(new Set(config.photos.map((_, i) => i)))}>전체 선택</button>
+                      <button className="btn btn-xs" onClick={() => setSelectedPhotos(new Set())}>선택 해제</button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="asset-group">
-                <h4 className="asset-group-title">파티클</h4>
-                <div className="asset-options">
-                  {PARTICLES.map((p) => (
-                    <button key={p.value} className={`asset-chip ${config.particles === p.value ? "asset-chip--active" : ""}`}
-                      onClick={() => setConfig((c) => ({ ...c, particles: p.value }))}>{p.label}</button>
-                  ))}
-                </div>
-              </div>
+
+              {/* Frame */}
               <div className="asset-group">
                 <h4 className="asset-group-title">프레임</h4>
                 <div className="asset-options">
-                  {FRAMES.map((f) => (
-                    <button key={f.value} className={`asset-chip ${config.frame === f.value ? "asset-chip--active" : ""}`}
-                      onClick={() => setConfig((c) => ({ ...c, frame: f.value }))}>{f.label}</button>
-                  ))}
+                  {FRAMES.map((f) => {
+                    const active = assetTarget === "global"
+                      ? config.frame === f.value
+                      : selectedPhotos.size > 0 && [...selectedPhotos].every((i) => config.photos[i].frameOverride === f.value);
+                    return (
+                      <button key={f.value} className={`asset-chip ${active ? "asset-chip--active" : ""}`}
+                        disabled={assetTarget === "selected" && selectedPhotos.size === 0}
+                        onClick={() => {
+                          if (assetTarget === "global") {
+                            setConfig((c) => ({ ...c, frame: f.value }));
+                          } else {
+                            setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, frameOverride: f.value } : p) }));
+                          }
+                        }}>{f.label}</button>
+                    );
+                  })}
+                  {assetTarget === "selected" && selectedPhotos.size > 0 && (
+                    <button className="asset-chip asset-chip--reset"
+                      onClick={() => setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, frameOverride: undefined } : p) }))}>
+                      기본값
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {/* Overlay */}
               <div className="asset-group">
-                <h4 className="asset-group-title">BGM</h4>
+                <h4 className="asset-group-title">오버레이</h4>
+                <div className="asset-options">
+                  {OVERLAYS.map((o) => {
+                    const active = assetTarget === "global"
+                      ? config.overlay === o.value
+                      : selectedPhotos.size > 0 && [...selectedPhotos].every((i) => config.photos[i].overlayOverride === o.value);
+                    return (
+                      <button key={o.value} className={`asset-chip ${active ? "asset-chip--active" : ""}`}
+                        disabled={assetTarget === "selected" && selectedPhotos.size === 0}
+                        onClick={() => {
+                          if (assetTarget === "global") {
+                            setConfig((c) => ({ ...c, overlay: o.value }));
+                          } else {
+                            setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, overlayOverride: o.value } : p) }));
+                          }
+                        }}>{o.label}</button>
+                    );
+                  })}
+                  {assetTarget === "selected" && selectedPhotos.size > 0 && (
+                    <button className="asset-chip asset-chip--reset"
+                      onClick={() => setConfig((c) => ({ ...c, photos: c.photos.map((p, i) => selectedPhotos.has(i) ? { ...p, overlayOverride: undefined } : p) }))}>
+                      기본값
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Particles */}
+              <div className="asset-group">
+                <h4 className="asset-group-title">파티클</h4>
+                <div className="asset-options">
+                  {PARTICLES.map((p) => {
+                    const active = assetTarget === "global"
+                      ? config.particles === p.value
+                      : selectedPhotos.size > 0 && [...selectedPhotos].every((i) => config.photos[i].particlesOverride === p.value);
+                    return (
+                      <button key={p.value} className={`asset-chip ${active ? "asset-chip--active" : ""}`}
+                        disabled={assetTarget === "selected" && selectedPhotos.size === 0}
+                        onClick={() => {
+                          if (assetTarget === "global") {
+                            setConfig((c) => ({ ...c, particles: p.value }));
+                          } else {
+                            setConfig((c) => ({ ...c, photos: c.photos.map((ph, i) => selectedPhotos.has(i) ? { ...ph, particlesOverride: p.value } : ph) }));
+                          }
+                        }}>{p.label}</button>
+                    );
+                  })}
+                  {assetTarget === "selected" && selectedPhotos.size > 0 && (
+                    <button className="asset-chip asset-chip--reset"
+                      onClick={() => setConfig((c) => ({ ...c, photos: c.photos.map((ph, i) => selectedPhotos.has(i) ? { ...ph, particlesOverride: undefined } : ph) }))}>
+                      기본값
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* BGM (always global) */}
+              <div className="asset-group">
+                <h4 className="asset-group-title">BGM (전체)</h4>
                 {config.bgmUrl ? (
                   <div className="bgm-row">
                     <span className="bgm-name">BGM 적용됨</span>
@@ -648,32 +749,6 @@ export const App: React.FC = () => {
                             <select className="select" value={photo.filter} onChange={(e) => updatePhoto(idx, { filter: e.target.value as FilterType })}>
                               {FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
                             </select>
-                          </div>
-                          <div className="photo-controls photo-controls--assets">
-                            <select className="select select-sm" title="프레임"
-                              value={photo.frameOverride ?? ""}
-                              onChange={(e) => updatePhoto(idx, { frameOverride: e.target.value ? e.target.value as FrameType : undefined })}>
-                              <option value="">프레임 (기본)</option>
-                              {FRAMES.map((f) => <option key={f.value} value={f.value}>프레임: {f.label}</option>)}
-                            </select>
-                            <select className="select select-sm" title="오버레이"
-                              value={photo.overlayOverride ?? ""}
-                              onChange={(e) => updatePhoto(idx, { overlayOverride: e.target.value ? e.target.value as OverlayType : undefined })}>
-                              <option value="">오버레이 (기본)</option>
-                              {OVERLAYS.map((o) => <option key={o.value} value={o.value}>오버레이: {o.label}</option>)}
-                            </select>
-                            <select className="select select-sm" title="파티클"
-                              value={photo.particlesOverride ?? ""}
-                              onChange={(e) => updatePhoto(idx, { particlesOverride: e.target.value ? e.target.value as ParticleType : undefined })}>
-                              <option value="">파티클 (기본)</option>
-                              {PARTICLES.map((p) => <option key={p.value} value={p.value}>파티클: {p.label}</option>)}
-                            </select>
-                          </div>
-                          <div className="photo-controls">
-                            <button className="btn-xs" onClick={() => toggleSplitPair(idx)}
-                              title={photo.splitPair ? "다음 사진과의 짝 해제" : "다음 사진과 좌우 분할로 표시"}>
-                              {photo.splitPair ? "↔ 짝 해제" : "↔ 다음 사진과 분할"}
-                            </button>
                           </div>
                           <div className="caption-row">
                             {photo.caption ? (
