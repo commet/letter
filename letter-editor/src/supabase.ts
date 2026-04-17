@@ -40,6 +40,35 @@ export async function saveConfig(config: VideoConfig): Promise<boolean> {
 
 const PHOTO_BUCKET = "letter-photos";
 
+// ─── AI prompt editing ───────────────────────
+
+const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/video-ai-edit`;
+
+export async function aiEditConfig(
+  config: VideoConfig,
+  prompt: string
+): Promise<VideoConfig | null> {
+  try {
+    const res = await fetch(EDGE_FN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config, prompt }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      console.error("AI edit error:", err);
+      return null;
+    }
+    const data = await res.json();
+    return data.config ?? null;
+  } catch (err) {
+    console.error("AI edit failed:", err);
+    return null;
+  }
+}
+
+// ─── Photo upload ────────────────────────────
+
 export async function uploadPhoto(file: File): Promise<string | null> {
   const ext = file.name.split(".").pop() ?? "jpg";
   const name = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;

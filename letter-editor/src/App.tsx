@@ -14,7 +14,7 @@ import {
   defaultConfig,
   computeTotalFrames,
 } from "./data";
-import { loadConfig, saveConfig, uploadPhoto } from "./supabase";
+import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
 
 // Resolve photo src: full URL (supabase) or local path
 const photoSrc = (file: string) => file.startsWith("http") ? file : `/${file}`;
@@ -237,6 +237,8 @@ export const App: React.FC = () => {
   const [editorTarget, setEditorTarget] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
   const [loading, setLoading] = useState(true);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
   const playerRef = useRef<PlayerRef>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -394,6 +396,21 @@ export const App: React.FC = () => {
     if (confirm("기본 설정으로 되돌릴까요?")) setConfig(defaultConfig);
   };
 
+  // ── AI prompt edit ──────────────────────────
+
+  const handleAiEdit = async () => {
+    if (!aiPrompt.trim() || aiLoading) return;
+    setAiLoading(true);
+    const result = await aiEditConfig(config, aiPrompt.trim());
+    if (result) {
+      setConfig(result);
+      setAiPrompt("");
+    } else {
+      alert("AI 수정에 실패했습니다. 다시 시도해주세요.");
+    }
+    setAiLoading(false);
+  };
+
   // ── group photos by act ─────────────────────
 
   const photosByAct: Record<number, { photo: PhotoEntry; idx: number }[]> = {};
@@ -442,6 +459,19 @@ export const App: React.FC = () => {
             controls
             autoPlay={false}
           />
+          <div className="ai-bar">
+            <input
+              className="ai-input"
+              placeholder="예: 두 사람 사진 전부 4초로, Act 3 제목 바꿔줘..."
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAiEdit(); }}
+              disabled={aiLoading}
+            />
+            <button className="btn btn-primary ai-btn" onClick={handleAiEdit} disabled={aiLoading || !aiPrompt.trim()}>
+              {aiLoading ? "적용 중..." : "AI 적용"}
+            </button>
+          </div>
         </div>
 
         <div className="panel">
