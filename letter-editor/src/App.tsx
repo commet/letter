@@ -23,10 +23,10 @@ import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
 const photoSrc = (file: string) => file.startsWith("http") ? file : `/${file}`;
 
 const EFFECTS: { value: Effect; label: string }[] = [
-  { value: "zoomIn", label: "줌 인" },
-  { value: "zoomOut", label: "줌 아웃" },
-  { value: "panLeft", label: "팬 좌" },
-  { value: "panRight", label: "팬 우" },
+  { value: "zoomIn", label: "확대 (줌인)" },
+  { value: "zoomOut", label: "축소 (줌아웃)" },
+  { value: "panLeft", label: "← 왼쪽으로 이동" },
+  { value: "panRight", label: "오른쪽으로 이동 →" },
   { value: "static", label: "고정" },
 ];
 const TRANSITIONS: { value: TransitionType; label: string }[] = [
@@ -261,6 +261,15 @@ export const App: React.FC = () => {
   const [openEnding, setOpenEnding] = useState(false);
   const [editorTarget, setEditorTarget] = useState<number | null>(null);
   const [panelTab, setPanelTab] = useState<"edit" | "assets">("edit");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("theme") as "dark" | "light") ?? "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
   const [loading, setLoading] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -339,6 +348,13 @@ export const App: React.FC = () => {
 
   const deletePhoto = useCallback((idx: number) => {
     setConfig((c) => ({ ...c, photos: c.photos.filter((_, i) => i !== idx) }));
+  }, []);
+
+  const toggleSplitPair = useCallback((idx: number) => {
+    setConfig((c) => ({
+      ...c,
+      photos: c.photos.map((p, i) => i === idx ? { ...p, splitPair: !p.splitPair } : p),
+    }));
   }, []);
 
   // ── photo upload ────────────────────────────
@@ -441,6 +457,13 @@ export const App: React.FC = () => {
           {saveStatus === "idle" && <span className="save-dot idle">자동 저장</span>}
         </div>
         <div className="header-actions">
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme((t) => t === "dark" ? "light" : "dark")}
+            title={theme === "dark" ? "라이트 모드로" : "다크 모드로"}
+          >
+            {theme === "dark" ? "☾" : "☀"}
+          </button>
           <button className="btn btn-primary" onClick={() => {
             setSaveStatus("saving");
             saveConfig(config).then((ok) => {
@@ -592,7 +615,11 @@ export const App: React.FC = () => {
                         </div>
                         <div className="photo-body">
                           <div className="photo-row-top">
-                            <span className="photo-tag">{photo.tag}</span>
+                            <span className="photo-tag">
+                              {photo.splitPair && <span className="pair-badge pair-badge--left" title="다음 사진과 좌우 분할">← 좌</span>}
+                              {localIdx > 0 && actPhotos[localIdx - 1].photo.splitPair && <span className="pair-badge pair-badge--right" title="이전 사진과 좌우 분할">우 →</span>}
+                              {photo.tag}
+                            </span>
                             <div className="photo-actions">
                               <select className="select select-act" value={photo.act}
                                 onChange={(e) => updatePhoto(idx, { act: Number(e.target.value) })}
@@ -621,6 +648,32 @@ export const App: React.FC = () => {
                             <select className="select" value={photo.filter} onChange={(e) => updatePhoto(idx, { filter: e.target.value as FilterType })}>
                               {FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
                             </select>
+                          </div>
+                          <div className="photo-controls photo-controls--assets">
+                            <select className="select select-sm" title="프레임"
+                              value={photo.frameOverride ?? ""}
+                              onChange={(e) => updatePhoto(idx, { frameOverride: e.target.value ? e.target.value as FrameType : undefined })}>
+                              <option value="">프레임 (기본)</option>
+                              {FRAMES.map((f) => <option key={f.value} value={f.value}>프레임: {f.label}</option>)}
+                            </select>
+                            <select className="select select-sm" title="오버레이"
+                              value={photo.overlayOverride ?? ""}
+                              onChange={(e) => updatePhoto(idx, { overlayOverride: e.target.value ? e.target.value as OverlayType : undefined })}>
+                              <option value="">오버레이 (기본)</option>
+                              {OVERLAYS.map((o) => <option key={o.value} value={o.value}>오버레이: {o.label}</option>)}
+                            </select>
+                            <select className="select select-sm" title="파티클"
+                              value={photo.particlesOverride ?? ""}
+                              onChange={(e) => updatePhoto(idx, { particlesOverride: e.target.value ? e.target.value as ParticleType : undefined })}>
+                              <option value="">파티클 (기본)</option>
+                              {PARTICLES.map((p) => <option key={p.value} value={p.value}>파티클: {p.label}</option>)}
+                            </select>
+                          </div>
+                          <div className="photo-controls">
+                            <button className="btn-xs" onClick={() => toggleSplitPair(idx)}
+                              title={photo.splitPair ? "다음 사진과의 짝 해제" : "다음 사진과 좌우 분할로 표시"}>
+                              {photo.splitPair ? "↔ 짝 해제" : "↔ 다음 사진과 분할"}
+                            </button>
                           </div>
                           <div className="caption-row">
                             {photo.caption ? (

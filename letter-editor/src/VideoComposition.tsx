@@ -154,7 +154,8 @@ const CaptionOverlay: React.FC<{
 
 const TitleCardScene: React.FC<{
   act: number; titles: Record<number, ActTitle>; dur: number; cf: number;
-}> = ({ act, titles, dur, cf }) => {
+  overlayType: OverlayType; particlesType: ParticleType;
+}> = ({ act, titles, dur, cf, overlayType, particlesType }) => {
   const frame = useCurrentFrame();
   const { chapter, kr } = titles[act] ?? { chapter: "", kr: "" };
   const fadeIn = interpolate(frame, [0, 18], [0, 1], { extrapolateRight: "clamp" });
@@ -192,6 +193,8 @@ const TitleCardScene: React.FC<{
           })}
         </div>
       </div>
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
     </AbsoluteFill>
   );
 };
@@ -209,7 +212,9 @@ const PhotoScene: React.FC<{
   enter: TransitionMode;
   exit: TransitionMode;
   frameType: FrameType;
-}> = ({ photo, dur, isFirst, isLast, cf, enter, exit, frameType }) => {
+  overlayType: OverlayType;
+  particlesType: ParticleType;
+}> = ({ photo, dur, isFirst, isLast, cf, enter, exit, frameType, overlayType, particlesType }) => {
   const frame = useCurrentFrame();
   const t = Math.min(1, Math.max(0, frame / dur));
   const { scale, tx, ty } = kenBurns(photo.effect, t, photo.focalPoint.x, photo.focalPoint.y);
@@ -255,6 +260,8 @@ const PhotoScene: React.FC<{
       {photo.spotlights?.length > 0 && (
         <SpotlightOverlay spotlights={photo.spotlights} />
       )}
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
       {photo.caption?.text && (
         <CaptionOverlay text={photo.caption.text} position={photo.caption.position} dur={dur} />
       )}
@@ -269,7 +276,8 @@ const PhotoScene: React.FC<{
 const SplitScene: React.FC<{
   left: PhotoEntry; right: PhotoEntry;
   dur: number; isFirst: boolean; isLast: boolean; cf: number; mergeOut: boolean;
-}> = ({ left, right, dur, isFirst, isLast, cf, mergeOut }) => {
+  overlayType: OverlayType; particlesType: ParticleType;
+}> = ({ left, right, dur, isFirst, isLast, cf, mergeOut, overlayType, particlesType }) => {
   const frame = useCurrentFrame();
   const fadeIn = isFirst ? 1 : interpolate(frame, [0, cf], [0, 1], { extrapolateRight: "clamp" });
   const fadeOut = isLast ? 1 : interpolate(frame, [dur - cf, dur], [1, 0], { extrapolateLeft: "clamp" });
@@ -287,6 +295,8 @@ const SplitScene: React.FC<{
       <div style={half}><Img src={left.file.startsWith("http") ? left.file : `/${left.file}`} style={img} /></div>
       <div style={{ width: gap, background: "#000" }} />
       <div style={half}><Img src={right.file.startsWith("http") ? right.file : `/${right.file}`} style={img} /></div>
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
     </AbsoluteFill>
   );
 };
@@ -297,7 +307,8 @@ const SplitScene: React.FC<{
 
 const EndingScene: React.FC<{
   ending: EndingConfig; dur: number; cf: number;
-}> = ({ ending, dur, cf }) => {
+  overlayType: OverlayType; particlesType: ParticleType;
+}> = ({ ending, dur, cf, overlayType, particlesType }) => {
   const frame = useCurrentFrame();
   const fadeIn = interpolate(frame, [0, cf], [0, 1], { extrapolateRight: "clamp" });
   const fadeOut = interpolate(frame, [dur - 36, dur], [1, 0], { extrapolateLeft: "clamp" });
@@ -327,6 +338,8 @@ const EndingScene: React.FC<{
       }}>
         {ending.message}
       </div>
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
     </AbsoluteFill>
   );
 };
@@ -461,7 +474,7 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
         return (
           <Sequence key={`${i}-${item.kind}`} from={from} durationInFrames={item.durationInFrames} name={item.name}>
             {item.kind === "titleCard" && (
-              <TitleCardScene act={item.act} titles={actTitles} dur={item.durationInFrames} cf={cf} />
+              <TitleCardScene act={item.act} titles={actTitles} dur={item.durationInFrames} cf={cf} overlayType={config.overlay} particlesType={config.particles} />
             )}
             {item.kind === "photo" && (
               <PhotoScene
@@ -472,20 +485,20 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
                 cf={cf}
                 enter={item.enterTransition}
                 exit={item.exitTransition}
-                frameType={config.frame}
+                frameType={item.photo.frameOverride ?? config.frame}
+                overlayType={item.photo.overlayOverride ?? config.overlay}
+                particlesType={item.photo.particlesOverride ?? config.particles}
               />
             )}
             {item.kind === "split" && (
-              <SplitScene left={item.left} right={item.right} dur={item.durationInFrames} isFirst={isFirst} isLast={isLast} cf={cf} mergeOut={item.mergeOut} />
+              <SplitScene left={item.left} right={item.right} dur={item.durationInFrames} isFirst={isFirst} isLast={isLast} cf={cf} mergeOut={item.mergeOut} overlayType={item.left.overlayOverride ?? config.overlay} particlesType={item.left.particlesOverride ?? config.particles} />
             )}
             {item.kind === "ending" && (
-              <EndingScene ending={ending} dur={item.durationInFrames} cf={cf} />
+              <EndingScene ending={ending} dur={item.durationInFrames} cf={cf} overlayType={config.overlay} particlesType={config.particles} />
             )}
           </Sequence>
         );
       })}
-      <OverlayLayer type={config.overlay} />
-      <ParticleLayer type={config.particles} />
     </AbsoluteFill>
   );
 };
