@@ -187,6 +187,26 @@ export function buildTimeline(
   return items;
 }
 
+// Returns the photo index at the given frame, or null if on title/ending.
+export function getPhotoIndexAtFrame(frame: number, config: VideoConfig): number | null {
+  const cf = Math.round(config.crossfadeSec * config.fps);
+  const tcf = Math.round(config.titleCardSec * config.fps);
+  const ef = Math.round(config.endingSec * config.fps);
+  const tl = buildTimeline(config.photos, tcf, ef, config.fps);
+
+  let cursor = 0;
+  for (const item of tl) {
+    const end = cursor + item.durationInFrames;
+    if (frame >= cursor && frame < end) {
+      if (item.kind === "photo") return config.photos.indexOf(item.photo);
+      if (item.kind === "split") return config.photos.indexOf(item.left);
+      return null;
+    }
+    cursor += item.durationInFrames - cf;
+  }
+  return null;
+}
+
 export function computeTotalFrames(config: VideoConfig): number {
   const cf = Math.round(config.crossfadeSec * config.fps);
   const tcf = Math.round(config.titleCardSec * config.fps);

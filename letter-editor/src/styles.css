@@ -935,16 +935,79 @@ body {
 }
 .asset-chip:disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* Current photo preview */
+.current-photo-preview {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+.current-photo-preview img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.current-photo-info { flex: 1; min-width: 0; }
+.current-photo-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.current-photo-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.current-photo-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.target-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* ─── Split pair badges ─── */
 .pair-badge {
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 3px;
   margin-right: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.pair-badge--paired {
   background: var(--gold-soft);
   color: var(--gold);
+  border-color: transparent;
+}
+.pair-badge--paired:hover { background: rgba(232,208,155,0.25); }
+.pair-badge--unpaired {
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--border);
+  font-weight: 500;
+}
+.pair-badge--unpaired:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: var(--gold-soft);
 }
 
 /* ─── Per-photo asset overrides row ─── */
