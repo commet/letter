@@ -207,6 +207,24 @@ export function getPhotoIndexAtFrame(frame: number, config: VideoConfig): number
   return null;
 }
 
+// Returns the starting frame of a photo (0 if not found).
+export function getPhotoStartFrame(photoIdx: number, config: VideoConfig): number {
+  const target = config.photos[photoIdx];
+  if (!target) return 0;
+  const cf = Math.round(config.crossfadeSec * config.fps);
+  const tcf = Math.round(config.titleCardSec * config.fps);
+  const ef = Math.round(config.endingSec * config.fps);
+  const tl = buildTimeline(config.photos, tcf, ef, config.fps);
+
+  let cursor = 0;
+  for (const item of tl) {
+    if (item.kind === "photo" && item.photo === target) return cursor;
+    if (item.kind === "split" && (item.left === target || item.right === target)) return cursor;
+    cursor += item.durationInFrames - cf;
+  }
+  return 0;
+}
+
 export function computeTotalFrames(config: VideoConfig): number {
   const cf = Math.round(config.crossfadeSec * config.fps);
   const tcf = Math.round(config.titleCardSec * config.fps);
