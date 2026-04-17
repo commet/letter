@@ -58,6 +58,10 @@ export type PhotoEntry = {
   caption?: CaptionConfig;
   spotlights: SpotlightConfig[];
   splitPair?: boolean; // true = this photo + next photo form a split screen
+  // Per-photo asset overrides (undefined = use global config)
+  frameOverride?: FrameType;
+  overlayOverride?: OverlayType;
+  particlesOverride?: ParticleType;
 };
 
 export type ActTitle = {
@@ -219,7 +223,7 @@ const e = (i: number): Effect => fx[i % fx.length];
 // Helper to create photo entries with sensible defaults
 const P = (
   tag: string, act: number, file: string, durationSec: number, effect: Effect,
-  extra?: Partial<Pick<PhotoEntry, "focalPoint" | "transition" | "filter" | "caption" | "spotlights" | "splitPair">>
+  extra?: Partial<Pick<PhotoEntry, "focalPoint" | "transition" | "filter" | "caption" | "spotlights" | "splitPair" | "frameOverride" | "overlayOverride" | "particlesOverride">>
 ): PhotoEntry => ({
   tag, act, file, durationSec, effect,
   focalPoint: { x: 0.5, y: 0.5 },
