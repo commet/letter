@@ -9,6 +9,9 @@ import {
   Effect,
   TransitionType,
   FilterType,
+  OverlayType,
+  ParticleType,
+  FrameType,
   CaptionConfig,
   SpotlightConfig,
   defaultConfig,
@@ -46,6 +49,28 @@ const ROMAN: Record<number, string> = {
   1: "I", 2: "II", 3: "III", 4: "IV", 5: "V",
   6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X",
 };
+
+const OVERLAYS: { value: OverlayType; label: string }[] = [
+  { value: "none", label: "없음" },
+  { value: "film-grain", label: "필름 그레인" },
+  { value: "light-leak", label: "라이트 릭" },
+  { value: "bokeh", label: "보케 (빛망울)" },
+  { value: "vignette", label: "비네트" },
+];
+const PARTICLES: { value: ParticleType; label: string }[] = [
+  { value: "none", label: "없음" },
+  { value: "sparkle", label: "반짝이" },
+  { value: "petals", label: "꽃잎" },
+  { value: "hearts", label: "하트" },
+  { value: "snow", label: "눈" },
+];
+const FRAMES: { value: FrameType; label: string }[] = [
+  { value: "none", label: "없음" },
+  { value: "polaroid", label: "폴라로이드" },
+  { value: "film-strip", label: "필름 스트립" },
+  { value: "rounded", label: "라운드" },
+  { value: "classic", label: "클래식 (골드)" },
+];
 
 // ─── Image Editor Modal ──────────────────────
 
@@ -235,6 +260,7 @@ export const App: React.FC = () => {
   const [openActs, setOpenActs] = useState<Set<number>>(new Set());
   const [openEnding, setOpenEnding] = useState(false);
   const [editorTarget, setEditorTarget] = useState<number | null>(null);
+  const [panelTab, setPanelTab] = useState<"edit" | "assets">("edit");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
   const [loading, setLoading] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -440,6 +466,13 @@ export const App: React.FC = () => {
           {saveStatus === "idle" && <span className="save-dot idle">자동 저장</span>}
         </div>
         <div className="header-actions">
+          <button className="btn btn-primary" onClick={() => {
+            setSaveStatus("saving");
+            saveConfig(config).then((ok) => {
+              setSaveStatus(ok ? "saved" : "idle");
+              if (ok) setTimeout(() => setSaveStatus("idle"), 2000);
+            });
+          }}>저장</button>
           <button className="btn btn-ghost" onClick={resetConfig}>초기화</button>
         </div>
       </header>
@@ -474,7 +507,66 @@ export const App: React.FC = () => {
         </div>
 
         <div className="panel">
-          {acts.map((act, actIdx) => {
+          <div className="panel-tabs">
+            <button className={`panel-tab ${panelTab === "edit" ? "panel-tab--active" : ""}`} onClick={() => setPanelTab("edit")}>편집</button>
+            <button className={`panel-tab ${panelTab === "assets" ? "panel-tab--active" : ""}`} onClick={() => setPanelTab("assets")}>에셋</button>
+          </div>
+
+          {panelTab === "assets" && (
+            <div className="assets-panel">
+              <div className="asset-group">
+                <h4 className="asset-group-title">오버레이</h4>
+                <div className="asset-options">
+                  {OVERLAYS.map((o) => (
+                    <button key={o.value} className={`asset-chip ${config.overlay === o.value ? "asset-chip--active" : ""}`}
+                      onClick={() => setConfig((c) => ({ ...c, overlay: o.value }))}>{o.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="asset-group">
+                <h4 className="asset-group-title">파티클</h4>
+                <div className="asset-options">
+                  {PARTICLES.map((p) => (
+                    <button key={p.value} className={`asset-chip ${config.particles === p.value ? "asset-chip--active" : ""}`}
+                      onClick={() => setConfig((c) => ({ ...c, particles: p.value }))}>{p.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="asset-group">
+                <h4 className="asset-group-title">프레임</h4>
+                <div className="asset-options">
+                  {FRAMES.map((f) => (
+                    <button key={f.value} className={`asset-chip ${config.frame === f.value ? "asset-chip--active" : ""}`}
+                      onClick={() => setConfig((c) => ({ ...c, frame: f.value }))}>{f.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="asset-group">
+                <h4 className="asset-group-title">BGM</h4>
+                {config.bgmUrl ? (
+                  <div className="bgm-row">
+                    <span className="bgm-name">BGM 적용됨</span>
+                    <button className="btn-icon btn-icon--danger" onClick={() => setConfig((c) => ({ ...c, bgmUrl: undefined }))}>&#10005;</button>
+                  </div>
+                ) : (
+                  <button className="btn btn-upload" onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "audio/*";
+                    input.onchange = async () => {
+                      const file = input.files?.[0];
+                      if (!file) return;
+                      const url = await uploadPhoto(file);
+                      if (url) setConfig((c) => ({ ...c, bgmUrl: url }));
+                    };
+                    input.click();
+                  }}>+ BGM 업로드</button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {panelTab === "edit" && acts.map((act, actIdx) => {
             const open = openActs.has(act);
             const title = config.actTitles[act];
             const actPhotos = photosByAct[act] ?? [];
@@ -581,7 +673,7 @@ export const App: React.FC = () => {
             );
           })}
 
-          <section className="section">
+          {panelTab === "edit" && <section className="section">
             <div className="section-header section-header--ending" onClick={() => setOpenEnding(!openEnding)}>
               <span className="section-badge">엔딩</span>
               <span className="section-title">{config.ending.date}</span>
@@ -599,7 +691,7 @@ export const App: React.FC = () => {
                   <input className="input" value={config.ending.message} onChange={(e) => updateEnding({ message: e.target.value })} /></label>
               </div>
             )}
-          </section>
+          </section>}
         </div>
       </div>
 

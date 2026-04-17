@@ -15,6 +15,9 @@ import {
   SpotlightConfig,
   TransitionMode,
   TimelineItem,
+  OverlayType,
+  ParticleType,
+  FrameType,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
@@ -205,7 +208,8 @@ const PhotoScene: React.FC<{
   cf: number;
   enter: TransitionMode;
   exit: TransitionMode;
-}> = ({ photo, dur, isFirst, isLast, cf, enter, exit }) => {
+  frameType: FrameType;
+}> = ({ photo, dur, isFirst, isLast, cf, enter, exit, frameType }) => {
   const frame = useCurrentFrame();
   const t = Math.min(1, Math.max(0, frame / dur));
   const { scale, tx, ty } = kenBurns(photo.effect, t, photo.focalPoint.x, photo.focalPoint.y);
@@ -235,12 +239,18 @@ const PhotoScene: React.FC<{
         }} />
       </AbsoluteFill>
       <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Img src={src} style={{
-          maxWidth: "92%", maxHeight: "92%", objectFit: "contain",
-          transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
-          boxShadow: "0 24px 80px rgba(0,0,0,0.55)",
-          filter: filterCSS !== "none" ? filterCSS : undefined,
-        }} />
+        <div style={{
+          ...getFrameStyle(frameType),
+          transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)${frameType === "polaroid" ? " rotate(-1deg)" : ""}`,
+          boxShadow: frameType === "none" ? "0 24px 80px rgba(0,0,0,0.55)" : getFrameStyle(frameType).boxShadow,
+        }}>
+          <Img src={src} style={{
+            width: "100%", maxWidth: frameType === "none" ? undefined : "100%",
+            objectFit: "contain",
+            filter: filterCSS !== "none" ? filterCSS : undefined,
+            display: "block",
+          }} />
+        </div>
       </AbsoluteFill>
       {photo.spotlights?.length > 0 && (
         <SpotlightOverlay spotlights={photo.spotlights} />
@@ -325,6 +335,108 @@ const EndingScene: React.FC<{
 // Main composition
 // ─────────────────────────────────────────────
 
+// Overlay effects
+
+const OverlayLayer: React.FC<{ type: OverlayType }> = ({ type }) => {
+  const frame = useCurrentFrame();
+  if (type === "none") return null;
+
+  if (type === "vignette") {
+    return <AbsoluteFill style={{ pointerEvents: "none", background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%)" }} />;
+  }
+  if (type === "film-grain") {
+    const seed = frame * 1.618;
+    return (
+      <AbsoluteFill style={{
+        pointerEvents: "none", opacity: 0.08, mixBlendMode: "overlay",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' seed='${Math.floor(seed)}' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        backgroundSize: "256px 256px",
+      }} />
+    );
+  }
+  if (type === "light-leak") {
+    const t = (frame % 300) / 300;
+    const x = 20 + t * 60;
+    const hue = (frame * 0.5) % 60;
+    return <AbsoluteFill style={{ pointerEvents: "none", background: `radial-gradient(ellipse at ${x}% 30%, hsla(${hue}, 80%, 70%, 0.18) 0%, transparent 60%)` }} />;
+  }
+  if (type === "bokeh") {
+    const circles = Array.from({ length: 12 }, (_, i) => {
+      const s = i * 83.7;
+      const x = (s * 3.1 + Math.sin(frame * 0.008 + i) * 15 + 50) % 100;
+      const y = (s * 2.3 + Math.cos(frame * 0.006 + i * 2) * 10 + 50) % 100;
+      const size = 30 + (i % 4) * 25;
+      const opacity = 0.04 + Math.sin(frame * 0.01 + i * 1.5) * 0.02;
+      return { x, y, size, opacity };
+    });
+    return (
+      <AbsoluteFill style={{ pointerEvents: "none" }}>
+        {circles.map((c, i) => (
+          <div key={i} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: c.size, height: c.size, borderRadius: "50%", background: `radial-gradient(circle, rgba(255,255,255,${c.opacity}) 0%, transparent 70%)`, transform: "translate(-50%, -50%)" }} />
+        ))}
+      </AbsoluteFill>
+    );
+  }
+  return null;
+};
+
+// Particle effects
+
+const ParticleLayer: React.FC<{ type: ParticleType }> = ({ type }) => {
+  const frame = useCurrentFrame();
+  if (type === "none") return null;
+
+  const count = type === "snow" ? 30 : type === "sparkle" ? 25 : type === "hearts" ? 12 : 18;
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none", overflow: "hidden" }}>
+      {Array.from({ length: count }, (_, i) => {
+        const seed = i * 137.508;
+        const speed = 0.3 + (i % 4) * 0.2;
+        const x = (seed * 3.1 + Math.sin(frame * 0.015 + i * 2) * 8) % 100;
+        const y = ((frame * speed + seed * 2.7) % 130) - 15;
+        const vis = y >= -10 && y <= 110;
+
+        if (type === "sparkle") {
+          const tw = Math.sin(frame * 0.08 + i * 1.7) * 0.5 + 0.5;
+          const sz = 2 + (i % 3) * 2;
+          return <div key={i} style={{ position: "absolute", left: `${x}%`, top: `${y}%`, width: sz, height: sz, borderRadius: "50%", background: "white", opacity: vis ? tw * 0.8 : 0, boxShadow: `0 0 ${sz * 2}px ${sz}px rgba(255,255,255,0.4)`, transform: "translate(-50%,-50%)" }} />;
+        }
+        if (type === "petals") {
+          const rot = frame * (1 + i % 3) * 0.8 + seed;
+          const sz = 8 + (i % 3) * 4;
+          return <div key={i} style={{ position: "absolute", left: `${x}%`, top: `${y}%`, width: sz, height: sz * 1.2, borderRadius: "50% 0 50% 50%", background: `hsl(${340 + i % 5 * 6}, 65%, 78%)`, opacity: vis ? 0.65 : 0, transform: `translate(-50%,-50%) rotate(${rot}deg)` }} />;
+        }
+        if (type === "hearts") {
+          const sc = 0.6 + Math.sin(frame * 0.04 + i * 3) * 0.2;
+          const sy = ((frame * 0.15 + seed * 2.7) % 130) - 15;
+          return <div key={i} style={{ position: "absolute", left: `${x}%`, top: `${sy}%`, fontSize: 12 + (i % 3) * 6, opacity: sy >= -10 && sy <= 110 ? 0.35 : 0, transform: `translate(-50%,-50%) scale(${sc})`, color: `hsl(${345 + i % 4 * 5}, 70%, 70%)` }}>&#x2665;</div>;
+        }
+        // snow
+        const drift = Math.sin(frame * 0.02 + i * 1.3) * 3;
+        const sz = 2 + (i % 3) * 2;
+        return <div key={i} style={{ position: "absolute", left: `${x + drift}%`, top: `${y}%`, width: sz, height: sz, borderRadius: "50%", background: "white", opacity: vis ? 0.6 : 0, transform: "translate(-50%,-50%)" }} />;
+      })}
+    </AbsoluteFill>
+  );
+};
+
+// Frame styles for photos
+
+const getFrameStyle = (type: FrameType): React.CSSProperties => {
+  switch (type) {
+    case "polaroid":
+      return { background: "white", padding: "12px 12px 40px 12px", borderRadius: 2, boxShadow: "0 4px 24px rgba(0,0,0,0.4)", transform: "rotate(-1deg)", maxWidth: "78%", maxHeight: "78%" };
+    case "film-strip":
+      return { background: "#1a1a1a", padding: "28px 12px", borderRadius: 2, boxShadow: "0 4px 24px rgba(0,0,0,0.5)", maxWidth: "83%", maxHeight: "83%", borderTop: "4px solid #333", borderBottom: "4px solid #333" };
+    case "rounded":
+      return { borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,0.5)", maxWidth: "88%", maxHeight: "88%" };
+    case "classic":
+      return { border: "6px solid rgba(232,208,155,0.5)", borderRadius: 2, boxShadow: "0 4px 24px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(232,208,155,0.2)", padding: 4, background: "rgba(232,208,155,0.05)", maxWidth: "86%", maxHeight: "86%" };
+    default:
+      return { maxWidth: "92%", maxHeight: "92%" };
+  }
+};
+
 export const MainVideo: React.FC<VideoConfig> = (config) => {
   const { photos, actTitles, ending, fps, crossfadeSec, titleCardSec, endingSec } = config;
   const cf = Math.round(crossfadeSec * fps);
@@ -360,6 +472,7 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
                 cf={cf}
                 enter={item.enterTransition}
                 exit={item.exitTransition}
+                frameType={config.frame}
               />
             )}
             {item.kind === "split" && (
@@ -371,6 +484,8 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
           </Sequence>
         );
       })}
+      <OverlayLayer type={config.overlay} />
+      <ParticleLayer type={config.particles} />
     </AbsoluteFill>
   );
 };
