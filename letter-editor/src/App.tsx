@@ -17,6 +17,7 @@ import {
   defaultConfig,
   computeTotalFrames,
   getPhotoIndexAtFrame,
+  getPhotoStartFrame,
 } from "./data";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
 
@@ -265,13 +266,16 @@ export const App: React.FC = () => {
   const [assetTarget, setAssetTarget] = useState<"global" | "current">("current");
   const [currentFrame, setCurrentFrame] = useState(0);
 
-  // Track current frame from player
+  // Track current frame via polling (more reliable than event listener)
   useEffect(() => {
-    const player = playerRef.current;
-    if (!player) return;
-    const handler = (e: { detail: { frame: number } }) => setCurrentFrame(e.detail.frame);
-    player.addEventListener("frameupdate", handler);
-    return () => player.removeEventListener("frameupdate", handler);
+    if (loading) return;
+    const id = setInterval(() => {
+      const p = playerRef.current;
+      if (p) {
+        try { setCurrentFrame(p.getCurrentFrame()); } catch {}
+      }
+    }, 150);
+    return () => clearInterval(id);
   }, [loading]);
 
   const currentPhotoIdx = getPhotoIndexAtFrame(currentFrame, config);
@@ -817,6 +821,24 @@ export const App: React.FC = () => {
             )}
           </section>}
         </div>
+      </div>
+
+      {/* Filmstrip (bottom) */}
+      <div className="filmstrip">
+        {config.photos.map((p, i) => (
+          <div
+            key={i}
+            className={`filmstrip-item ${currentPhotoIdx === i ? "filmstrip-item--active" : ""}`}
+            onClick={() => {
+              const frame = getPhotoStartFrame(i, config);
+              playerRef.current?.seekTo(frame);
+            }}
+            title={p.tag}
+          >
+            <img src={photoSrc(p.file)} alt={p.tag} />
+            <div className="filmstrip-label">{i + 1}</div>
+          </div>
+        ))}
       </div>
 
       {editorTarget !== null && config.photos[editorTarget] && (
