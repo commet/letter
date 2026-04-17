@@ -58,6 +58,7 @@ export type PhotoEntry = {
   caption?: CaptionConfig;
   spotlights: SpotlightConfig[];
   splitPair?: boolean; // true = this photo + next photo form a split screen
+  splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
   // Per-photo asset overrides (undefined = use global config)
   frameOverride?: FrameType;
   overlayOverride?: OverlayType;
@@ -67,6 +68,7 @@ export type PhotoEntry = {
 export type ActTitle = {
   chapter: string;
   kr: string;
+  variant?: TitleVariant; // overrides global titleVariant
 };
 
 export type EndingConfig = {
@@ -80,6 +82,11 @@ export type OverlayType = "none" | "film-grain" | "light-leak" | "bokeh" | "vign
 export type ParticleType = "none" | "sparkle" | "petals" | "hearts" | "snow";
 export type FrameType = "none" | "polaroid" | "film-strip" | "rounded" | "classic";
 
+// NEW: layout/style options
+export type SplitStyle = "standard" | "polaroid" | "cameo";
+export type TitleVariant = "standard" | "journal";
+export type BackgroundStyle = "blur" | "paper" | "black";
+
 export type VideoConfig = {
   photos: PhotoEntry[];
   actTitles: Record<number, ActTitle>;
@@ -92,6 +99,10 @@ export type VideoConfig = {
   particles: ParticleType;
   frame: FrameType;
   bgmUrl?: string;
+  // NEW
+  backgroundStyle: BackgroundStyle;
+  kenBurnsAmount: number;
+  titleVariant: TitleVariant;
 };
 
 // ─────────────────────────────────────────────
@@ -207,7 +218,7 @@ export function getPhotoIndexAtFrame(frame: number, config: VideoConfig): number
   return null;
 }
 
-// Returns the starting frame of a photo (0 if not found).
+// Returns a frame in the middle of the photo (after crossfade-in completes).
 export function getPhotoStartFrame(photoIdx: number, config: VideoConfig): number {
   const target = config.photos[photoIdx];
   if (!target) return 0;
@@ -218,8 +229,13 @@ export function getPhotoStartFrame(photoIdx: number, config: VideoConfig): numbe
 
   let cursor = 0;
   for (const item of tl) {
-    if (item.kind === "photo" && item.photo === target) return cursor;
-    if (item.kind === "split" && (item.left === target || item.right === target)) return cursor;
+    if (item.kind === "photo" && item.photo === target) {
+      // Land mid-photo: past crossfade-in, so the photo is fully visible
+      return cursor + Math.min(cf + 2, Math.floor(item.durationInFrames / 2));
+    }
+    if (item.kind === "split" && (item.left === target || item.right === target)) {
+      return cursor + Math.min(cf + 2, Math.floor(item.durationInFrames / 2));
+    }
     cursor += item.durationInFrames - cf;
   }
   return 0;
@@ -239,15 +255,16 @@ export function computeTotalFrames(config: VideoConfig): number {
 // ─────────────────────────────────────────────
 
 const D = {
-  split: 4.0,  // Act I split screen pairs
-  reveal: 5.0, // Act I reveal photo
-  grow: 3.0,   // Act II growing up
-  trip: 2.8,   // Act III trips
-  beat: 0.8,   // Act III performance beat-cuts
-  date: 3.0,   // Act III/IV couple dates
-  mile: 3.2,   // Act IV milestones
-  us: 3.5,     // Act V the two of us
-  last: 5.0,   // Act V ending photo
+  split: 5.0,  // Act I split screen pairs (increased for breathing)
+  reveal: 4.0, // Act I reveal photo (경복궁 - demoted from "star" moment)
+  grow: 3.2,   // Act II growing up
+  growStar: 5.0, // Act II key community photos (the real reveal)
+  trip: 3.0,   // Act III trips
+  trip2: 3.2,  // Act III performances / galleries
+  date: 3.2,   // Act III/IV couple dates
+  mile: 3.5,   // Act IV milestones
+  us: 3.8,     // Act V the two of us
+  last: 8.0,   // Act V ending photo (longer for emotional close)
 };
 
 // Supabase Storage base URL for photos
@@ -261,7 +278,7 @@ const e = (i: number): Effect => fx[i % fx.length];
 // Helper to create photo entries with sensible defaults
 const P = (
   tag: string, act: number, file: string, durationSec: number, effect: Effect,
-  extra?: Partial<Pick<PhotoEntry, "focalPoint" | "transition" | "filter" | "caption" | "spotlights" | "splitPair" | "frameOverride" | "overlayOverride" | "particlesOverride">>
+  extra?: Partial<Pick<PhotoEntry, "focalPoint" | "transition" | "filter" | "caption" | "spotlights" | "splitPair" | "splitStyle" | "frameOverride" | "overlayOverride" | "particlesOverride">>
 ): PhotoEntry => ({
   tag, act, file, durationSec, effect,
   focalPoint: { x: 0.5, y: 0.5 },
@@ -272,27 +289,28 @@ const P = (
 });
 
 const defaultPhotos: PhotoEntry[] = [
-  // ── Act I: 각자의 자리에서 (6 splits + 1 reveal) ──────
-  // Split pairs: 슬기(좌) / 예찬(우) → 마지막 split mergeOut → 경복궁 reveal
-  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true }),
+  // ── Act I: 각자의 자리에서 (6 splits + 1 interlude) ──────
+  // Split pairs: 슬기(좌) / 예찬(우). 경복궁은 demote — 진짜 리빌은 Act II 분당선교원.
+  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo" }),
   P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn"),
-  P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true }),
+  P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut"),
-  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true }),
+  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn"),
-  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true }),
+  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 장난기",                1, `${S}/008.jpg`, D.split, "panRight"),
-  P("슬기 부엌",                  1, `${S}/009.jpg`, D.split, "zoomOut", { splitPair: true }),
+  P("슬기 부엌",                  1, `${S}/009.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut"),
-  P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true }),
+  P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn"),
-  P("★ 경복궁 (같은 곳에서)",    1, `${S}/013.jpg`, D.reveal, "zoomIn"),
+  P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn"),
 
   // ── Act II: 같은 곳에서, 함께 (13장) ──────────────────
-  P("분당선교원",                 2, `${S}/014.jpeg`, D.grow, e(0)),
-  P("분당선교원 2",               2, `${S}/015.jpeg`, D.grow, e(1)),
-  P("붉은악마 단체",              2, `${S}/016.jpeg`, D.grow, e(2)),
-  P("슬기 붉은악마",              2, `${S}/017.jpeg`, D.grow, e(3), { splitPair: true }),
+  // ★ 분당선교원: 진짜 리빌 — 두 사람이 같은 공동체에 있었다 (스포트라이트 필수)
+  P("★ 분당선교원 (같은 공동체)",   2, `${S}/014.jpeg`, D.growStar, "zoomIn"),
+  P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn"),
+  P("★ 붉은악마 단체",             2, `${S}/016.jpeg`, D.growStar, "zoomIn"),
+  P("슬기 붉은악마",              2, `${S}/017.jpeg`, D.grow, e(3), { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 붉은악마",              2, `${S}/018.jpeg`, D.grow, e(3)),
   P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4)),
   P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5)),
@@ -311,10 +329,10 @@ const defaultPhotos: PhotoEntry[] = [
   P("여행 단체 2",                3, `${S}/031.jpeg`, D.trip, e(3)),
   P("여행 단체 3",                3, `${S}/032.jpeg`, D.trip, e(4)),
   P("여행 단체 4",                3, `${S}/033.jpeg`, D.trip, e(5)),
-  P("결혼식 공연 1",              3, `${S}/034.jpeg`, D.trip, e(6)),
-  P("결혼식 공연 2",              3, `${S}/035.jpeg`, D.trip, e(7)),
-  P("결혼식 공연 3",              3, `${S}/036.jpeg`, D.trip, e(8)),
-  P("결혼식 공연 4",              3, `${S}/037.jpeg`, D.trip, e(9)),
+  P("★ 결혼식 공연 1",             3, `${S}/034.jpeg`, D.trip2, e(6)),
+  P("결혼식 공연 2",              3, `${S}/035.jpeg`, D.trip2, e(7)),
+  P("결혼식 공연 3",              3, `${S}/036.jpeg`, D.trip2, e(8)),
+  P("결혼식 공연 4",              3, `${S}/037.jpeg`, D.trip2, e(9)),
   P("갤러리 전시 1",              3, `${S}/038.jpeg`, D.date, "zoomIn"),
   P("갤러리 전시 2",              3, `${S}/039.jpeg`, D.date, "zoomOut"),
   P("갤러리 전시 3",              3, `${S}/040.jpeg`, D.date, "panRight"),
@@ -341,7 +359,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut"),
   P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn"),
   P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut"),
-  P("마지막",                     5, `${S}/060.jpg`, D.last, "zoomIn"),
+  P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn"),
 ];
 
 const defaultActTitles: Record<number, ActTitle> = {
@@ -361,11 +379,14 @@ export const defaultConfig: VideoConfig = {
     brideName: "신부 ○○",
     message: "와주셔서 감사합니다",
   },
-  titleCardSec: 3.2,
-  endingSec: 6.5,
-  crossfadeSec: 0.5,
+  titleCardSec: 4.0,   // slightly longer for breathing
+  endingSec: 10.0,     // longer emotional close
+  crossfadeSec: 0.6,
   fps: 30,
   overlay: "none",
   particles: "none",
   frame: "none",
+  backgroundStyle: "paper",  // NEW — cream paper (vintage journal feel)
+  kenBurnsAmount: 0.04,      // NEW — half of previous 0.08 (calmer)
+  titleVariant: "journal",   // NEW — elegant journal style for all acts
 };
