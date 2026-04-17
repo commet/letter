@@ -12,6 +12,9 @@ import {
   OverlayType,
   ParticleType,
   FrameType,
+  SplitStyle,
+  TitleVariant,
+  BackgroundStyle,
   CaptionConfig,
   SpotlightConfig,
   defaultConfig,
@@ -72,6 +75,20 @@ const FRAMES: { value: FrameType; label: string }[] = [
   { value: "film-strip", label: "필름 스트립" },
   { value: "rounded", label: "라운드" },
   { value: "classic", label: "클래식 (골드)" },
+];
+const SPLIT_STYLES: { value: SplitStyle; label: string }[] = [
+  { value: "standard", label: "기본 (50/50 분할)" },
+  { value: "polaroid", label: "폴라로이드 페어 (기울어진)" },
+  { value: "cameo", label: "카메오 (원형 초상)" },
+];
+const TITLE_VARIANTS: { value: TitleVariant; label: string }[] = [
+  { value: "standard", label: "어두운 배경 (골드)" },
+  { value: "journal", label: "저널 (크림 종이)" },
+];
+const BACKGROUND_STYLES: { value: BackgroundStyle; label: string }[] = [
+  { value: "paper", label: "크림 종이 (빈티지)" },
+  { value: "blur", label: "사진 블러 (사진을 흐리게)" },
+  { value: "black", label: "검정" },
 ];
 
 // ─── Image Editor Modal ──────────────────────
@@ -258,6 +275,7 @@ const ImageEditorModal: React.FC<{
 // ─── App ─────────────────────────────────────
 
 export const App: React.FC = () => {
+  // ── All state declarations FIRST ────────────
   const [config, setConfig] = useState<VideoConfig>(defaultConfig);
   const [openActs, setOpenActs] = useState<Set<number>>(new Set());
   const [openEnding, setOpenEnding] = useState(false);
@@ -265,8 +283,25 @@ export const App: React.FC = () => {
   const [panelTab, setPanelTab] = useState<"edit" | "assets">("edit");
   const [assetTarget, setAssetTarget] = useState<"global" | "current">("current");
   const [currentFrame, setCurrentFrame] = useState(0);
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("theme") as "dark" | "light") ?? "dark";
+  });
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
+  const [loading, setLoading] = useState(true);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const playerRef = useRef<PlayerRef>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipFirstSave = useRef(true);
 
-  // Track current frame via polling (more reliable than event listener)
+  // ── Derived values ──────────────────────────
+  const currentPhotoIdx = getPhotoIndexAtFrame(currentFrame, config);
+  const currentPhoto = currentPhotoIdx !== null ? config.photos[currentPhotoIdx] : null;
+  const totalFrames = computeTotalFrames(config);
+  const totalSec = totalFrames / config.fps;
+
+  // ── Effects ─────────────────────────────────
   useEffect(() => {
     if (loading) return;
     const id = setInterval(() => {
@@ -278,27 +313,10 @@ export const App: React.FC = () => {
     return () => clearInterval(id);
   }, [loading]);
 
-  const currentPhotoIdx = getPhotoIndexAtFrame(currentFrame, config);
-  const currentPhoto = currentPhotoIdx !== null ? config.photos[currentPhotoIdx] : null;
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    if (typeof window === "undefined") return "dark";
-    return (localStorage.getItem("theme") as "dark" | "light") ?? "dark";
-  });
-
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
-  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
-  const [loading, setLoading] = useState(true);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const playerRef = useRef<PlayerRef>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipFirstSave = useRef(true);
-
-  const totalFrames = computeTotalFrames(config);
-  const totalSec = totalFrames / config.fps;
 
   // ── Load from Supabase on mount ─────────────
   useEffect(() => {
@@ -532,6 +550,33 @@ export const App: React.FC = () => {
           {panelTab === "assets" && (
             <div className="assets-panel">
               {/* Target selector */}
+              {/* Global video style settings */}
+              <div className="asset-group">
+                <h4 className="asset-group-title">영상 전체 스타일</h4>
+                <div className="field-row" style={{ flexDirection: "column", gap: 8 }}>
+                  <label className="field">
+                    <span className="field-label">배경 스타일</span>
+                    <select className="select" value={config.backgroundStyle}
+                      onChange={(e) => setConfig((c) => ({ ...c, backgroundStyle: e.target.value as BackgroundStyle }))}>
+                      {BACKGROUND_STYLES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span className="field-label">타이틀 카드 스타일 (기본)</span>
+                    <select className="select" value={config.titleVariant}
+                      onChange={(e) => setConfig((c) => ({ ...c, titleVariant: e.target.value as TitleVariant }))}>
+                      {TITLE_VARIANTS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="slider-label" style={{ width: "100%" }}>
+                    <span>Ken Burns 세기: {(config.kenBurnsAmount * 100).toFixed(0)}%</span>
+                    <input type="range" className="slider" min={0} max={0.12} step={0.01}
+                      value={config.kenBurnsAmount}
+                      onChange={(e) => setConfig((c) => ({ ...c, kenBurnsAmount: parseFloat(e.target.value) }))} />
+                  </label>
+                </div>
+              </div>
+
               <div className="asset-group asset-target-group">
                 <h4 className="asset-group-title">적용 대상</h4>
                 <div className="target-tabs">
@@ -713,6 +758,14 @@ export const App: React.FC = () => {
                         <input className="input" value={title?.kr ?? ""} onChange={(e) => updateTitle(act, { kr: e.target.value })} />
                       </label>
                     </div>
+                    <label className="field">
+                      <span className="field-label">타이틀 스타일 (이 Act만)</span>
+                      <select className="select" value={title?.variant ?? ""}
+                        onChange={(e) => updateTitle(act, { variant: e.target.value ? e.target.value as TitleVariant : undefined })}>
+                        <option value="">전체 설정 따름</option>
+                        {TITLE_VARIANTS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+                      </select>
+                    </label>
 
                     <button className="btn btn-upload" onClick={() => handlePhotoUpload(act)}>
                       + 사진 추가
@@ -775,6 +828,15 @@ export const App: React.FC = () => {
                               {FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
                             </select>
                           </div>
+                          {photo.splitPair && (
+                            <div className="photo-controls">
+                              <select className="select" title="좌우 분할 스타일"
+                                value={photo.splitStyle ?? "standard"}
+                                onChange={(e) => updatePhoto(idx, { splitStyle: e.target.value as SplitStyle })}>
+                                {SPLIT_STYLES.map((s) => <option key={s.value} value={s.value}>페어: {s.label}</option>)}
+                              </select>
+                            </div>
+                          )}
                           <div className="caption-row">
                             {photo.caption ? (
                               <>
@@ -831,7 +893,11 @@ export const App: React.FC = () => {
             className={`filmstrip-item ${currentPhotoIdx === i ? "filmstrip-item--active" : ""}`}
             onClick={() => {
               const frame = getPhotoStartFrame(i, config);
-              playerRef.current?.seekTo(frame);
+              const p = playerRef.current;
+              if (p) {
+                p.pause();
+                p.seekTo(frame);
+              }
             }}
             title={p.tag}
           >
