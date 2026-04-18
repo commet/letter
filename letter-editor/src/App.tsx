@@ -887,6 +887,26 @@ export const App: React.FC = () => {
                                 onChange={(e) => updatePhoto(idx, { splitStyle: e.target.value as SplitStyle })}>
                                 {SPLIT_STYLES.map((s) => <option key={s.value} value={s.value}>페어: {s.label}</option>)}
                               </select>
+                              {(photo.splitStyle === "polaroid" || photo.splitStyle === "cameo") && (
+                                <>
+                                  <input
+                                    className="input input-sm"
+                                    placeholder="왼쪽 라벨"
+                                    value={photo.splitLabel ?? ""}
+                                    onChange={(e) => updatePhoto(idx, { splitLabel: e.target.value })}
+                                    title="폴라로이드/카메오 왼쪽 사진 하단 텍스트 (빈 칸이면 태그 첫 단어 사용)"
+                                  />
+                                  {config.photos[idx + 1] && (
+                                    <input
+                                      className="input input-sm"
+                                      placeholder="오른쪽 라벨"
+                                      value={config.photos[idx + 1].splitLabel ?? ""}
+                                      onChange={(e) => updatePhoto(idx + 1, { splitLabel: e.target.value })}
+                                      title="오른쪽 사진 하단 텍스트"
+                                    />
+                                  )}
+                                </>
+                              )}
                             </div>
                           )}
                           <div className="caption-row">
