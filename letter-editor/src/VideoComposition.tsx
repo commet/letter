@@ -491,6 +491,112 @@ const MomentCardScene: React.FC<{
 };
 
 // ─────────────────────────────────────────────
+// Year Marker Scene (Claude Design P1-2 Variant A — Serene breath)
+// ─────────────────────────────────────────────
+
+const YearMarkerScene: React.FC<{
+  year: string;
+  location: string;
+  dur: number;
+  overlayType: OverlayType;
+  particlesType: ParticleType;
+}> = ({ year, location, dur, overlayType, particlesType }) => {
+  const frame = useCurrentFrame();
+  const fps = 30;
+
+  // Total ~3s. Based on Claude Design v2 "serene" variant:
+  // 0.0s card fades in
+  // 0.3s "anno" italic pre-label appears
+  // 0.6s year appears
+  // 0.9-2.1s letter-spacing expands 0→12px
+  // 2.1s rule draws in
+  // 2.3s location label fades in
+  // (dur-0.5)s → dur : fade out
+
+  const cardFadeIn  = interpolate(frame, [0, 0.3 * fps], [0, 1], { extrapolateRight: "clamp" });
+  const cardFadeOut = interpolate(frame, [dur - 0.5 * fps, dur], [1, 0], { extrapolateLeft: "clamp" });
+  const cardOpacity = Math.min(cardFadeIn, cardFadeOut);
+
+  const preLabelOp  = interpolate(frame, [0.3 * fps, 0.7 * fps], [0, 0.75], { extrapolateRight: "clamp" });
+  const yearOp      = interpolate(frame, [0.6 * fps, 1.0 * fps], [0, 1], { extrapolateRight: "clamp" });
+  const yearLetter  = interpolate(frame, [0.9 * fps, 2.1 * fps], [0, 12], { extrapolateRight: "clamp" });
+  const ruleScale   = interpolate(frame, [2.1 * fps, 2.5 * fps], [0, 1], { extrapolateRight: "clamp" });
+  const locationOp  = interpolate(frame, [2.3 * fps, 2.7 * fps], [0, 0.85], { extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ opacity: cardOpacity }}>
+      {/* Cream paper + hanji grain */}
+      <AbsoluteFill style={{
+        background: "radial-gradient(1500px 900px at 50% 50%, #faf2dc, #f5ecd7 55%, #eaddbe 100%)",
+      }} />
+      <AbsoluteFill style={{
+        opacity: 0.55,
+        mixBlendMode: "multiply",
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+        backgroundSize: "400px 400px",
+      }} />
+
+      <AbsoluteFill style={{
+        display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column",
+      }}>
+        {/* "anno" italic pre-label */}
+        <div style={{
+          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
+          fontWeight: 400,
+          fontStyle: "italic",
+          fontSize: 28,
+          color: INK_SOFT,
+          letterSpacing: "0.3em",
+          marginBottom: 28,
+          opacity: preLabelOp,
+          textTransform: "lowercase",
+        }}>
+          anno
+        </div>
+
+        {/* Year — big serif */}
+        <div style={{
+          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
+          fontWeight: 400,
+          fontSize: 240,
+          lineHeight: 1,
+          color: INK,
+          letterSpacing: `${yearLetter}px`,
+          opacity: yearOp,
+        }}>
+          {year}
+        </div>
+
+        {/* Thin ink rule */}
+        <div style={{
+          marginTop: 40,
+          width: 1.5,
+          height: 80,
+          background: INK,
+          opacity: 0.8,
+          transform: `scaleY(${ruleScale})`,
+          transformOrigin: "top",
+        }} />
+
+        {/* Location subtitle */}
+        <div style={{
+          marginTop: 30,
+          fontFamily: SERIF_KR,
+          fontSize: 30,
+          color: INK_SOFT,
+          letterSpacing: "0.42em",
+          opacity: locationOp,
+        }}>
+          {location}
+        </div>
+      </AbsoluteFill>
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Photo Scene
 // ─────────────────────────────────────────────
 
@@ -597,11 +703,15 @@ const SplitScene: React.FC<{
   const opacity = Math.min(fadeIn, fadeOut);
   const t = Math.min(1, frame / dur);
 
-  // ─── Polaroid variant: two tilted polaroids on cream paper ───
+  // ─── Polaroid variant: two tilted polaroids with real paper texture + washi tape ───
   if (style === "polaroid") {
     const scale = 1 + 0.02 * t;
+    // Use Claude Design P0-3 real polaroid paper texture
     const polaroidBase: React.CSSProperties = {
-      background: "white",
+      backgroundColor: "white",
+      backgroundImage: "url('/assets/polaroid/polaroid-paper.png')",
+      backgroundSize: "100% 100%",
+      backgroundRepeat: "no-repeat",
       padding: "20px 20px 70px 20px",
       boxShadow: "0 20px 60px rgba(60,40,15,0.4), 0 4px 12px rgba(60,40,15,0.25)",
       width: "44%",
@@ -616,6 +726,24 @@ const SplitScene: React.FC<{
       alignItems: "center",
       justifyContent: "center",
     };
+    // Deterministic washi tape selection per photo based on tag
+    const tapes = [
+      "washi-kraft-brown", "washi-dotted-cream", "washi-pressed-flower",
+      "washi-gold-foil", "washi-aged-white", "washi-mint-green",
+      "washi-striped-ivory-gold", "washi-tracing-translucent",
+    ];
+    const pick = (s: string) => tapes[s.charCodeAt(0) % tapes.length];
+    const leftTape = pick(left.tag);
+    const rightTape = pick(right.tag);
+    const tapeStyle = (src: string, angle: number, offset: number): React.CSSProperties => ({
+      position: "absolute",
+      top: -18,
+      left: `${offset}%`,
+      width: "32%",
+      transform: `rotate(${angle}deg)`,
+      pointerEvents: "none",
+      zIndex: 2,
+    });
     const captionStyle: React.CSSProperties = {
       position: "absolute", bottom: 18, left: 0, right: 0,
       textAlign: "center",
@@ -633,6 +761,7 @@ const SplitScene: React.FC<{
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "relative", width: "92%", height: "88%" }}>
             <div style={{ ...polaroidBase, left: "3%", top: "4%", transform: `rotate(-3deg) scale(${scale})`, transformOrigin: "center" }}>
+              <Img src={`/assets/polaroid/${leftTape}.png`} style={tapeStyle(leftTape, -4, 30)} />
               <div style={imgFrameStyle}>
                 <Img src={srcOf(left)} style={{
                   maxWidth: "100%", maxHeight: "100%",
@@ -643,6 +772,7 @@ const SplitScene: React.FC<{
               <div style={captionStyle}>{leftLabel}</div>
             </div>
             <div style={{ ...polaroidBase, right: "3%", top: "8%", transform: `rotate(2.5deg) scale(${scale})`, transformOrigin: "center" }}>
+              <Img src={`/assets/polaroid/${rightTape}.png`} style={tapeStyle(rightTape, 3, 35)} />
               <div style={imgFrameStyle}>
                 <Img src={srcOf(right)} style={{
                   maxWidth: "100%", maxHeight: "100%",
@@ -757,39 +887,142 @@ const EndingScene: React.FC<{
   const fadeOut = interpolate(frame, [dur - 36, dur], [1, 0], { extrapolateLeft: "clamp" });
   const opacity = Math.min(fadeIn, fadeOut);
 
-  const onPaper = bg === "paper";
-  const dateColor = onPaper ? INK_SOFT : GOLD;
-  const nameColor = onPaper ? INK : "white";
-  const msgColor = onPaper ? "rgba(58,42,24,0.7)" : "rgba(255,255,255,0.78)";
-  const ruleColor = onPaper ? GOLD_SOFT : GOLD;
+  // Calligraphy-style ending (Claude Design P1-1).
+  // Per-character wipe reveal with staggered delays.
+  // Timing (seconds, at 30fps):
+  //   0.50s → 1st bride char
+  //   1.10s → 2nd bride char
+  //   1.70s → 3rd bride char
+  //   2.60s → heart
+  //   3.20s → 1st groom char
+  //   3.80s → 2nd groom char
+  //   4.40s → 3rd groom char
+  //   4.70s → date caption
+  //   6.00s → message (new addition)
+
+  const WIPE_DUR = 13; // ~0.42s
+  const charReveal = (startFrame: number) =>
+    interpolate(frame, [startFrame, startFrame + WIPE_DUR], [100, 0], {
+      extrapolateLeft: "clamp", extrapolateRight: "clamp",
+    });
+  const fadeAt = (s: number, f = 1) =>
+    interpolate(frame, [s * 30, s * 30 + 30], [0, f], { extrapolateRight: "clamp" });
+
+  const brideChars = Array.from(ending.brideName);
+  const groomChars = Array.from(ending.groomName);
+
+  // Heart pop (scale + opacity)
+  const heartStart = 2.6 * 30;
+  const heartT = interpolate(frame, [heartStart, heartStart + 14], [0, 1], { extrapolateRight: "clamp" });
+  const heartScale = interpolate(heartT, [0, 0.6, 1], [0.6, 1.15, 1]);
+  const heartOpacity = interpolate(heartT, [0, 0.6, 1], [0, 1, 1]);
+
+  const onPaper = bg !== "black";
 
   return (
-    <AbsoluteFill style={{ opacity, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 36 }}>
-      {onPaper ? <PaperBackground /> : <AbsoluteFill style={{ backgroundColor: BG_DARK }} />}
-      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 36 }}>
+    <AbsoluteFill style={{ opacity }}>
+      {/* Cream paper + hanji grain (Claude Design calligraphy bg) */}
+      {onPaper ? (
+        <>
+          <AbsoluteFill style={{
+            background: "radial-gradient(1500px 900px at 50% 50%, #faf2dc, #f5ecd7 55%, #eaddbe 100%)",
+          }} />
+          <AbsoluteFill style={{
+            opacity: 0.55,
+            mixBlendMode: "multiply",
+            backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='9'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+            backgroundSize: "400px 400px",
+          }} />
+        </>
+      ) : (
+        <AbsoluteFill style={{ backgroundColor: BG_DARK }} />
+      )}
+
+      {/* Centered names row with heart between */}
+      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 120 }}>
+        {/* Bride name */}
         <div style={{
-          color: dateColor, fontFamily: SERIF, fontSize: 30, letterSpacing: 12, fontWeight: 300,
-          opacity: interpolate(frame, [12, 42], [0, 1], { extrapolateRight: "clamp" }),
+          fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
+          fontSize: 240,
+          color: onPaper ? INK : "white",
+          lineHeight: 1,
+          display: "flex",
+          textShadow: "0 0 0.5px rgba(26, 21, 16, 0.3)",
         }}>
-          {ending.date}
+          {brideChars.map((c, i) => {
+            const startFrame = Math.round((0.50 + i * 0.60) * 30);
+            const clipRight = charReveal(startFrame);
+            return (
+              <span key={i} style={{
+                display: "inline-block",
+                clipPath: `inset(0 ${clipRight}% 0 0)`,
+                WebkitClipPath: `inset(0 ${clipRight}% 0 0)`,
+              }}>{c}</span>
+            );
+          })}
         </div>
+
+        {/* Heart */}
         <div style={{
-          width: 96, height: 1, background: ruleColor,
-          opacity: interpolate(frame, [34, 64], [0, 0.7], { extrapolateRight: "clamp" }),
-        }} />
+          fontSize: 120,
+          color: "#8a4a3a",
+          lineHeight: 1,
+          opacity: heartOpacity,
+          transform: `scale(${heartScale})`,
+        }}>♥</div>
+
+        {/* Groom name */}
         <div style={{
-          color: nameColor, fontFamily: SERIF_KR, fontSize: 60, fontWeight: 400, letterSpacing: 8,
-          opacity: interpolate(frame, [56, 96], [0, 1], { extrapolateRight: "clamp" }),
+          fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
+          fontSize: 240,
+          color: onPaper ? INK : "white",
+          lineHeight: 1,
+          display: "flex",
+          textShadow: "0 0 0.5px rgba(26, 21, 16, 0.3)",
         }}>
-          {ending.groomName} &nbsp;·&nbsp; {ending.brideName}
-        </div>
-        <div style={{
-          color: msgColor, fontFamily: SERIF_KR, fontSize: 28, letterSpacing: 6, marginTop: 16,
-          opacity: interpolate(frame, [108, 148], [0, 1], { extrapolateRight: "clamp" }),
-        }}>
-          {ending.message}
+          {groomChars.map((c, i) => {
+            const startFrame = Math.round((3.20 + i * 0.60) * 30);
+            const clipRight = charReveal(startFrame);
+            return (
+              <span key={i} style={{
+                display: "inline-block",
+                clipPath: `inset(0 ${clipRight}% 0 0)`,
+                WebkitClipPath: `inset(0 ${clipRight}% 0 0)`,
+              }}>{c}</span>
+            );
+          })}
         </div>
       </AbsoluteFill>
+
+      {/* Date caption, bottom center */}
+      <div style={{
+        position: "absolute",
+        left: 0, right: 0, bottom: 140,
+        textAlign: "center",
+        fontFamily: SERIF,
+        fontWeight: 300,
+        fontSize: 34,
+        letterSpacing: "0.42em",
+        color: onPaper ? INK : "white",
+        opacity: Math.min(fadeAt(4.7, 0.85), fadeOut),
+      }}>
+        {ending.date}
+      </div>
+
+      {/* Thank-you message */}
+      <div style={{
+        position: "absolute",
+        left: 0, right: 0, bottom: 70,
+        textAlign: "center",
+        fontFamily: SERIF_KR,
+        fontSize: 26,
+        letterSpacing: 6,
+        color: onPaper ? "rgba(58,42,24,0.65)" : "rgba(255,255,255,0.7)",
+        opacity: Math.min(fadeAt(6.0), fadeOut),
+      }}>
+        {ending.message}
+      </div>
+
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
     </AbsoluteFill>
@@ -807,8 +1040,8 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
   const ef = Math.round(endingSec * fps);
 
   const timeline: TimelineItem[] = useMemo(
-    () => buildTimeline(photos, tcf, ef, fps, config.moments ?? []),
-    [photos, tcf, ef, fps, config.moments]
+    () => buildTimeline(photos, tcf, ef, fps, config.moments ?? [], config.yearMarkers ?? []),
+    [photos, tcf, ef, fps, config.moments, config.yearMarkers]
   );
 
   let cursor = 0;
@@ -865,6 +1098,15 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
                 l1={item.card.l1}
                 l2={item.card.l2}
                 year={item.card.year}
+                dur={item.durationInFrames}
+                overlayType={config.overlay}
+                particlesType={config.particles}
+              />
+            )}
+            {item.kind === "yearMarker" && (
+              <YearMarkerScene
+                year={item.marker.year}
+                location={item.marker.location}
                 dur={item.durationInFrames}
                 overlayType={config.overlay}
                 particlesType={config.particles}
