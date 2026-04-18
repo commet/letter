@@ -23,6 +23,7 @@ import {
   getPhotoStartFrame,
 } from "./data";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
+import { ERA_ICONS, ERA_ICON_LABELS } from "./eraIcons";
 
 // Resolve photo src: full URL (supabase) or local path
 const photoSrc = (file: string) => file.startsWith("http") ? file : `/${file}`;
@@ -557,6 +558,84 @@ export const App: React.FC = () => {
     }));
   };
 
+  // ── Journey map ──────────────────────────────
+
+  const addJourneyMapAfter = (photoIdx: number) => {
+    const newMap = {
+      id: `jm${Date.now()}`,
+      afterPhotoIndex: photoIdx,
+      title: "Our Journey",
+      subtitle: "성모병원 · 분당 · 붉은 광장 · 서울 · 뉴욕",
+      caption: "",
+      durationSec: 8.0,
+    };
+    setConfig((c) => ({ ...c, journeyMaps: [...(c.journeyMaps ?? []), newMap] }));
+  };
+  const updateJourneyMap = (id: string, patch: Partial<{ title: string; subtitle: string; caption: string; durationSec: number }>) => {
+    setConfig((c) => ({
+      ...c,
+      journeyMaps: (c.journeyMaps ?? []).map((m) => m.id === id ? { ...m, ...patch } : m),
+    }));
+  };
+  const deleteJourneyMap = (id: string) => {
+    setConfig((c) => ({ ...c, journeyMaps: (c.journeyMaps ?? []).filter((m) => m.id !== id) }));
+  };
+
+  // ── Letter interlude ─────────────────────────
+
+  const addLetterAfter = (photoIdx: number) => {
+    const newLetter = {
+      id: `li${Date.now()}`,
+      afterPhotoIndex: photoIdx,
+      date: "2020년 봄",
+      l1: "그날의 햇살",
+      l2: "우리가 처음 만난 그날",
+      durationSec: 8.0,
+    };
+    setConfig((c) => ({ ...c, letterInterludes: [...(c.letterInterludes ?? []), newLetter] }));
+  };
+  const updateLetter = (id: string, patch: Partial<{ date: string; l1: string; l2: string; durationSec: number }>) => {
+    setConfig((c) => ({
+      ...c,
+      letterInterludes: (c.letterInterludes ?? []).map((l) => l.id === id ? { ...l, ...patch } : l),
+    }));
+  };
+  const deleteLetter = (id: string) => {
+    setConfig((c) => ({ ...c, letterInterludes: (c.letterInterludes ?? []).filter((l) => l.id !== id) }));
+  };
+
+  // ── Collage ──────────────────────────────────
+
+  const addCollageAfter = (photoIdx: number) => {
+    // Pre-populate with 7 empty slots; user fills in with existing photo URLs
+    const newCollage = {
+      id: `col${Date.now()}`,
+      afterPhotoIndex: photoIdx,
+      slots: Array.from({ length: 7 }, () => ({ file: "", caption: "" })),
+      durationSec: 6.0,
+    };
+    setConfig((c) => ({ ...c, collages: [...(c.collages ?? []), newCollage] }));
+  };
+  const updateCollageSlot = (id: string, slotIdx: number, patch: Partial<{ file: string; caption: string }>) => {
+    setConfig((c) => ({
+      ...c,
+      collages: (c.collages ?? []).map((col) =>
+        col.id === id
+          ? { ...col, slots: col.slots.map((s, i) => i === slotIdx ? { ...s, ...patch } : s) }
+          : col
+      ),
+    }));
+  };
+  const updateCollage = (id: string, patch: Partial<{ durationSec: number }>) => {
+    setConfig((c) => ({
+      ...c,
+      collages: (c.collages ?? []).map((col) => col.id === id ? { ...col, ...patch } : col),
+    }));
+  };
+  const deleteCollage = (id: string) => {
+    setConfig((c) => ({ ...c, collages: (c.collages ?? []).filter((col) => col.id !== id) }));
+  };
+
   // ── AI prompt edit ──────────────────────────
 
   const handleAiEdit = async () => {
@@ -1021,23 +1100,88 @@ export const App: React.FC = () => {
                               </div>
                             </div>
                           ))}
-                          <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
-                            <button
-                              className="btn btn-xs btn-moment-add"
-                              onClick={() => addMomentAfter(idx)}
-                              title="이 사진 다음에 '이때' 모먼트 카드 삽입"
+                          {/* Journey map editor */}
+                          {(config.journeyMaps ?? []).filter((m) => m.afterPhotoIndex === idx).map((m) => (
+                            <div key={m.id} className="moment-editor" style={{ borderColor: "#5a7a8a" }}>
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label" style={{ color: "#6a8aa0" }}>여정 지도 (다음 사진 직전)</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteJourneyMap(m.id)}>&#10005;</button>
+                              </div>
+                              <input className="input input-sm" placeholder="상단 영문 제목" value={m.title ?? ""}
+                                onChange={(e) => updateJourneyMap(m.id, { title: e.target.value })} />
+                              <input className="input input-sm" placeholder="한글 부제" value={m.subtitle ?? ""}
+                                onChange={(e) => updateJourneyMap(m.id, { subtitle: e.target.value })} />
+                              <input className="input input-sm" placeholder="하단 캡션 (이탤릭)" value={m.caption ?? ""}
+                                onChange={(e) => updateJourneyMap(m.id, { caption: e.target.value })} />
+                            </div>
+                          ))}
+                          {/* Letter interlude editor */}
+                          {(config.letterInterludes ?? []).filter((l) => l.afterPhotoIndex === idx).map((l) => (
+                            <div key={l.id} className="moment-editor" style={{ borderColor: "#7a5a3a" }}>
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label" style={{ color: "#b08a5a" }}>편지 인터루드 (다음 사진 직전)</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteLetter(l.id)}>&#10005;</button>
+                              </div>
+                              <input className="input input-sm" placeholder="날짜 (예: 2019년 겨울)" value={l.date}
+                                onChange={(e) => updateLetter(l.id, { date: e.target.value })} />
+                              <input className="input input-sm" placeholder="1행" value={l.l1}
+                                onChange={(e) => updateLetter(l.id, { l1: e.target.value })} />
+                              <input className="input input-sm" placeholder="2행" value={l.l2}
+                                onChange={(e) => updateLetter(l.id, { l2: e.target.value })} />
+                            </div>
+                          ))}
+                          {/* Collage editor */}
+                          {(config.collages ?? []).filter((c) => c.afterPhotoIndex === idx).map((col) => (
+                            <div key={col.id} className="moment-editor" style={{ borderColor: "#7a3a5a" }}>
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label" style={{ color: "#b05a80" }}>폴라로이드 콜라주 ({col.slots.length}장)</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteCollage(col.id)}>&#10005;</button>
+                              </div>
+                              {col.slots.map((slot, si) => (
+                                <div key={si} style={{ display: "flex", gap: 4 }}>
+                                  <input className="input input-sm" placeholder={`사진 ${si+1} URL`} value={slot.file}
+                                    onChange={(e) => updateCollageSlot(col.id, si, { file: e.target.value })}
+                                    style={{ flex: 3 }} />
+                                  <input className="input input-sm" placeholder="캡션" value={slot.caption ?? ""}
+                                    onChange={(e) => updateCollageSlot(col.id, si, { caption: e.target.value })}
+                                    style={{ flex: 2 }} />
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <input className="input input-sm" type="number" step="0.5" min="3" max="12"
+                                  value={col.durationSec ?? 6.0}
+                                  onChange={(e) => updateCollage(col.id, { durationSec: parseFloat(e.target.value) })}
+                                  style={{ flex: 1 }} title="지속(초)" />
+                              </div>
+                            </div>
+                          ))}
+                          {/* Era icon selector for THIS photo */}
+                          <div style={{ marginTop: 8, display: "flex", gap: 4, alignItems: "center" }}>
+                            <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 60 }}>시대 심볼</span>
+                            <select className="select select-sm" value={photo.eraIcon ?? ""}
+                              onChange={(e) => updatePhoto(idx, { eraIcon: e.target.value || undefined })}
+                              style={{ flex: 2 }}>
+                              <option value="">없음</option>
+                              {Object.keys(ERA_ICONS).map((k) => (
+                                <option key={k} value={k}>{ERA_ICON_LABELS[k] ?? k}</option>
+                              ))}
+                            </select>
+                            <select className="select select-sm" value={photo.eraIconPosition ?? "tr"}
+                              onChange={(e) => updatePhoto(idx, { eraIconPosition: e.target.value as "tl" | "tr" | "bl" | "br" })}
                               style={{ flex: 1 }}
-                            >
-                              + 모먼트
-                            </button>
-                            <button
-                              className="btn btn-xs btn-moment-add"
-                              onClick={() => addYearMarkerAfter(idx)}
-                              title="이 사진 다음에 연도 마커 삽입"
-                              style={{ flex: 1 }}
-                            >
-                              + 연도 마커
-                            </button>
+                              disabled={!photo.eraIcon}>
+                              <option value="tl">↖</option>
+                              <option value="tr">↗</option>
+                              <option value="bl">↙</option>
+                              <option value="br">↘</option>
+                            </select>
+                          </div>
+                          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+                            <button className="btn btn-xs btn-moment-add" onClick={() => addMomentAfter(idx)} title="이 사진 다음에 '이때' 모먼트 카드 삽입" style={{ flex: 1, minWidth: 80 }}>+ 모먼트</button>
+                            <button className="btn btn-xs btn-moment-add" onClick={() => addYearMarkerAfter(idx)} title="연도 마커 삽입" style={{ flex: 1, minWidth: 80 }}>+ 연도</button>
+                            <button className="btn btn-xs btn-moment-add" onClick={() => addJourneyMapAfter(idx)} title="여정 지도 삽입" style={{ flex: 1, minWidth: 80 }}>+ 지도</button>
+                            <button className="btn btn-xs btn-moment-add" onClick={() => addLetterAfter(idx)} title="편지 인터루드 삽입" style={{ flex: 1, minWidth: 80 }}>+ 편지</button>
+                            <button className="btn btn-xs btn-moment-add" onClick={() => addCollageAfter(idx)} title="폴라로이드 콜라주 삽입" style={{ flex: 1, minWidth: 80 }}>+ 콜라주</button>
                           </div>
                         </div>
                       </div>

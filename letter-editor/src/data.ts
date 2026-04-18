@@ -60,6 +60,9 @@ export type PhotoEntry = {
   splitPair?: boolean; // true = this photo + next photo form a split screen
   splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
   splitLabel?: string; // custom label under polaroid/cameo (fallback: tag first word)
+  eraIcon?: string; // key from ERA_ICONS (Claude Design P2-3) — small corner decoration
+  eraIconPosition?: "tl" | "tr" | "bl" | "br"; // default: tr
+  ornament?: string; // key from BOTANICAL_LIBRARY (Claude Design P1-3) — decorative overlay
   // Per-photo asset overrides (undefined = use global config)
   frameOverride?: FrameType;
   overlayOverride?: OverlayType;
@@ -105,6 +108,38 @@ export type YearMarker = {
   durationSec?: number;    // default 3.0
 };
 
+// P2-2 Journey Map interstitial
+export type JourneyMap = {
+  id: string;
+  afterPhotoIndex: number;
+  title?: string;          // English italic top banner, default "Our Journey"
+  subtitle?: string;       // Korean subtitle under title
+  caption?: string;        // bottom caption
+  durationSec?: number;    // default 8.0
+};
+
+// P2-4 Letter interlude
+export type LetterInterlude = {
+  id: string;
+  afterPhotoIndex: number;
+  date: string;            // e.g., "2015년 봄"
+  l1: string;              // handwritten line 1 (large)
+  l2: string;              // handwritten line 2 (larger)
+  durationSec?: number;    // default 8.0
+};
+
+// P2-5 Polaroid Collage (7 photo slots on kraft paper)
+export type CollageSlot = {
+  file: string;            // photo URL
+  caption?: string;        // handwritten label
+};
+export type Collage = {
+  id: string;
+  afterPhotoIndex: number;
+  slots: CollageSlot[];    // up to 7 entries
+  durationSec?: number;    // default 6.0
+};
+
 export type VideoConfig = {
   photos: PhotoEntry[];
   actTitles: Record<number, ActTitle>;
@@ -123,6 +158,9 @@ export type VideoConfig = {
   titleVariant: TitleVariant;
   moments?: MomentCard[]; // "이때" interstitial cards inserted between photos
   yearMarkers?: YearMarker[]; // year / location title interstitials
+  journeyMaps?: JourneyMap[]; // animated journey map scenes
+  letterInterludes?: LetterInterlude[]; // handwritten letter scenes
+  collages?: Collage[]; // 7-polaroid scrapbook scenes
 };
 
 // ─────────────────────────────────────────────
@@ -137,6 +175,9 @@ export type TimelineItem =
   | { kind: "split"; left: PhotoEntry; right: PhotoEntry; durationInFrames: number; mergeOut: boolean; name: string }
   | { kind: "moment"; card: MomentCard; durationInFrames: number; name: string }
   | { kind: "yearMarker"; marker: YearMarker; durationInFrames: number; name: string }
+  | { kind: "journeyMap"; map: JourneyMap; durationInFrames: number; name: string }
+  | { kind: "letter"; letter: LetterInterlude; durationInFrames: number; name: string }
+  | { kind: "collage"; collage: Collage; durationInFrames: number; name: string }
   | { kind: "ending"; durationInFrames: number; name: string };
 
 export function buildTimeline(
@@ -145,7 +186,10 @@ export function buildTimeline(
   endingFrames: number,
   fps: number,
   moments: MomentCard[] = [],
-  yearMarkers: YearMarker[] = []
+  yearMarkers: YearMarker[] = [],
+  journeyMaps: JourneyMap[] = [],
+  letterInterludes: LetterInterlude[] = [],
+  collages: Collage[] = []
 ): TimelineItem[] {
   const items: TimelineItem[] = [];
   const seenActs = new Set<number>();
@@ -164,6 +208,27 @@ export function buildTimeline(
     const key = y.afterPhotoIndex + 1;
     if (!yearsBefore.has(key)) yearsBefore.set(key, []);
     yearsBefore.get(key)!.push(y);
+  }
+
+  const mapsBefore = new Map<number, JourneyMap[]>();
+  for (const m of journeyMaps) {
+    const key = m.afterPhotoIndex + 1;
+    if (!mapsBefore.has(key)) mapsBefore.set(key, []);
+    mapsBefore.get(key)!.push(m);
+  }
+
+  const lettersBefore = new Map<number, LetterInterlude[]>();
+  for (const l of letterInterludes) {
+    const key = l.afterPhotoIndex + 1;
+    if (!lettersBefore.has(key)) lettersBefore.set(key, []);
+    lettersBefore.get(key)!.push(l);
+  }
+
+  const collagesBefore = new Map<number, Collage[]>();
+  for (const c of collages) {
+    const key = c.afterPhotoIndex + 1;
+    if (!collagesBefore.has(key)) collagesBefore.set(key, []);
+    collagesBefore.get(key)!.push(c);
   }
 
   let i = 0;
@@ -200,6 +265,42 @@ export function buildTimeline(
           card,
           durationInFrames: Math.round((card.durationSec ?? 2.0) * fps),
           name: `Moment — ${card.l1} / ${card.l2}`,
+        });
+      }
+    }
+    // Journey maps
+    const mapsHere = mapsBefore.get(i);
+    if (mapsHere) {
+      for (const m of mapsHere) {
+        items.push({
+          kind: "journeyMap",
+          map: m,
+          durationInFrames: Math.round((m.durationSec ?? 8.0) * fps),
+          name: `Map — ${m.title ?? "Journey"}`,
+        });
+      }
+    }
+    // Letter interludes
+    const lettersHere = lettersBefore.get(i);
+    if (lettersHere) {
+      for (const l of lettersHere) {
+        items.push({
+          kind: "letter",
+          letter: l,
+          durationInFrames: Math.round((l.durationSec ?? 8.0) * fps),
+          name: `Letter — ${l.l1}`,
+        });
+      }
+    }
+    // Collages
+    const collagesHere = collagesBefore.get(i);
+    if (collagesHere) {
+      for (const c of collagesHere) {
+        items.push({
+          kind: "collage",
+          collage: c,
+          durationInFrames: Math.round((c.durationSec ?? 6.0) * fps),
+          name: `Collage — ${c.slots.length} photos`,
         });
       }
     }
@@ -357,25 +458,25 @@ const defaultPhotos: PhotoEntry[] = [
   // Split pairs: 슬기(좌) / 예찬(우). 경복궁은 demote — 진짜 리빌은 Act II 분당선교원.
   P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo" }),
   P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn"),
-  P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid" }),
-  P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut"),
-  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid" }),
-  P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn"),
-  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid" }),
-  P("예찬 장난기",                1, `${S}/008.jpg`, D.split, "panRight"),
-  P("슬기 부엌",                  1, `${S}/009.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid" }),
-  P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut"),
-  P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid" }),
-  P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn"),
+  P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "birthday-cake" }),
+  P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut", { eraIcon: "birthday-cake" }),
+  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "teddy-bear" }),
+  P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn",  { eraIcon: "teddy-bear" }),
+  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid", eraIcon: "rocking-horse" }),
+  P("예찬 장난기",                1, `${S}/008.jpg`, D.split, "panRight", { eraIcon: "rocking-horse" }),
+  P("슬기 부엌",                  1, `${S}/009.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "school-backpack" }),
+  P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut", { eraIcon: "school-backpack" }),
+  P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
+  P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn",  { eraIcon: "crayon" }),
   P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn"),
 
   // ── Act II: 같은 곳에서, 함께 (13장) ──────────────────
   // ★ 분당선교원: 진짜 리빌 — 두 사람이 같은 공동체에 있었다 (스포트라이트 필수)
-  P("★ 분당선교원 (같은 공동체)",   2, `${S}/014.jpeg`, D.growStar, "zoomIn"),
-  P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn"),
-  P("★ 붉은악마 단체",             2, `${S}/016.jpeg`, D.growStar, "zoomIn"),
-  P("슬기 붉은악마",              2, `${S}/017.jpeg`, D.grow, e(3), { splitPair: true, splitStyle: "polaroid" }),
-  P("예찬 붉은악마",              2, `${S}/018.jpeg`, D.grow, e(3)),
+  P("★ 분당선교원 (같은 공동체)",   2, `${S}/014.jpeg`, D.growStar, "zoomIn",  { eraIcon: "church-steeple" }),
+  P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn",  { eraIcon: "hymn-book" }),
+  P("★ 붉은악마 단체",             2, `${S}/016.jpeg`, D.growStar, "zoomIn",  { eraIcon: "red-devils" }),
+  P("슬기 붉은악마",              2, `${S}/017.jpeg`, D.grow, e(3), { splitPair: true, splitStyle: "polaroid", eraIcon: "soccer-ball" }),
+  P("예찬 붉은악마",              2, `${S}/018.jpeg`, D.grow, e(3), { eraIcon: "soccer-ball" }),
   P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4)),
   P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5)),
   P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, e(6)),
@@ -393,26 +494,26 @@ const defaultPhotos: PhotoEntry[] = [
   P("여행 단체 2",                3, `${S}/031.jpeg`, D.trip, e(3)),
   P("여행 단체 3",                3, `${S}/032.jpeg`, D.trip, e(4)),
   P("여행 단체 4",                3, `${S}/033.jpeg`, D.trip, e(5)),
-  P("★ 결혼식 공연 1",             3, `${S}/034.jpeg`, D.trip2, e(6)),
-  P("결혼식 공연 2",              3, `${S}/035.jpeg`, D.trip2, e(7)),
-  P("결혼식 공연 3",              3, `${S}/036.jpeg`, D.trip2, e(8)),
-  P("결혼식 공연 4",              3, `${S}/037.jpeg`, D.trip2, e(9)),
-  P("갤러리 전시 1",              3, `${S}/038.jpeg`, D.date, "zoomIn"),
-  P("갤러리 전시 2",              3, `${S}/039.jpeg`, D.date, "zoomOut"),
-  P("갤러리 전시 3",              3, `${S}/040.jpeg`, D.date, "panRight"),
-  P("갤러리 전시 4",              3, `${S}/041.jpeg`, D.date, "zoomIn"),
-  P("뉴욕 1",                     3, `${S}/042.png`,  D.date, "zoomIn"),
-  P("뉴욕 2",                     3, `${S}/043.png`,  D.date, "panLeft"),
-  P("뉴욕 3",                     3, `${S}/044.jpg`,  D.date, "zoomOut"),
-  P("뉴욕 4",                     3, `${S}/045.png`,  D.date, "zoomIn"),
+  P("★ 결혼식 공연 1",             3, `${S}/034.jpeg`, D.trip2, e(6), { eraIcon: "concert-ticket" }),
+  P("결혼식 공연 2",              3, `${S}/035.jpeg`, D.trip2, e(7), { eraIcon: "concert-ticket" }),
+  P("결혼식 공연 3",              3, `${S}/036.jpeg`, D.trip2, e(8), { eraIcon: "concert-ticket" }),
+  P("결혼식 공연 4",              3, `${S}/037.jpeg`, D.trip2, e(9), { eraIcon: "concert-ticket" }),
+  P("갤러리 전시 1",              3, `${S}/038.jpeg`, D.date, "zoomIn",  { eraIcon: "gallery-frame" }),
+  P("갤러리 전시 2",              3, `${S}/039.jpeg`, D.date, "zoomOut", { eraIcon: "gallery-frame" }),
+  P("갤러리 전시 3",              3, `${S}/040.jpeg`, D.date, "panRight", { eraIcon: "gallery-frame" }),
+  P("갤러리 전시 4",              3, `${S}/041.jpeg`, D.date, "zoomIn",  { eraIcon: "gallery-frame" }),
+  P("뉴욕 1",                     3, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
+  P("뉴욕 2",                     3, `${S}/043.png`,  D.date, "panLeft", { eraIcon: "nyc-skyline" }),
+  P("뉴욕 3",                     3, `${S}/044.jpg`,  D.date, "zoomOut", { eraIcon: "nyc-skyline" }),
+  P("뉴욕 4",                     3, `${S}/045.png`,  D.date, "zoomIn",  { eraIcon: "subway-map" }),
 
   // ── Act IV: 함께 걸어온 시간 (6장: 군입대+졸업) ────────
-  P("예찬 군입대",                4, `${S}/046.jpg`,  D.mile, "zoomIn"),
-  P("예찬 군입대 2",              4, `${S}/047.png`,  D.mile, "zoomOut"),
-  P("예찬 군입대 3",              4, `${S}/048.jpeg`, D.mile, "panRight"),
-  P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn"),
-  P("슬기 졸업",                  4, `${S}/050.jpeg`, D.mile, "zoomIn"),
-  P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut"),
+  P("예찬 군입대",                4, `${S}/046.jpg`,  D.mile, "zoomIn",  { eraIcon: "military-hat" }),
+  P("예찬 군입대 2",              4, `${S}/047.png`,  D.mile, "zoomOut", { eraIcon: "military-hat" }),
+  P("예찬 군입대 3",              4, `${S}/048.jpeg`, D.mile, "panRight", { eraIcon: "letter" }),
+  P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn",  { eraIcon: "letter" }),
+  P("슬기 졸업",                  4, `${S}/050.jpeg`, D.mile, "zoomIn",  { eraIcon: "grad-cap" }),
+  P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut", { eraIcon: "diploma" }),
 
   // ── Act V: 그리고, 오늘 (9장: 두 사람+마지막) ─────────
   P("두 사람 1",                  5, `${S}/052.jpg`, D.us, "zoomIn"),
@@ -423,7 +524,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut"),
   P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn"),
   P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut"),
-  P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn"),
+  P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn", { eraIcon: "linked-rings" }),
 ];
 
 const defaultActTitles: Record<number, ActTitle> = {
@@ -457,8 +558,24 @@ export const defaultConfig: VideoConfig = {
     { id: "m1", afterPhotoIndex: 12, l1: "그해 여름", l2: "우리는 같은 교회에 있었다", year: "2010", durationSec: 2.0 },
     { id: "m2", afterPhotoIndex: 14, l1: "2002년, 붉은 광장에서", l2: "우리는 같은 팀이었다", year: "2002", durationSec: 2.0 },
   ],
-  yearMarkers: [             // NEW — 연도 타임스탬프 카드 (P1-2)
-    // 여행/뉴욕 사진 직전 — Act III 후반 시작점
-    { id: "y1", afterPhotoIndex: 41, year: "2020", location: "뉴욕", durationSec: 3.0 },
+  yearMarkers: [             // P1-2: 시간 전환 지점
+    { id: "y1", afterPhotoIndex: 26, year: "2013", location: "분당", durationSec: 3.0 }, // Act III 시작 직전
   ],
+  journeyMaps: [             // P2-2: 장소 이동 시각화 — 뉴욕 직전에 한 번 펼침
+    { id: "jm1", afterPhotoIndex: 40,
+      title: "Our Journey",
+      subtitle: "성모병원 · 분당 · 붉은 광장 · 서울 · 뉴욕",
+      caption: "we went far, and still arrived at each other",
+      durationSec: 8.0,
+    },
+  ],
+  letterInterludes: [        // P2-4: 편지 인터루드 — 군입대 중 긴 겨울
+    { id: "li1", afterPhotoIndex: 47,
+      date: "2019년 겨울",
+      l1: "편지와 기다림",
+      l2: "그리고 긴 겨울",
+      durationSec: 8.0,
+    },
+  ],
+  collages: [],              // P2-5: 기본 0개. 에디터에서 원하는 사진 골라 구성
 };
