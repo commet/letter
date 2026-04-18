@@ -21,9 +21,13 @@ import {
   SplitStyle,
   TitleVariant,
   BackgroundStyle,
+  JourneyMap as JourneyMapConfig,
+  LetterInterlude as LetterInterludeConfig,
+  Collage as CollageConfig,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
+import { ERA_ICONS } from "./eraIcons";
 
 // ─────────────────────────────────────────────
 // Shared
@@ -597,6 +601,356 @@ const YearMarkerScene: React.FC<{
 };
 
 // ─────────────────────────────────────────────
+// Journey Map Scene (Claude Design P2-2)
+// ─────────────────────────────────────────────
+
+const JourneyMapScene: React.FC<{
+  config: JourneyMapConfig;
+  dur: number;
+  overlayType: OverlayType;
+  particlesType: ParticleType;
+}> = ({ config, dur, overlayType, particlesType }) => {
+  const frame = useCurrentFrame();
+  const fps = 30;
+
+  // Same 5 locations / segments as Claude Design asset.
+  const LOCATIONS = [
+    { cx: 330,  cy: 430, label: "성모병원", year: "1985", anchor: "start",  ly: -38, lx: -18 },
+    { cx: 560,  cy: 700, label: "분당",     year: "1996", anchor: "middle", ly:  66, lx:  0  },
+    { cx: 820,  cy: 450, label: "붉은 광장", year: "2002", anchor: "middle", ly: 64,  lx:  0  },
+    { cx: 1050, cy: 300, label: "서울",     year: "2015", anchor: "start",  ly: -28, lx: 22  },
+    { cx: 1640, cy: 580, label: "뉴욕",     year: "2020", anchor: "end",    ly:  66, lx: 8   },
+  ];
+  const SEGMENTS = [
+    "M 330 430 C 420 500, 500 620, 560 700",
+    "M 560 700 C 640 620, 720 480, 820 450",
+    "M 820 450 C 900 360, 980 300, 1050 300",
+    "M 1050 300 C 1220 240, 1380 500, 1640 580",
+  ];
+  const FULL = SEGMENTS.join(" ").replace(/M /g, "L ").replace(/^L /, "M ");
+
+  // Normalize time t: 0 → 1 over full duration
+  const t = Math.max(0, Math.min(1, frame / dur));
+
+  // Timing aligned to 8s original:
+  const titleOp = interpolate(t, [0.03, 0.10, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  const subOp   = interpolate(t, [0.06, 0.14, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
+  const capOp   = interpolate(t, [0.70, 0.78, 0.95, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
+
+  // Segment dash draw: start times 0.10/0.30/0.50/0.60, each ~0.18 to draw
+  const segProgress = (start: number, len = 0.18) =>
+    interpolate(t, [start, start + len], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  // Location reveal windows
+  const locOp = (start: number) =>
+    interpolate(t, [start, start + 0.04, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+
+  // Plane progress along path: 0 at t=0.175, 1 at t=0.875
+  const planeT = Math.max(0, Math.min(1, (t - 0.175) / (0.875 - 0.175)));
+  const planeIdx = Math.floor(planeT * SEGMENTS.length * 0.999);
+  const segT = (planeT * SEGMENTS.length) - planeIdx;
+  // Approximate linear interp along segment endpoints for plane position
+  const segStarts = [[330,430],[560,700],[820,450],[1050,300]];
+  const segEnds   = [[560,700],[820,450],[1050,300],[1640,580]];
+  const safeIdx = Math.max(0, Math.min(3, planeIdx));
+  const px = segStarts[safeIdx][0] + (segEnds[safeIdx][0] - segStarts[safeIdx][0]) * segT;
+  const py = segStarts[safeIdx][1] + (segEnds[safeIdx][1] - segStarts[safeIdx][1]) * segT;
+  const planeVis = interpolate(t, [0.10, 0.14, 0.85, 0.92], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  // Plane direction — angle from velocity
+  const nextX = segStarts[safeIdx][0] + (segEnds[safeIdx][0] - segStarts[safeIdx][0]) * Math.min(1, segT + 0.02);
+  const nextY = segStarts[safeIdx][1] + (segEnds[safeIdx][1] - segStarts[safeIdx][1]) * Math.min(1, segT + 0.02);
+  const angle = Math.atan2(nextY - py, nextX - px) * 180 / Math.PI;
+
+  return (
+    <AbsoluteFill>
+      {/* Cream paper */}
+      <AbsoluteFill style={{ background: "radial-gradient(1400px 900px at 50% 50%, #faf2dc, #f5ecd7 55%, #eaddbe 100%)" }} />
+      <AbsoluteFill style={{
+        opacity: 0.45, mixBlendMode: "multiply",
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+      }} />
+
+      {/* Top banner */}
+      <div style={{
+        position: "absolute", top: 64, left: 0, right: 0, textAlign: "center",
+        fontFamily: "'EB Garamond', serif", fontStyle: "italic", fontWeight: 400,
+        fontSize: 38, letterSpacing: "0.22em", color: "#3a2f22",
+        textTransform: "uppercase", opacity: titleOp,
+      }}>{config.title ?? "Our Journey"}</div>
+      <div style={{
+        position: "absolute", top: 120, left: 0, right: 0, textAlign: "center",
+        fontFamily: SERIF_KR, fontSize: 26, color: INK, letterSpacing: "0.2em",
+        opacity: subOp,
+      }}>{config.subtitle ?? "성모병원 · 분당 · 붉은 광장 · 서울 · 뉴욕"}</div>
+
+      {/* Map SVG */}
+      <svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        {/* Compass */}
+        <g transform="translate(1780, 140)" stroke={INK} fill="none" strokeWidth={1.4} opacity={0.5}>
+          <circle r={34} />
+          <path d="M 0 -28 L 4 -4 L 0 0 L -4 -4 Z" fill={INK} stroke="none" />
+          <path d="M 0 28 L 4 4 L 0 0 L -4 4 Z" />
+          <path d="M 28 0 L 4 -4 L 0 0 L 4 4 Z" />
+          <path d="M -28 0 L -4 -4 L 0 0 L -4 4 Z" />
+          <text x={0} y={-44} fontFamily="EB Garamond" fontStyle="italic" fontSize={14} textAnchor="middle" fill="#3a2f22" stroke="none" opacity={0.8}>N</text>
+        </g>
+
+        {/* Dotted path segments */}
+        {SEGMENTS.map((d, i) => {
+          const startT = [0.10, 0.30, 0.50, 0.60][i];
+          const dashOffset = segProgress(startT) * 1200;
+          const segOpacity = interpolate(t, [startT - 0.02, startT + 0.02, 0.92, 1.0], [0, 0.9, 0.9, 0], { extrapolateRight: "clamp" });
+          return (
+            <path key={i} d={d} fill="none" stroke={INK} strokeWidth={2.5}
+              strokeDasharray="6 10" strokeLinecap="round"
+              style={{ strokeDashoffset: dashOffset, opacity: segOpacity }} />
+          );
+        })}
+
+        {/* Location dots + labels */}
+        {LOCATIONS.map((L, i) => {
+          const startT = [0.22, 0.38, 0.54, 0.66, 0.87][i];
+          const op = locOp(startT);
+          return (
+            <g key={i} style={{ opacity: op }}>
+              <circle cx={L.cx} cy={L.cy} r={18} fill={INK} opacity={0.12} />
+              <circle cx={L.cx} cy={L.cy} r={9} stroke={INK} fill="none" strokeWidth={2} />
+              <circle cx={L.cx} cy={L.cy} r={6} fill={INK} />
+              <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
+                fontFamily="'Nanum Pen Script', cursive" fontSize={44} fill={INK}>{L.label}</text>
+              <text x={L.cx + L.lx} y={L.cy + L.ly + 24} textAnchor={L.anchor as "start" | "middle" | "end"}
+                fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={22} fill="#3a2f22">{L.year}</text>
+            </g>
+          );
+        })}
+
+        {/* Plane */}
+        {planeVis > 0 && (
+          <g transform={`translate(${px}, ${py}) rotate(${angle})`} opacity={planeVis}>
+            <g transform="translate(-22,-16)">
+              <path d="M 0 16 L 30 10 L 44 14 L 30 18 Z" fill={INK} />
+              <path d="M 18 16 L 12 4 L 24 6 L 22 16 Z" fill={INK} />
+              <path d="M 18 16 L 12 28 L 24 26 L 22 16 Z" fill={INK} />
+              <path d="M 2 16 L -4 10 L 2 14 Z" fill={INK} />
+              <path d="M 2 16 L -4 22 L 2 18 Z" fill={INK} />
+            </g>
+          </g>
+        )}
+      </svg>
+
+      {/* Bottom caption */}
+      {config.caption && (
+        <div style={{
+          position: "absolute", bottom: 64, left: 0, right: 0, textAlign: "center",
+          fontFamily: "'EB Garamond', serif", fontStyle: "italic", fontSize: 22,
+          letterSpacing: "0.1em", color: "#3a2f22", opacity: capOp,
+        }}>{config.caption}</div>
+      )}
+
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
+// Letter Interlude Scene (Claude Design P2-4)
+// ─────────────────────────────────────────────
+
+const LetterInterludeScene: React.FC<{
+  config: LetterInterludeConfig;
+  dur: number;
+  overlayType: OverlayType;
+  particlesType: ParticleType;
+}> = ({ config, dur, overlayType, particlesType }) => {
+  const frame = useCurrentFrame();
+  const t = Math.max(0, Math.min(1, frame / dur));
+
+  // Paper fade-in: 0% → 12% in, 92% → 100% out (8s timing normalized)
+  const paperOp = interpolate(t, [0, 0.12, 0.92, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  const curlOp = interpolate(t, [0.10, 0.16, 0.92, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  const dateOp = interpolate(t, [0.06, 0.10, 0.92, 1], [0, 0.9, 0.9, 0], { extrapolateRight: "clamp" });
+
+  // Line 1 typing: 10% → 24% (stepped)
+  const l1Chars = Array.from(config.l1);
+  const l1Progress = interpolate(t, [0.10, 0.24], [0, l1Chars.length], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const l1Visible = Math.floor(l1Progress);
+
+  // Line 2 typing: 30% → 72%
+  const l2Chars = Array.from(config.l2);
+  const l2Progress = interpolate(t, [0.30, 0.72], [0, l2Chars.length], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const l2Visible = Math.floor(l2Progress);
+
+  // Cursor blink: only during typing pause after l2 (72-90%)
+  const cursorOn = t > 0.72 && t < 0.90 && Math.floor(frame / 10) % 2 === 0;
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#2a2420" }}>
+      {/* Paper */}
+      <div style={{
+        position: "absolute",
+        left: 120, top: 100, right: 120, bottom: 100,
+        background: "radial-gradient(1200px 700px at 40% 30%, #fbf4dc, #ecdfc0 70%, #d9c89f 100%)",
+        boxShadow: "0 30px 60px rgba(20,14,4,0.45), 0 10px 24px rgba(20,14,4,0.25)",
+        opacity: paperOp,
+        transform: `translateY(${paperOp < 1 ? 8 - paperOp * 8 : 0}px) rotate(-0.6deg)`,
+      }}>
+        {/* Paper rule lines */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          backgroundImage: "repeating-linear-gradient(180deg, transparent 0, transparent 59px, rgba(26,21,16,0.08) 59px, rgba(26,21,16,0.08) 60px)",
+        }} />
+        {/* Corner curl */}
+        <div style={{
+          position: "absolute", top: -6, right: -6,
+          width: 92, height: 92,
+          background: "linear-gradient(225deg, #f1e5c4 0%, #e3d4ab 60%, #cdb887 100%)",
+          clipPath: "polygon(100% 0, 100% 100%, 0 0)",
+          transform: "rotate(3deg)",
+          boxShadow: "-4px 4px 10px rgba(0,0,0,0.18)",
+          opacity: curlOp,
+        }} />
+        {/* Letter body */}
+        <div style={{ position: "absolute", left: 90, top: 170, right: 90, color: INK }}>
+          <div style={{
+            fontFamily: "'EB Garamond', serif", fontStyle: "italic",
+            fontSize: 26, letterSpacing: "0.1em", color: "#3a2f22",
+            opacity: dateOp, marginBottom: 8,
+          }}>{config.date}</div>
+          <div style={{
+            fontFamily: "'Nanum Pen Script', cursive", color: INK,
+            fontSize: 78, lineHeight: 1.05, marginTop: 12,
+          }}>
+            {l1Chars.slice(0, l1Visible).join("")}
+          </div>
+          <div style={{
+            fontFamily: "'Nanum Pen Script', cursive", color: INK,
+            fontSize: 72, lineHeight: 1.15, marginTop: 36,
+          }}>
+            {l2Chars.slice(0, l2Visible).join("")}
+            {cursorOn && <span style={{ display: "inline-block", width: 3, height: 70, background: INK, verticalAlign: "top", marginLeft: 6 }} />}
+          </div>
+        </div>
+      </div>
+
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
+// Polaroid Collage Scene (Claude Design P2-5)
+// ─────────────────────────────────────────────
+
+const CollageScene: React.FC<{
+  config: CollageConfig;
+  dur: number;
+  overlayType: OverlayType;
+  particlesType: ParticleType;
+}> = ({ config, dur, overlayType, particlesType }) => {
+  const frame = useCurrentFrame();
+  const t = Math.max(0, Math.min(1, frame / dur));
+
+  const LAYOUTS = [
+    { left: 140,  top: 90,   w: 360, h: 380, rot: -6, tapeCorner: "top-30",     tapeColor: "#d9a8a0" },
+    { left: 620,  top: 70,   w: 400, h: 420, rot:  4, tapeCorner: "top-right",  tapeColor: "#a8c9d4" },
+    { left: 1180, top: 100,  w: 380, h: 400, rot: -8, tapeCorner: "top-left",   tapeColor: "#d4b870" },
+    { left: 80,   top: 500,  w: 360, h: 380, rot:  3, tapeCorner: "top-40",     tapeColor: "#a8b898" },
+    { left: 700,  top: 500,  w: 480, h: 500, rot: -2, tapeCorner: "top-left",   tapeColor: "#e8d9b8" },
+    { left: 260,  top: 820,  w: 320, h: 340, rot:  7, tapeCorner: "top-right",  tapeColor: "#b8a8c9" },
+    { left: 1300, top: 540,  w: 400, h: 420, rot: -5, tapeCorner: "top-25",     tapeColor: "#d89a7a" },
+  ];
+
+  // Drop-in timing (from original 4s drop, staggered 0.2s)
+  // Normalize: each polaroid starts at (i * 0.05) t and drops over 0.5 t
+  const polaOpacity = (i: number) => {
+    const start = i * 0.05;
+    return interpolate(t, [start, start + 0.1, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  };
+  const polaDropY = (i: number) => {
+    const start = i * 0.05;
+    return interpolate(t, [start, start + 0.2], [-60, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  };
+
+  return (
+    <AbsoluteFill>
+      {/* Kraft paper page */}
+      <AbsoluteFill style={{ background: "radial-gradient(1600px 900px at 50% 45%, #d4be92 0%, #bca072 60%, #9a8252 100%)" }} />
+      <AbsoluteFill style={{
+        opacity: 0.6, mixBlendMode: "multiply",
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='n'><feTurbulence baseFrequency='0.65' numOctaves='3' seed='11'/><feColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.1 0 0 0 0 0.05 0 0 0 0.18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+      }} />
+      <AbsoluteFill style={{
+        backgroundImage: "repeating-linear-gradient(95deg, transparent 0, transparent 3px, rgba(80,60,30,0.06) 3px, rgba(80,60,30,0.06) 4px)",
+      }} />
+
+      {/* Polaroids */}
+      {LAYOUTS.map((L, i) => {
+        const slot = config.slots[i];
+        const photoH = L.h - 90; // account for padding 20 + 72 caption area
+        const tapePos: React.CSSProperties =
+          L.tapeCorner === "top-right"  ? { top: -10, right: 20,        transform: "rotate(20deg)" } :
+          L.tapeCorner === "top-left"   ? { top: -10, left: -10,        transform: "rotate(-30deg)" } :
+          L.tapeCorner === "top-25"     ? { top: -10, left: "25%",      transform: "rotate(-4deg)" } :
+          L.tapeCorner === "top-30"     ? { top: -10, left: "30%",      transform: "rotate(-8deg)" } :
+          /* top-40 */                   { top: -10, left: "40%",       transform: "rotate(5deg)" };
+        return (
+          <div key={i} style={{
+            position: "absolute",
+            left: L.left, top: L.top,
+            width: L.w, height: L.h,
+            background: "#fbf4dc",
+            padding: "20px 20px 72px",
+            boxShadow: "0 20px 40px rgba(20,14,4,0.35), 0 6px 12px rgba(20,14,4,0.22)",
+            transform: `rotate(${L.rot}deg) translateY(${polaDropY(i)}px)`,
+            transformOrigin: "center center",
+            opacity: polaOpacity(i),
+            zIndex: i === 4 ? 3 : 1, // center largest on top
+          }}>
+            {/* Tape */}
+            <div style={{
+              position: "absolute",
+              width: 110, height: 28,
+              opacity: 0.85,
+              mixBlendMode: "multiply",
+              backgroundColor: L.tapeColor,
+              backgroundImage: "repeating-linear-gradient(90deg, transparent 0, transparent 6px, rgba(255,255,255,0.15) 6px, rgba(255,255,255,0.15) 7px), linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.25), rgba(255,255,255,0))",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+              ...tapePos,
+            }} />
+            {/* Photo */}
+            <div style={{
+              width: "100%", height: photoH,
+              background: slot?.file ? "#eee" : "linear-gradient(160deg, #c4b494 0%, #8a7a5a 100%)",
+              backgroundSize: "cover", backgroundPosition: "center",
+              overflow: "hidden", position: "relative",
+            }}>
+              {slot?.file && (
+                <Img src={slot.file.startsWith("http") ? slot.file : `/${slot.file}`}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              )}
+            </div>
+            {/* Caption */}
+            {slot?.caption && (
+              <div style={{
+                position: "absolute", left: 20, right: 20, bottom: 18,
+                textAlign: "center",
+                fontFamily: "'Nanum Pen Script', cursive",
+                color: INK, fontSize: 26,
+              }}>{slot.caption}</div>
+            )}
+          </div>
+        );
+      })}
+
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Photo Scene
 // ─────────────────────────────────────────────
 
@@ -679,7 +1033,36 @@ const PhotoScene: React.FC<{
       {photo.caption?.text && (
         <CaptionOverlay text={photo.caption.text} position={photo.caption.position} dur={dur} />
       )}
+      {photo.eraIcon && ERA_ICONS[photo.eraIcon] && (
+        <EraIconCorner iconKey={photo.eraIcon} position={photo.eraIconPosition ?? "tr"} dur={dur} bg={bg} />
+      )}
     </AbsoluteFill>
+  );
+};
+
+// ─── Era Icon Corner (small P2-3 symbol fixed at photo corner) ───
+const EraIconCorner: React.FC<{
+  iconKey: string;
+  position: "tl" | "tr" | "bl" | "br";
+  dur: number;
+  bg: BackgroundStyle;
+}> = ({ iconKey, position, dur, bg }) => {
+  const frame = useCurrentFrame();
+  const fadeIn = interpolate(frame, [16, 40], [0, 0.6], { extrapolateRight: "clamp" });
+  const fadeOut = interpolate(frame, [dur - 30, dur - 6], [0.6, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const opacity = Math.min(fadeIn, fadeOut);
+  const IconComp = ERA_ICONS[iconKey];
+  if (!IconComp) return null;
+  const color = bg === "black" ? "rgba(232, 208, 155, 0.85)" : "rgba(26, 21, 16, 0.85)";
+  const padStyle: React.CSSProperties =
+    position === "tl" ? { top: 56, left: 56 } :
+    position === "tr" ? { top: 56, right: 56 } :
+    position === "bl" ? { bottom: 56, left: 56 } :
+    { bottom: 56, right: 56 };
+  return (
+    <div style={{ position: "absolute", ...padStyle, pointerEvents: "none", opacity, zIndex: 30 }}>
+      <IconComp color={color} size={78} />
+    </div>
   );
 };
 
@@ -1040,8 +1423,15 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
   const ef = Math.round(endingSec * fps);
 
   const timeline: TimelineItem[] = useMemo(
-    () => buildTimeline(photos, tcf, ef, fps, config.moments ?? [], config.yearMarkers ?? []),
-    [photos, tcf, ef, fps, config.moments, config.yearMarkers]
+    () => buildTimeline(
+      photos, tcf, ef, fps,
+      config.moments ?? [],
+      config.yearMarkers ?? [],
+      config.journeyMaps ?? [],
+      config.letterInterludes ?? [],
+      config.collages ?? [],
+    ),
+    [photos, tcf, ef, fps, config.moments, config.yearMarkers, config.journeyMaps, config.letterInterludes, config.collages]
   );
 
   let cursor = 0;
@@ -1107,6 +1497,30 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
               <YearMarkerScene
                 year={item.marker.year}
                 location={item.marker.location}
+                dur={item.durationInFrames}
+                overlayType={config.overlay}
+                particlesType={config.particles}
+              />
+            )}
+            {item.kind === "journeyMap" && (
+              <JourneyMapScene
+                config={item.map}
+                dur={item.durationInFrames}
+                overlayType={config.overlay}
+                particlesType={config.particles}
+              />
+            )}
+            {item.kind === "letter" && (
+              <LetterInterludeScene
+                config={item.letter}
+                dur={item.durationInFrames}
+                overlayType={config.overlay}
+                particlesType={config.particles}
+              />
+            )}
+            {item.kind === "collage" && (
+              <CollageScene
+                config={item.collage}
                 dur={item.durationInFrames}
                 overlayType={config.overlay}
                 particlesType={config.particles}
