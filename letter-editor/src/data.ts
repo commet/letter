@@ -73,6 +73,7 @@ export type ActTitle = {
   chapter: string;
   kr: string;
   variant?: TitleVariant; // overrides global titleVariant
+  year?: string;          // small italic date line under the chapter (e.g., "1988 · 1993")
 };
 
 export type EndingConfig = {
@@ -557,17 +558,18 @@ const defaultPhotos: PhotoEntry[] = [
   P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn"),
   P("두 사람 5",                  5, `${S}/056.jpg`, D.us, "panLeft", { eraIcon: "bouquet" }),
   P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut"),
-  P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn"),
-  P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut"),
+  // 크레센도 — 마지막 3장 점진적으로 길어짐 (3.8s → 4.4s → 5.0s → 8.0s)
+  P("두 사람 7",                  5, `${S}/058.jpg`, 4.4, "zoomIn"),
+  P("두 사람 8",                  5, `${S}/059.jpg`, 5.0, "zoomOut"),
   P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn", { eraIcon: "linked-rings" }),
 ];
 
 const defaultActTitles: Record<number, ActTitle> = {
-  1: { chapter: "Act I",  kr: "그때의 우리" },
-  2: { chapter: "Act II", kr: "같은 마당" },
-  3: { chapter: "Act III", kr: "함께 걸은 봄" },
-  4: { chapter: "Act IV", kr: "바다를 사이에 두고" },
-  5: { chapter: "Act V · 2026", kr: "그리고, 오늘" },
+  1: { chapter: "Act I",   kr: "그때의 우리",          year: "1988 · 1993" },
+  2: { chapter: "Act II",  kr: "같은 마당",            year: "1994 — " },
+  3: { chapter: "Act III", kr: "함께 걸은 봄",         year: "2008 — 2015" },
+  4: { chapter: "Act IV",  kr: "바다를 사이에 두고",   year: "2016 — 2025" },
+  5: { chapter: "Act V",   kr: "그리고, 오늘",         year: "2026" },
 };
 
 export const defaultConfig: VideoConfig = {
@@ -580,7 +582,7 @@ export const defaultConfig: VideoConfig = {
     message: "와주셔서 감사합니다",
   },
   titleCardSec: 4.0,   // slightly longer for breathing
-  endingSec: 10.0,     // longer emotional close
+  endingSec: 13.0,     // extended for held silence + botanical sprig + message breath
   crossfadeSec: 0.6,
   fps: 30,
   overlay: "none",
