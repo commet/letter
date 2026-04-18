@@ -71,16 +71,39 @@ const kenBurns = (effect: Effect, t: number, fx = 0.5, fy = 0.5, zoomAmount = 0.
 // Paper background (cream with subtle grain)
 // ─────────────────────────────────────────────
 
-const PaperBackground: React.FC = () => (
-  <AbsoluteFill style={{ background: `radial-gradient(ellipse at center, ${PAPER} 0%, ${PAPER_DARK} 100%)` }}>
-    <AbsoluteFill style={{
-      opacity: 0.12,
-      mixBlendMode: "multiply",
-      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-      backgroundSize: "400px 400px",
-    }} />
-  </AbsoluteFill>
-);
+// Paper with optional seed variation so each scene has subtly unique grain.
+// Also includes a very faint corner stain (rotates per seed) for handmade feel.
+const PaperBackground: React.FC<{ seed?: number }> = ({ seed = 2 }) => {
+  const s = Math.abs(seed) % 20;
+  const freq = 0.82 + (s % 4) * 0.02; // 0.82 - 0.88
+  // Corner stain position rotates through 4 corners based on seed
+  const stainCorner = s % 4; // 0: TL, 1: TR, 2: BL, 3: BR
+  const stainPos =
+    stainCorner === 0 ? { top: "8%",    left: "6%"    } :
+    stainCorner === 1 ? { top: "10%",   right: "8%"   } :
+    stainCorner === 2 ? { bottom: "12%", left: "9%"   } :
+                        { bottom: "7%",  right: "11%" };
+  return (
+    <AbsoluteFill style={{ background: `radial-gradient(ellipse at center, ${PAPER} 0%, ${PAPER_DARK} 100%)` }}>
+      <AbsoluteFill style={{
+        opacity: 0.12,
+        mixBlendMode: "multiply",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='${freq}' numOctaves='2' seed='${s}' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        backgroundSize: "400px 400px",
+      }} />
+      {/* Very faint tea/ink stain in rotated corner — handmade feel */}
+      <div style={{
+        position: "absolute", ...stainPos,
+        width: 260, height: 220,
+        background: "radial-gradient(ellipse, rgba(120,85,40,0.10) 0%, rgba(120,85,40,0.04) 40%, transparent 70%)",
+        transform: `rotate(${(s * 17) % 360}deg)`,
+        pointerEvents: "none",
+        mixBlendMode: "multiply",
+        opacity: 0.5,
+      }} />
+    </AbsoluteFill>
+  );
+};
 
 const BlurBackground: React.FC<{ src: string; extraFilter?: string }> = ({ src, extraFilter }) => (
   <AbsoluteFill>
@@ -92,8 +115,15 @@ const BlurBackground: React.FC<{ src: string; extraFilter?: string }> = ({ src, 
   </AbsoluteFill>
 );
 
-const BackgroundFor: React.FC<{ bg: BackgroundStyle; src?: string; extraFilter?: string }> = ({ bg, src, extraFilter }) => {
-  if (bg === "paper") return <PaperBackground />;
+// Simple string hash → number for deterministic seed (sum of char codes).
+const hashSeed = (s: string): number => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffff;
+  return h;
+};
+
+const BackgroundFor: React.FC<{ bg: BackgroundStyle; src?: string; extraFilter?: string; seed?: number }> = ({ bg, src, extraFilter, seed }) => {
+  if (bg === "paper") return <PaperBackground seed={seed} />;
   if (bg === "black") return <AbsoluteFill style={{ background: BG_DARK }} />;
   return src ? <BlurBackground src={src} extraFilter={extraFilter} /> : <AbsoluteFill style={{ background: BG_DARK }} />;
 };
@@ -266,14 +296,16 @@ const CaptionOverlay: React.FC<{
   dur: number;
 }> = ({ text, position, dur }) => {
   const frame = useCurrentFrame();
-  const fadeIn = interpolate(frame, [8, 28], [0, 1], { extrapolateRight: "clamp" });
-  const fadeOut = interpolate(frame, [dur - 20, dur], [1, 0], { extrapolateLeft: "clamp" });
+  const fadeIn = interpolate(frame, [8, 30], [0, 1], { extrapolateRight: "clamp" });
+  const fadeOut = interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" });
   const opacity = Math.min(fadeIn, fadeOut);
+  // Subtle vertical drift for elegance
+  const translateY = interpolate(frame, [8, 30], [6, 0], { extrapolateRight: "clamp" });
 
   const posStyle: React.CSSProperties =
-    position === "top" ? { top: 60 } :
-    position === "center" ? { top: "50%", transform: "translateY(-50%)" } :
-    { bottom: 60 };
+    position === "top" ? { top: 72 } :
+    position === "center" ? { top: "50%", transform: `translate(0, calc(-50% + ${translateY}px))` } :
+    { bottom: 72 };
 
   return (
     <div style={{
@@ -282,11 +314,31 @@ const CaptionOverlay: React.FC<{
       opacity,
     }}>
       <div style={{
-        color: "white", fontFamily: SERIF, fontSize: 36, fontWeight: 400,
-        letterSpacing: 4, textShadow: "0 3px 16px rgba(0,0,0,0.7), 0 1px 4px rgba(0,0,0,0.5)",
-        background: "rgba(0,0,0,0.25)", padding: "10px 28px", borderRadius: 8,
+        display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6,
+        transform: position !== "center" ? `translateY(${translateY}px)` : undefined,
       }}>
-        {text}
+        {/* Thin gold hairline above (appears with text) */}
+        <div style={{ width: 32, height: 1, background: GOLD_SOFT, opacity: 0.6 }} />
+        {/* Caption text — cream paper label aesthetic */}
+        <div style={{
+          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
+          fontStyle: "italic",
+          fontWeight: 400,
+          fontSize: 32,
+          letterSpacing: "0.12em",
+          color: "#f5ecd7",
+          textShadow: "0 2px 10px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.55)",
+          padding: "8px 26px",
+          background: "linear-gradient(180deg, rgba(15,12,8,0.28) 0%, rgba(15,12,8,0.42) 100%)",
+          backdropFilter: "blur(1.5px)",
+          WebkitBackdropFilter: "blur(1.5px)",
+          border: "1px solid rgba(232,208,155,0.18)",
+          borderRadius: 2,
+        }}>
+          {text}
+        </div>
+        {/* Thin gold hairline below */}
+        <div style={{ width: 32, height: 1, background: GOLD_SOFT, opacity: 0.6 }} />
       </div>
     </div>
   );
@@ -318,7 +370,7 @@ const TitleCardScene: React.FC<{
     const illuScale = interpolate(frame, [0, dur], [1.0, 1.04], { extrapolateRight: "clamp" });
     return (
       <AbsoluteFill style={{ opacity }}>
-        <PaperBackground />
+        <PaperBackground seed={act * 7} />
         {/* Act illustration as ambient background layer */}
         {act >= 1 && act <= 5 && (
           <AbsoluteFill style={{
@@ -332,7 +384,7 @@ const TitleCardScene: React.FC<{
             }} />
           </AbsoluteFill>
         )}
-        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 32 }}>
+        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 28 }}>
           {/* Small uppercase chapter */}
           <div style={{
             color: INK_SOFT, fontFamily: SERIF, fontSize: 24, letterSpacing: 12,
@@ -361,6 +413,20 @@ const TitleCardScene: React.FC<{
               );
             })}
           </div>
+          {/* Year — italic Cormorant, very small, appears last */}
+          {title.year && (
+            <div style={{
+              marginTop: 4,
+              fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
+              fontStyle: "italic", fontWeight: 400,
+              fontSize: 28, letterSpacing: "0.18em",
+              color: "rgba(60, 45, 25, 0.72)",
+              opacity: interpolate(frame, [26 + chars.length * 3 + 10, 26 + chars.length * 3 + 28], [0, 1], { extrapolateRight: "clamp" }),
+              transform: `translateY(${interpolate(frame, [26 + chars.length * 3 + 10, 26 + chars.length * 3 + 28], [6, 0], { extrapolateRight: "clamp" })}px)`,
+            }}>
+              {title.year}
+            </div>
+          )}
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
@@ -992,7 +1058,7 @@ const PhotoScene: React.FC<{
       clipPath, WebkitClipPath: clipPath,
       transform: slideTransform,
     }}>
-      <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} />
+      <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} seed={hashSeed(photo.tag)} />
       {frameType === "none" ? (
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
           <Img src={src} style={{
@@ -1026,6 +1092,15 @@ const PhotoScene: React.FC<{
       )}
       {photo.spotlights?.length > 0 && (
         <SpotlightOverlay spotlights={photo.spotlights} />
+      )}
+      {/* ★ 별표 사진에 따뜻한 골드 할로 비네트 (미묘한 강조) */}
+      {photo.tag.startsWith("★") && (
+        <AbsoluteFill style={{
+          pointerEvents: "none",
+          background: "radial-gradient(ellipse at 50% 48%, rgba(232,208,155,0.10) 0%, rgba(232,208,155,0.04) 35%, transparent 60%, rgba(40,25,5,0.14) 100%)",
+          mixBlendMode: "overlay",
+          opacity: interpolate(frame, [cf, cf + 30, dur - 30, dur], [0, 1, 1, 0], { extrapolateRight: "clamp" }),
+        }} />
       )}
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
@@ -1153,7 +1228,7 @@ const SplitScene: React.FC<{
     const rightLabel = right.splitLabel ?? right.tag.split(" ")[0];
     return (
       <AbsoluteFill style={{ opacity }}>
-        <PaperBackground />
+        <PaperBackground seed={hashSeed(left.tag + right.tag)} />
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "relative", width: "92%", height: "88%" }}>
             <div style={{ ...polaroidBase, left: "3%", top: "4%", transform: `rotate(-3deg) scale(${scale})`, transformOrigin: "center" }}>
@@ -1390,6 +1465,33 @@ const EndingScene: React.FC<{
         </div>
       </AbsoluteFill>
 
+      {/* Small botanical sprig under names — appears after both names complete (~5.2s) */}
+      <div style={{
+        position: "absolute",
+        left: "50%",
+        top: "62%",
+        transform: "translateX(-50%)",
+        width: 240, height: 60,
+        opacity: Math.min(fadeAt(5.2, 0.55), fadeOut),
+        pointerEvents: "none",
+      }}>
+        <svg viewBox="0 0 240 60" width="240" height="60"
+          stroke={onPaper ? "#1a1510" : "#e8d09b"}
+          fill="none" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
+          {/* Horizontal branch */}
+          <path d="M 20 30 Q 60 28, 120 30 Q 180 32, 220 30" opacity="0.6" />
+          {/* Small leaves (left side) */}
+          <path d="M 50 30 Q 56 22, 64 24" opacity="0.6" />
+          <path d="M 70 30 Q 76 38, 84 36" opacity="0.6" />
+          {/* Center tiny flower/dot */}
+          <circle cx="120" cy="30" r="2.5" fill={onPaper ? "#1a1510" : "#e8d09b"} stroke="none" opacity="0.7" />
+          <path d="M 115 28 Q 120 24, 125 28" opacity="0.5" />
+          {/* Small leaves (right side) */}
+          <path d="M 155 30 Q 160 22, 168 24" opacity="0.6" />
+          <path d="M 180 30 Q 186 38, 194 36" opacity="0.6" />
+        </svg>
+      </div>
+
       {/* Date caption, bottom center */}
       <div style={{
         position: "absolute",
@@ -1400,7 +1502,7 @@ const EndingScene: React.FC<{
         fontSize: 34,
         letterSpacing: "0.42em",
         color: onPaper ? INK : "white",
-        opacity: Math.min(fadeAt(4.7, 0.85), fadeOut),
+        opacity: Math.min(fadeAt(5.5, 0.9), fadeOut),
       }}>
         {ending.date}
       </div>
@@ -1413,8 +1515,8 @@ const EndingScene: React.FC<{
         fontFamily: SERIF_KR,
         fontSize: 26,
         letterSpacing: 6,
-        color: onPaper ? "rgba(58,42,24,0.65)" : "rgba(255,255,255,0.7)",
-        opacity: Math.min(fadeAt(6.0), fadeOut),
+        color: onPaper ? "rgba(58,42,24,0.7)" : "rgba(255,255,255,0.75)",
+        opacity: Math.min(fadeAt(6.8), fadeOut),
       }}>
         {ending.message}
       </div>
