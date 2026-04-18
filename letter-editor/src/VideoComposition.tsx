@@ -428,16 +428,17 @@ const PhotoScene: React.FC<{
     }}>
       <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} />
       {frameType === "none" ? (
-        <AbsoluteFill>
+        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
           <Img src={src} style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
+            maxWidth: "100%",
+            maxHeight: "100%",
+            width: "auto",
+            height: "auto",
             objectFit: "contain",
             transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
             transformOrigin: "center center",
             filter: filterCSS !== "none" ? filterCSS : undefined,
+            boxShadow: defaultShadow,
             display: "block",
           }} />
         </AbsoluteFill>

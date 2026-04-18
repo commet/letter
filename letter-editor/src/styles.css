@@ -179,6 +179,29 @@ body {
   box-shadow: 0 2px 8px rgba(168, 136, 72, 0.3);
 }
 .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* 저장 버튼 — 다크/라이트 모드 모두 확실하게 보이는 에메랄드 그린 */
+.btn-save {
+  padding: 9px 22px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border: 1px solid #047857;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+  letter-spacing: 0.3px;
+  transition: all 0.15s;
+}
+.btn-save:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.btn-save:active { transform: translateY(0); }
+
 .btn-ghost {
   border-color: var(--border);
   color: var(--text-muted);
