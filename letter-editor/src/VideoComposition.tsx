@@ -438,7 +438,7 @@ const MomentCardScene: React.FC<{
       }} />
       {/* Hanji fiber noise */}
       <AbsoluteFill style={{
-        opacity: 0.55,
+        opacity: 0.25,
         mixBlendMode: "multiply",
         backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' seed='5' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 0.07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
         backgroundSize: "300px 300px",
@@ -447,40 +447,40 @@ const MomentCardScene: React.FC<{
       <AbsoluteFill style={{
         background: "radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(168, 136, 72, 0.09) 85%, rgba(120, 90, 50, 0.16) 100%)",
       }} />
-      {/* Center stack */}
-      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+      {/* Center stack (above noise/vignette — not dimmed by multiply layers) */}
+      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", zIndex: 10 }}>
         {/* Subtitle — two lines (Nanum Myeongjo 56px) */}
         <div style={{
           fontFamily: SERIF_KR,
-          fontWeight: 400,
+          fontWeight: 500,
           fontSize: 56,
           lineHeight: 1.45,
           letterSpacing: "0.02em",
           textAlign: "center",
-          color: INK,
+          color: "#0a0806",
           opacity: subOpacity,
           transform: `translateY(${subY}px)`,
           whiteSpace: "nowrap",
         }}>
           <span>{l1}</span>
-          <span style={{ fontWeight: 700, display: "block", marginTop: 4 }}>{l2}</span>
+          <span style={{ fontWeight: 800, display: "block", marginTop: 4 }}>{l2}</span>
         </div>
         {/* Ink rule */}
         <div style={{
           marginTop: 44, marginBottom: 28,
           width: ruleWidth,
-          height: 1.5,
-          background: INK,
-          opacity: 0.85,
+          height: 2,
+          background: "#0a0806",
+          opacity: 0.9,
         }} />
         {/* Year / context (Cormorant 28px, uppercase, wide letter-spacing) */}
         <div style={{
           fontFamily: SERIF,
-          fontWeight: 300,
+          fontWeight: 400,
           fontSize: 28,
           letterSpacing: "0.34em",
           textAlign: "center",
-          color: INK,
+          color: "#0a0806",
           opacity: yearOpacity,
           transform: `translateY(${yearY}px)`,
           textTransform: "uppercase",
@@ -1113,20 +1113,34 @@ const SplitScene: React.FC<{
     const tapes = [
       "washi-kraft-brown", "washi-dotted-cream", "washi-pressed-flower",
       "washi-gold-foil", "washi-aged-white", "washi-mint-green",
-      "washi-striped-ivory-gold", "washi-tracing-translucent",
+      "washi-striped-ivory-gold",
     ];
-    const pick = (s: string) => tapes[s.charCodeAt(0) % tapes.length];
-    const leftTape = pick(left.tag);
-    const rightTape = pick(right.tag);
-    const tapeStyle = (src: string, angle: number, offset: number): React.CSSProperties => ({
+    // Pick different tapes for left vs right based on different chars
+    const pickL = (s: string) => tapes[Math.abs(s.charCodeAt(0)) % tapes.length];
+    const pickR = (s: string) => tapes[Math.abs(s.charCodeAt(s.length - 1) + 3) % tapes.length];
+    const leftTape = pickL(left.tag || "A");
+    const rightTape = pickR(right.tag || "B");
+    // Tape positioned top-center, slight asymmetry so each side feels distinct
+    const tapeL: React.CSSProperties = {
       position: "absolute",
-      top: -18,
-      left: `${offset}%`,
-      width: "32%",
-      transform: `rotate(${angle}deg)`,
+      top: -14,
+      left: "22%",
+      width: "40%",
+      height: 34,
+      transform: "rotate(-6deg)",
       pointerEvents: "none",
-      zIndex: 2,
-    });
+      zIndex: 5,
+    };
+    const tapeR: React.CSSProperties = {
+      position: "absolute",
+      top: -14,
+      left: "30%",
+      width: "40%",
+      height: 34,
+      transform: "rotate(4deg)",
+      pointerEvents: "none",
+      zIndex: 5,
+    };
     const captionStyle: React.CSSProperties = {
       position: "absolute", bottom: 18, left: 0, right: 0,
       textAlign: "center",
@@ -1144,7 +1158,7 @@ const SplitScene: React.FC<{
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "relative", width: "92%", height: "88%" }}>
             <div style={{ ...polaroidBase, left: "3%", top: "4%", transform: `rotate(-3deg) scale(${scale})`, transformOrigin: "center" }}>
-              <Img src={`/assets/polaroid/${leftTape}.png`} style={tapeStyle(leftTape, -4, 30)} />
+              <Img src={`/assets/polaroid/${leftTape}.png`} style={tapeL} />
               <div style={imgFrameStyle}>
                 <Img src={srcOf(left)} style={{
                   maxWidth: "100%", maxHeight: "100%",
@@ -1155,7 +1169,7 @@ const SplitScene: React.FC<{
               <div style={captionStyle}>{leftLabel}</div>
             </div>
             <div style={{ ...polaroidBase, right: "3%", top: "8%", transform: `rotate(2.5deg) scale(${scale})`, transformOrigin: "center" }}>
-              <Img src={`/assets/polaroid/${rightTape}.png`} style={tapeStyle(rightTape, 3, 35)} />
+              <Img src={`/assets/polaroid/${rightTape}.png`} style={tapeR} />
               <div style={imgFrameStyle}>
                 <Img src={srcOf(right)} style={{
                   maxWidth: "100%", maxHeight: "100%",

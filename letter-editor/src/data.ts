@@ -368,7 +368,14 @@ export function getPhotoIndexAtFrame(frame: number, config: VideoConfig): number
   const cf = Math.round(config.crossfadeSec * config.fps);
   const tcf = Math.round(config.titleCardSec * config.fps);
   const ef = Math.round(config.endingSec * config.fps);
-  const tl = buildTimeline(config.photos, tcf, ef, config.fps);
+  const tl = buildTimeline(
+    config.photos, tcf, ef, config.fps,
+    config.moments ?? [],
+    config.yearMarkers ?? [],
+    config.journeyMaps ?? [],
+    config.letterInterludes ?? [],
+    config.collages ?? [],
+  );
 
   let cursor = 0;
   for (const item of tl) {
@@ -390,7 +397,14 @@ export function getPhotoStartFrame(photoIdx: number, config: VideoConfig): numbe
   const cf = Math.round(config.crossfadeSec * config.fps);
   const tcf = Math.round(config.titleCardSec * config.fps);
   const ef = Math.round(config.endingSec * config.fps);
-  const tl = buildTimeline(config.photos, tcf, ef, config.fps);
+  const tl = buildTimeline(
+    config.photos, tcf, ef, config.fps,
+    config.moments ?? [],
+    config.yearMarkers ?? [],
+    config.journeyMaps ?? [],
+    config.letterInterludes ?? [],
+    config.collages ?? [],
+  );
 
   let cursor = 0;
   for (const item of tl) {
@@ -410,7 +424,14 @@ export function computeTotalFrames(config: VideoConfig): number {
   const cf = Math.round(config.crossfadeSec * config.fps);
   const tcf = Math.round(config.titleCardSec * config.fps);
   const ef = Math.round(config.endingSec * config.fps);
-  const tl = buildTimeline(config.photos, tcf, ef, config.fps);
+  const tl = buildTimeline(
+    config.photos, tcf, ef, config.fps,
+    config.moments ?? [],
+    config.yearMarkers ?? [],
+    config.journeyMaps ?? [],
+    config.letterInterludes ?? [],
+    config.collages ?? [],
+  );
   const sum = tl.reduce((s, it) => s + it.durationInFrames, 0);
   return sum - cf * (tl.length - 1);
 }
@@ -454,84 +475,84 @@ const P = (
 });
 
 const defaultPhotos: PhotoEntry[] = [
-  // ── Act I: 각자의 자리에서 (6 splits + 1 interlude) ──────
-  // Split pairs: 슬기(좌) / 예찬(우). 경복궁은 demote — 진짜 리빌은 Act II 분당선교원.
-  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo" }),
-  P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn"),
+  // ── Act I — 그때의 우리 (유년기 페어 6쌍) ──────
+  // 슬기(좌, 1988) · 예찬(우, 1993). 성모병원 출생 동일, 5살 차이.
+  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo", eraIcon: "teddy-bear" }),
+  P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn", { eraIcon: "teddy-bear" }),
   P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "birthday-cake" }),
   P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut", { eraIcon: "birthday-cake" }),
-  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "teddy-bear" }),
-  P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn",  { eraIcon: "teddy-bear" }),
-  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid", eraIcon: "rocking-horse" }),
-  P("예찬 장난기",                1, `${S}/008.jpg`, D.split, "panRight", { eraIcon: "rocking-horse" }),
+  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "rocking-horse" }),
+  P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn",  { eraIcon: "rocking-horse" }),
+  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
+  P("예찬 장난기",                1, `${S}/008.jpg`, D.split, "panRight", { eraIcon: "crayon" }),
   P("슬기 부엌",                  1, `${S}/009.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "school-backpack" }),
   P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut", { eraIcon: "school-backpack" }),
   P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
   P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn",  { eraIcon: "crayon" }),
-  P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn"),
 
-  // ── Act II: 같은 곳에서, 함께 (13장) ──────────────────
-  // ★ 분당선교원: 진짜 리빌 — 두 사람이 같은 공동체에 있었다 (스포트라이트 필수)
-  P("★ 분당선교원 (같은 공동체)",   2, `${S}/014.jpeg`, D.growStar, "zoomIn",  { eraIcon: "church-steeple" }),
+  // ── Act II — 같은 마당 (1994~ 분당교회 공동체) ──────
+  // ★ 분당선교원 단체 — 같은 공동체에서 자라온 배경
+  P("★ 분당선교원 단체",           2, `${S}/014.jpeg`, D.growStar, "zoomIn",  { eraIcon: "church-steeple" }),
   P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn",  { eraIcon: "hymn-book" }),
-  P("★ 붉은악마 단체",             2, `${S}/016.jpeg`, D.growStar, "zoomIn",  { eraIcon: "red-devils" }),
-  P("슬기 붉은악마",              2, `${S}/017.jpeg`, D.grow, e(3), { splitPair: true, splitStyle: "polaroid", eraIcon: "soccer-ball" }),
-  P("예찬 붉은악마",              2, `${S}/018.jpeg`, D.grow, e(3), { eraIcon: "soccer-ball" }),
-  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4)),
-  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5)),
-  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, e(6)),
-  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, e(7)),
-  P("영화관",                     2, `${S}/023.jpeg`, D.grow, e(8)),
-  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, e(9)),
-  P("스키장",                     2, `${S}/025.jpeg`, D.grow, e(10)),
-  P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, e(11)),
-  P("침례식",                     2, `${S}/027.jpeg`, D.grow, e(12)),
+  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4), { eraIcon: "church-steeple" }),
+  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5), { eraIcon: "hymn-book" }),
+  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, e(6), { eraIcon: "church-steeple" }),
+  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, e(7), { eraIcon: "hymn-book" }),
+  P("붉은악마 단체",              2, `${S}/016.jpeg`, D.grow, "zoomIn",  { eraIcon: "soccer-ball" }),  // 평범한 단체사진으로 demote
+  P("영화관",                     2, `${S}/023.jpeg`, D.grow, e(8), { eraIcon: "concert-ticket" }),
+  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, e(9), { eraIcon: "hymn-book" }),
+  P("스키장",                     2, `${S}/025.jpeg`, D.grow, e(10), { eraIcon: "umbrella" }),
+  P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, e(11), { eraIcon: "grad-cap" }),
+  P("침례식",                     2, `${S}/027.jpeg`, D.grow, e(12), { eraIcon: "stained-glass" }),
 
-  // ── Act III: 우리의 시간 (18장: 여행+공연+갤러리+뉴욕) ─
-  P("여행 식사 1",                3, `${S}/028.jpeg`, D.trip, e(0)),
-  P("여행 식사 2",                3, `${S}/029.jpeg`, D.trip, e(1)),
-  P("여행 단체 1",                3, `${S}/030.jpeg`, D.trip, e(2)),
-  P("여행 단체 2",                3, `${S}/031.jpeg`, D.trip, e(3)),
-  P("여행 단체 3",                3, `${S}/032.jpeg`, D.trip, e(4)),
-  P("여행 단체 4",                3, `${S}/033.jpeg`, D.trip, e(5)),
-  P("★ 결혼식 공연 1",             3, `${S}/034.jpeg`, D.trip2, e(6), { eraIcon: "concert-ticket" }),
-  P("결혼식 공연 2",              3, `${S}/035.jpeg`, D.trip2, e(7), { eraIcon: "concert-ticket" }),
-  P("결혼식 공연 3",              3, `${S}/036.jpeg`, D.trip2, e(8), { eraIcon: "concert-ticket" }),
-  P("결혼식 공연 4",              3, `${S}/037.jpeg`, D.trip2, e(9), { eraIcon: "concert-ticket" }),
+  // ── Act III — 함께 걸은 봄 (한국 청년기, ~2015 슬기 학사 졸업 전) ──────
+  // 여행, 공연 4장 (군입대·뉴욕 시기 이전), 갤러리 전시 (국내)
+  P("여행 식사 1",                3, `${S}/028.jpeg`, D.trip, e(0), { eraIcon: "two-cups" }),
+  P("여행 식사 2",                3, `${S}/029.jpeg`, D.trip, e(1), { eraIcon: "two-cups" }),
+  P("여행 단체 1",                3, `${S}/030.jpeg`, D.trip, e(2), { eraIcon: "suitcase" }),
+  P("여행 단체 2",                3, `${S}/031.jpeg`, D.trip, e(3), { eraIcon: "suitcase" }),
+  P("여행 단체 3",                3, `${S}/032.jpeg`, D.trip, e(4), { eraIcon: "suitcase" }),
+  P("여행 단체 4",                3, `${S}/033.jpeg`, D.trip, e(5), { eraIcon: "suitcase" }),
+  P("공연 1",                    3, `${S}/034.jpeg`, D.trip2, e(6), { eraIcon: "concert-ticket" }),
+  P("공연 2",                    3, `${S}/035.jpeg`, D.trip2, e(7), { eraIcon: "concert-ticket" }),
+  P("공연 3",                    3, `${S}/036.jpeg`, D.trip2, e(8), { eraIcon: "concert-ticket" }),
+  P("공연 4",                    3, `${S}/037.jpeg`, D.trip2, e(9), { eraIcon: "concert-ticket" }),
   P("갤러리 전시 1",              3, `${S}/038.jpeg`, D.date, "zoomIn",  { eraIcon: "gallery-frame" }),
   P("갤러리 전시 2",              3, `${S}/039.jpeg`, D.date, "zoomOut", { eraIcon: "gallery-frame" }),
   P("갤러리 전시 3",              3, `${S}/040.jpeg`, D.date, "panRight", { eraIcon: "gallery-frame" }),
   P("갤러리 전시 4",              3, `${S}/041.jpeg`, D.date, "zoomIn",  { eraIcon: "gallery-frame" }),
-  P("뉴욕 1",                     3, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
-  P("뉴욕 2",                     3, `${S}/043.png`,  D.date, "panLeft", { eraIcon: "nyc-skyline" }),
-  P("뉴욕 3",                     3, `${S}/044.jpg`,  D.date, "zoomOut", { eraIcon: "nyc-skyline" }),
-  P("뉴욕 4",                     3, `${S}/045.png`,  D.date, "zoomIn",  { eraIcon: "subway-map" }),
+  P("슬기 학사 졸업",              3, `${S}/050.jpeg`, D.mile, "zoomIn",  { eraIcon: "grad-cap" }),
 
-  // ── Act IV: 함께 걸어온 시간 (6장: 군입대+졸업) ────────
+  // ── Act IV — 바다를 사이에 두고 (2016~, 거리의 시간) ──────
+  // 예찬 군입대 → 슬기 뉴욕 유학 → 예찬 제대 → 뉴욕 방문
   P("예찬 군입대",                4, `${S}/046.jpg`,  D.mile, "zoomIn",  { eraIcon: "military-hat" }),
   P("예찬 군입대 2",              4, `${S}/047.png`,  D.mile, "zoomOut", { eraIcon: "military-hat" }),
-  P("예찬 군입대 3",              4, `${S}/048.jpeg`, D.mile, "panRight", { eraIcon: "letter" }),
-  P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn",  { eraIcon: "letter" }),
-  P("슬기 졸업",                  4, `${S}/050.jpeg`, D.mile, "zoomIn",  { eraIcon: "grad-cap" }),
+  P("예찬 군입대 3",              4, `${S}/048.jpeg`, D.mile, "panRight", { eraIcon: "military-hat" }),
+  P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn",  { eraIcon: "military-hat" }),
+  P("뉴욕 1",                     4, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
+  P("뉴욕 2",                     4, `${S}/043.png`,  D.date, "panLeft", { eraIcon: "nyc-skyline" }),
+  P("뉴욕 3",                     4, `${S}/044.jpg`,  D.date, "zoomOut", { eraIcon: "nyc-skyline" }),
+  P("뉴욕 4",                     4, `${S}/045.png`,  D.date, "zoomIn",  { eraIcon: "subway-map" }),
   P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut", { eraIcon: "diploma" }),
 
-  // ── Act V: 그리고, 오늘 (9장: 두 사람+마지막) ─────────
-  P("두 사람 1",                  5, `${S}/052.jpg`, D.us, "zoomIn"),
-  P("두 사람 2",                  5, `${S}/053.jpg`, D.us, "zoomOut"),
-  P("두 사람 3",                  5, `${S}/054.jpg`, D.us, "panRight"),
-  P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn"),
-  P("두 사람 5",                  5, `${S}/056.jpg`, D.us, "panLeft"),
-  P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut"),
-  P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn"),
-  P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut"),
+  // ── Act V — 그리고, 오늘 (2026, 재회·연인·결혼) ──────
+  P("두 사람 1",                  5, `${S}/052.jpg`, D.us, "zoomIn", { eraIcon: "two-cups" }),
+  P("두 사람 2",                  5, `${S}/053.jpg`, D.us, "zoomOut", { eraIcon: "two-cups" }),
+  P("두 사람 3",                  5, `${S}/054.jpg`, D.us, "panRight", { eraIcon: "open-window" }),
+  P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn", { eraIcon: "open-window" }),
+  P("두 사람 5",                  5, `${S}/056.jpg`, D.us, "panLeft", { eraIcon: "bouquet" }),
+  P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut", { eraIcon: "bouquet" }),
+  P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn", { eraIcon: "ring-box" }),
+  P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut", { eraIcon: "ring-box" }),
+  P("★ 경복궁 (함께)",             5, `${S}/013.jpg`, D.reveal, "zoomIn", { eraIcon: "linked-rings" }),
   P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn", { eraIcon: "linked-rings" }),
 ];
 
 const defaultActTitles: Record<number, ActTitle> = {
-  1: { chapter: "Act I", kr: "각자의 자리에서" },
-  2: { chapter: "Act II", kr: "같은 곳에서, 함께" },
-  3: { chapter: "Act III", kr: "우리의 시간" },
-  4: { chapter: "Act IV", kr: "함께 걸어온 시간" },
+  1: { chapter: "Act I",  kr: "그때의 우리" },
+  2: { chapter: "Act II", kr: "같은 마당" },
+  3: { chapter: "Act III", kr: "함께 걸은 봄" },
+  4: { chapter: "Act IV", kr: "바다를 사이에 두고" },
   5: { chapter: "Act V · 2026", kr: "그리고, 오늘" },
 };
 
@@ -554,28 +575,27 @@ export const defaultConfig: VideoConfig = {
   backgroundStyle: "paper",  // NEW — cream paper (vintage journal feel)
   kenBurnsAmount: 0.04,      // NEW — half of previous 0.08 (calmer)
   titleVariant: "journal",   // NEW — elegant journal style for all acts
-  moments: [                 // NEW — "이때" interstitial cards from Claude Design P0-2
-    { id: "m1", afterPhotoIndex: 12, l1: "그해 여름", l2: "우리는 같은 교회에 있었다", year: "2010", durationSec: 2.0 },
-    { id: "m2", afterPhotoIndex: 14, l1: "2002년, 붉은 광장에서", l2: "우리는 같은 팀이었다", year: "2002", durationSec: 2.0 },
+  // ── 인터스티셜 배치 (실제 스토리 기반) ──
+  // photos 인덱스: Act I 0-11, Act II 12-23, Act III 24-38, Act IV 39-47, Act V 48-57
+  moments: [
+    // Act II 시작 (같은 마당) — 잔잔한 여는 말
+    { id: "m-2", afterPhotoIndex: 11, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
+    // Act V 시작 (2026 재회) — 핵심 리빌
+    { id: "m-5", afterPhotoIndex: 47, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],
-  yearMarkers: [             // P1-2: 시간 전환 지점
-    { id: "y1", afterPhotoIndex: 26, year: "2013", location: "분당", durationSec: 3.0 }, // Act III 시작 직전
+  yearMarkers: [
+    // Act IV 시작 (거리의 시간)
+    { id: "y-4", afterPhotoIndex: 38, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
   ],
-  journeyMaps: [             // P2-2: 장소 이동 시각화 — 뉴욕 직전에 한 번 펼침
-    { id: "jm1", afterPhotoIndex: 40,
-      title: "Our Journey",
-      subtitle: "성모병원 · 분당 · 붉은 광장 · 서울 · 뉴욕",
-      caption: "we went far, and still arrived at each other",
+  journeyMaps: [
+    // Act IV 뉴욕 파트 직전 — 성모병원 → 분당 → 서울 → 뉴욕 시각화
+    { id: "jm-nyc", afterPhotoIndex: 42,
+      title: "Across the Ocean",
+      subtitle: "성모병원 · 분당 · 서울 · 뉴욕",
+      caption: "계절이 몇 번, 그래도 서로에게",
       durationSec: 8.0,
     },
   ],
-  letterInterludes: [        // P2-4: 편지 인터루드 — 군입대 중 긴 겨울
-    { id: "li1", afterPhotoIndex: 47,
-      date: "2019년 겨울",
-      l1: "편지와 기다림",
-      l2: "그리고 긴 겨울",
-      durationSec: 8.0,
-    },
-  ],
-  collages: [],              // P2-5: 기본 0개. 에디터에서 원하는 사진 골라 구성
+  letterInterludes: [],      // 의도적으로 비움 — 편지 인터루드는 스토리에 맞지 않음
+  collages: [],              // 기본 0개. 에디터에서 추가 가능
 };
