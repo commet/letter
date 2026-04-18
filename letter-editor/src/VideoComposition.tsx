@@ -510,10 +510,16 @@ const SplitScene: React.FC<{
       background: "#f4ede0",
     };
     const captionStyle: React.CSSProperties = {
-      position: "absolute", bottom: 20, left: 0, right: 0,
+      position: "absolute", bottom: 18, left: 0, right: 0,
       textAlign: "center",
-      fontFamily: SCRIPT_KR, fontSize: 28, color: "rgba(60,40,15,0.65)",
+      fontFamily: SCRIPT_KR,
+      fontSize: 34,
+      fontWeight: 700,
+      color: "rgba(40,25,10,0.92)",
+      letterSpacing: 2,
     };
+    const leftLabel = left.splitLabel ?? left.tag.split(" ")[0];
+    const rightLabel = right.splitLabel ?? right.tag.split(" ")[0];
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground />
@@ -526,7 +532,7 @@ const SplitScene: React.FC<{
                   transform: `scale(${leftKen.scale}) translate(${leftKen.tx * 100}%, ${leftKen.ty * 100}%)`,
                 }} />
               </div>
-              <div style={captionStyle}>{left.tag.split(" ")[0]}</div>
+              <div style={captionStyle}>{leftLabel}</div>
             </div>
             <div style={{ ...polaroidBase, right: "3%", top: "8%", transform: `rotate(2.5deg) scale(${scale})`, transformOrigin: "center" }}>
               <div style={imgFrameStyle}>
@@ -535,7 +541,7 @@ const SplitScene: React.FC<{
                   transform: `scale(${rightKen.scale}) translate(${rightKen.tx * 100}%, ${rightKen.ty * 100}%)`,
                 }} />
               </div>
-              <div style={captionStyle}>{right.tag.split(" ")[0]}</div>
+              <div style={captionStyle}>{rightLabel}</div>
             </div>
           </div>
         </AbsoluteFill>
@@ -560,8 +566,10 @@ const SplitScene: React.FC<{
     };
     const nameStyle: React.CSSProperties = {
       marginTop: 24, textAlign: "center",
-      fontFamily: SERIF_KR, fontSize: 36, color: INK, letterSpacing: 6,
+      fontFamily: SERIF_KR, fontSize: 36, fontWeight: 700, color: INK, letterSpacing: 6,
     };
+    const leftLabel = left.splitLabel ?? left.tag.split(" ")[0];
+    const rightLabel = right.splitLabel ?? right.tag.split(" ")[0];
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground />
@@ -580,7 +588,7 @@ const SplitScene: React.FC<{
                 transform: `scale(${leftKen.scale}) translate(${leftKen.tx * 100}%, ${leftKen.ty * 100}%)`,
               }} />
             </div>
-            <div style={nameStyle}>{left.tag.split(" ")[0]}</div>
+            <div style={nameStyle}>{leftLabel}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
             <div style={cameoStyle}>
@@ -589,7 +597,7 @@ const SplitScene: React.FC<{
                 transform: `scale(${rightKen.scale}) translate(${rightKen.tx * 100}%, ${rightKen.ty * 100}%)`,
               }} />
             </div>
-            <div style={nameStyle}>{right.tag.split(" ")[0]}</div>
+            <div style={nameStyle}>{rightLabel}</div>
           </div>
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />

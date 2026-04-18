@@ -59,6 +59,7 @@ export type PhotoEntry = {
   spotlights: SpotlightConfig[];
   splitPair?: boolean; // true = this photo + next photo form a split screen
   splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
+  splitLabel?: string; // custom label under polaroid/cameo (fallback: tag first word)
   // Per-photo asset overrides (undefined = use global config)
   frameOverride?: FrameType;
   overlayOverride?: OverlayType;
