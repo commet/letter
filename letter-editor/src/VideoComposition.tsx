@@ -493,9 +493,6 @@ const SplitScene: React.FC<{
   // ─── Polaroid variant: two tilted polaroids on cream paper ───
   if (style === "polaroid") {
     const scale = 1 + 0.02 * t;
-    // Each photo has its own Ken Burns inside its polaroid
-    const leftKen = kenBurns(left.effect, t, left.focalPoint.x, left.focalPoint.y, kenBurnsAmount);
-    const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, kenBurnsAmount);
     const polaroidBase: React.CSSProperties = {
       background: "white",
       padding: "20px 20px 70px 20px",
@@ -508,6 +505,9 @@ const SplitScene: React.FC<{
       aspectRatio: "1 / 1.1",
       overflow: "hidden",
       background: "#f4ede0",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
     };
     const captionStyle: React.CSSProperties = {
       position: "absolute", bottom: 18, left: 0, right: 0,
@@ -528,8 +528,9 @@ const SplitScene: React.FC<{
             <div style={{ ...polaroidBase, left: "3%", top: "4%", transform: `rotate(-3deg) scale(${scale})`, transformOrigin: "center" }}>
               <div style={imgFrameStyle}>
                 <Img src={srcOf(left)} style={{
-                  width: "100%", height: "100%", objectFit: "contain", display: "block",
-                  transform: `scale(${leftKen.scale}) translate(${leftKen.tx * 100}%, ${leftKen.ty * 100}%)`,
+                  maxWidth: "100%", maxHeight: "100%",
+                  width: "auto", height: "auto",
+                  objectFit: "contain", display: "block",
                 }} />
               </div>
               <div style={captionStyle}>{leftLabel}</div>
@@ -537,8 +538,9 @@ const SplitScene: React.FC<{
             <div style={{ ...polaroidBase, right: "3%", top: "8%", transform: `rotate(2.5deg) scale(${scale})`, transformOrigin: "center" }}>
               <div style={imgFrameStyle}>
                 <Img src={srcOf(right)} style={{
-                  width: "100%", height: "100%", objectFit: "contain", display: "block",
-                  transform: `scale(${rightKen.scale}) translate(${rightKen.tx * 100}%, ${rightKen.ty * 100}%)`,
+                  maxWidth: "100%", maxHeight: "100%",
+                  width: "auto", height: "auto",
+                  objectFit: "contain", display: "block",
                 }} />
               </div>
               <div style={captionStyle}>{rightLabel}</div>
@@ -547,6 +549,9 @@ const SplitScene: React.FC<{
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
+        {left.caption?.text && (
+          <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+        )}
       </AbsoluteFill>
     );
   }
@@ -602,6 +607,9 @@ const SplitScene: React.FC<{
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
+        {left.caption?.text && (
+          <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+        )}
       </AbsoluteFill>
     );
   }
@@ -621,6 +629,9 @@ const SplitScene: React.FC<{
       <div style={half}><Img src={srcOf(right)} style={img} /></div>
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
+      {left.caption?.text && (
+        <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+      )}
     </AbsoluteFill>
   );
 };

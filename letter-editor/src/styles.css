@@ -604,31 +604,40 @@ body {
 }
 .modal-tabs {
   display: flex;
-  gap: 6px;
-  padding: 4px;
-  background: var(--bg-surface);
+  gap: 8px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   width: fit-content;
+  margin-top: 10px;
+}
+[data-theme="light"] .modal-tabs {
+  background: rgba(0, 0, 0, 0.04);
 }
 .tab {
-  padding: 8px 18px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: transparent;
+  padding: 10px 22px;
+  border: 2px solid var(--border);
+  border-radius: 7px;
+  background: var(--btn-bg);
   color: var(--text);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.12s;
+  min-width: 120px;
 }
-.tab:hover { background: var(--btn-bg-hover); }
-.tab-active {
-  background: var(--gold);
-  color: #111;
+.tab:hover {
+  background: var(--btn-bg-hover);
   border-color: var(--gold);
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(232, 208, 155, 0.3);
+}
+.tab-active {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border-color: #047857;
+  font-weight: 800;
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.55), inset 0 1px 0 rgba(255,255,255,0.3);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 [data-theme="light"] .tab-active {
   box-shadow: 0 2px 6px rgba(168, 136, 72, 0.25);
