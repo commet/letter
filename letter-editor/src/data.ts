@@ -489,6 +489,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut", { eraIcon: "school-backpack" }),
   P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
   P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn",  { eraIcon: "crayon" }),
+  P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn", { eraIcon: "rocking-horse" }),
 
   // ── Act II — 같은 마당 (1994~ 분당교회 공동체) ──────
   // ★ 분당선교원 단체 — 같은 공동체에서 자라온 배경
@@ -544,7 +545,6 @@ const defaultPhotos: PhotoEntry[] = [
   P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut", { eraIcon: "bouquet" }),
   P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn", { eraIcon: "ring-box" }),
   P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut", { eraIcon: "ring-box" }),
-  P("★ 경복궁 (함께)",             5, `${S}/013.jpg`, D.reveal, "zoomIn", { eraIcon: "linked-rings" }),
   P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn", { eraIcon: "linked-rings" }),
 ];
 
@@ -576,20 +576,22 @@ export const defaultConfig: VideoConfig = {
   kenBurnsAmount: 0.04,      // NEW — half of previous 0.08 (calmer)
   titleVariant: "journal",   // NEW — elegant journal style for all acts
   // ── 인터스티셜 배치 (실제 스토리 기반) ──
-  // photos 인덱스: Act I 0-11, Act II 12-23, Act III 24-38, Act IV 39-47, Act V 48-57
+  // photos 인덱스 (경복궁 Act I 복귀 후):
+  //   Act I 0-12 (13장 · 페어 6쌍 + 경복궁), Act II 13-24 (12장),
+  //   Act III 25-39 (15장), Act IV 40-48 (9장), Act V 49-57 (9장)
   moments: [
     // Act II 시작 (같은 마당) — 잔잔한 여는 말
-    { id: "m-2", afterPhotoIndex: 11, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
+    { id: "m-2", afterPhotoIndex: 12, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
     // Act V 시작 (2026 재회) — 핵심 리빌
-    { id: "m-5", afterPhotoIndex: 47, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
+    { id: "m-5", afterPhotoIndex: 48, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],
   yearMarkers: [
     // Act IV 시작 (거리의 시간)
-    { id: "y-4", afterPhotoIndex: 38, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
+    { id: "y-4", afterPhotoIndex: 39, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
   ],
   journeyMaps: [
     // Act IV 뉴욕 파트 직전 — 성모병원 → 분당 → 서울 → 뉴욕 시각화
-    { id: "jm-nyc", afterPhotoIndex: 42,
+    { id: "jm-nyc", afterPhotoIndex: 43,
       title: "Across the Ocean",
       subtitle: "성모병원 · 분당 · 서울 · 뉴욕",
       caption: "계절이 몇 번, 그래도 서로에게",
