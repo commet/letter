@@ -498,9 +498,9 @@ const SplitScene: React.FC<{
     const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, kenBurnsAmount);
     const polaroidBase: React.CSSProperties = {
       background: "white",
-      padding: "18px 18px 64px 18px",
+      padding: "20px 20px 70px 20px",
       boxShadow: "0 20px 60px rgba(60,40,15,0.4), 0 4px 12px rgba(60,40,15,0.25)",
-      width: "40%",
+      width: "44%",
       position: "absolute",
     };
     const imgFrameStyle: React.CSSProperties = {
@@ -510,9 +510,9 @@ const SplitScene: React.FC<{
       background: "#f4ede0",
     };
     const captionStyle: React.CSSProperties = {
-      position: "absolute", bottom: 18, left: 0, right: 0,
+      position: "absolute", bottom: 20, left: 0, right: 0,
       textAlign: "center",
-      fontFamily: SCRIPT_KR, fontSize: 26, color: "rgba(60,40,15,0.65)",
+      fontFamily: SCRIPT_KR, fontSize: 28, color: "rgba(60,40,15,0.65)",
     };
     return (
       <AbsoluteFill style={{ opacity }}>
