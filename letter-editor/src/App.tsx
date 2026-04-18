@@ -148,7 +148,7 @@ const ImageEditorModal: React.FC<{
   const previewGradients = spots.map(
     (s) => `radial-gradient(ellipse ${s.radius * 120}% ${s.radius * 120}% at ${s.x * 100}% ${s.y * 100}%, transparent 0%, transparent 40%, rgba(0,0,0,1) 100%)`
   );
-  const previewStrength = spots.reduce((max, s) => Math.max(max, s.strength), 0.55);
+  const previewStrength = spots.reduce((max, s) => Math.max(max, s.strength), 0);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
