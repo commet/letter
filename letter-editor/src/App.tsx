@@ -233,6 +233,35 @@ const ImageEditorModal: React.FC<{
                   <p className="hint" style={{ marginBottom: 6 }}>
                     줌/확대 정도 (전체 영상 공통)
                   </p>
+                  {/* Visual preview: photo with zoom applied — updates live */}
+                  <div style={{
+                    width: "100%", aspectRatio: "16 / 9",
+                    border: "1px solid var(--border)", borderRadius: 4,
+                    background: "#2a241c", overflow: "hidden",
+                    position: "relative", marginBottom: 10,
+                  }}>
+                    <img
+                      src={photoSrc(photo.file)}
+                      alt=""
+                      draggable={false}
+                      style={{
+                        position: "absolute", inset: 0,
+                        width: "100%", height: "100%",
+                        objectFit: "contain",
+                        transform: `scale(${1 + kenBurnsAmount})`,
+                        transformOrigin: `${photo.focalPoint.x * 100}% ${photo.focalPoint.y * 100}%`,
+                        transition: "transform 0.25s ease-out",
+                      }}
+                    />
+                    <div style={{
+                      position: "absolute", bottom: 6, right: 8,
+                      color: "white", fontSize: 10,
+                      background: "rgba(0,0,0,0.55)", padding: "2px 8px", borderRadius: 2,
+                      letterSpacing: 0.5, fontFamily: "monospace",
+                    }}>
+                      최대 scale {(1 + kenBurnsAmount).toFixed(2)}×
+                    </div>
+                  </div>
                   <label className="slider-label">
                     <span>확대</span>
                     <input
@@ -246,16 +275,36 @@ const ImageEditorModal: React.FC<{
                     />
                     <span>{(kenBurnsAmount * 100).toFixed(1)}%</span>
                   </label>
-                  <button
-                    className="btn btn-xs"
-                    style={{ marginTop: 4 }}
-                    onClick={() => onUpdateKenBurnsAmount(0.04)}
-                  >
-                    기본값(4%)
-                  </button>
-                  <p className="hint hint-dim" style={{ marginTop: 6, fontSize: 11 }}>
-                    0% = 움직임 없음 · 4% = 잔잔함(권장) · 15% = 강한 줌
-                  </p>
+                  {/* Preset buttons with visual scale indicators */}
+                  <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+                    {[
+                      { label: "없음", val: 0, desc: "정적" },
+                      { label: "2%", val: 0.02, desc: "아주 잔잔" },
+                      { label: "4%", val: 0.04, desc: "권장" },
+                      { label: "8%", val: 0.08, desc: "눈에 띔" },
+                      { label: "15%", val: 0.15, desc: "강함" },
+                    ].map((p) => {
+                      const active = Math.abs(kenBurnsAmount - p.val) < 0.003;
+                      return (
+                        <button
+                          key={p.val}
+                          className="btn btn-xs"
+                          style={{
+                            flex: 1,
+                            background: active ? "var(--gold)" : undefined,
+                            color: active ? "#111" : undefined,
+                            fontWeight: active ? 700 : 500,
+                            padding: "6px 4px",
+                            fontSize: 11,
+                          }}
+                          title={p.desc}
+                          onClick={() => onUpdateKenBurnsAmount(p.val)}
+                        >
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </>
             )}
