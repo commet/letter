@@ -474,77 +474,91 @@ const P = (
   ...extra,
 });
 
-const defaultPhotos: PhotoEntry[] = [
-  // ── Act I — 그때의 우리 (유년기 페어 6쌍) ──────
-  // 슬기(좌, 1988) · 예찬(우, 1993). 성모병원 출생 동일, 5살 차이.
-  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo", eraIcon: "teddy-bear" }),
-  P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn", { eraIcon: "teddy-bear" }),
-  P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "birthday-cake" }),
-  P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut", { eraIcon: "birthday-cake" }),
-  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "rocking-horse" }),
-  P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn",  { eraIcon: "rocking-horse" }),
-  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
-  P("예찬 장난기",                1, `${S}/008.jpg`, D.split, "panRight", { eraIcon: "crayon" }),
-  P("슬기 부엌",                  1, `${S}/009.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "school-backpack" }),
-  P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut", { eraIcon: "school-backpack" }),
-  P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
-  P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn",  { eraIcon: "crayon" }),
-  P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn", { eraIcon: "rocking-horse" }),
+// Moderate spotlight helper — 부드러운 얼굴 강조 (다른 사람들 약간만 어둠)
+// 실제 얼굴 위치는 사용자가 에디터에서 미세 조정. 일단 합리적 중심 위치로 배치.
+const SP = (x: number, y: number): SpotlightConfig => ({ x, y, radius: 0.18, strength: 0.35 });
 
-  // ── Act II — 같은 마당 (1994~ 분당교회 공동체) ──────
-  // ★ 분당선교원 단체 — 같은 공동체에서 자라온 배경
-  P("★ 분당선교원 단체",           2, `${S}/014.jpeg`, D.growStar, "zoomIn",  { eraIcon: "church-steeple" }),
-  P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn",  { eraIcon: "hymn-book" }),
-  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4), { eraIcon: "church-steeple" }),
-  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5), { eraIcon: "hymn-book" }),
-  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, e(6), { eraIcon: "church-steeple" }),
-  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, e(7), { eraIcon: "hymn-book" }),
-  P("붉은악마 단체",              2, `${S}/016.jpeg`, D.grow, "zoomIn",  { eraIcon: "soccer-ball" }),  // 평범한 단체사진으로 demote
-  P("영화관",                     2, `${S}/023.jpeg`, D.grow, e(8), { eraIcon: "concert-ticket" }),
-  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, e(9), { eraIcon: "hymn-book" }),
-  P("스키장",                     2, `${S}/025.jpeg`, D.grow, e(10), { eraIcon: "umbrella" }),
+const defaultPhotos: PhotoEntry[] = [
+  // ── Act I — 그때의 우리 (유년기 페어 6쌍 + 경복궁) ──────
+  // 아이콘은 페어당 1개만, 반복 피해서 절제
+  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo", eraIcon: "teddy-bear" }),
+  P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn"),
+  P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "birthday-cake" }),
+  P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut"),
+  P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid" }),
+  P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn"),
+  P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid", eraIcon: "rocking-horse" }),
+  P("예찬 장난기",                1, `${S}/008.jpg`, D.split, "panRight"),
+  P("슬기 부엌",                  1, `${S}/009.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid" }),
+  P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut"),
+  P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
+  P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn"),
+  P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn"),
+
+  // ── Act II — 같은 마당 (1994~ 분당교회) ──────
+  // 단체사진 중 핵심 3장에 얼굴 스포트라이트. 아이콘은 섹션 경계에만.
+  P("★ 분당선교원 단체",           2, `${S}/014.jpeg`, D.growStar, "zoomIn",  {
+    eraIcon: "church-steeple",
+    spotlights: [SP(0.38, 0.55), SP(0.62, 0.52)],  // 좌(슬기)·우(예찬) 중심 근처
+  }),
+  P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn", {
+    spotlights: [SP(0.42, 0.50), SP(0.60, 0.54)],
+  }),
+  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4), {
+    spotlights: [SP(0.40, 0.55), SP(0.58, 0.52)],
+  }),
+  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5)),
+  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, e(6), {
+    spotlights: [SP(0.42, 0.55), SP(0.60, 0.50)],
+  }),
+  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, e(7)),
+  P("붉은악마 단체",              2, `${S}/016.jpeg`, D.grow, "zoomIn"),
+  P("영화관",                     2, `${S}/023.jpeg`, D.grow, e(8)),
+  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, e(9)),
+  P("스키장",                     2, `${S}/025.jpeg`, D.grow, e(10)),
   P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, e(11), { eraIcon: "grad-cap" }),
   P("침례식",                     2, `${S}/027.jpeg`, D.grow, e(12), { eraIcon: "stained-glass" }),
 
-  // ── Act III — 함께 걸은 봄 (한국 청년기, ~2015 슬기 학사 졸업 전) ──────
-  // 여행, 공연 4장 (군입대·뉴욕 시기 이전), 갤러리 전시 (국내)
-  P("여행 식사 1",                3, `${S}/028.jpeg`, D.trip, e(0), { eraIcon: "two-cups" }),
-  P("여행 식사 2",                3, `${S}/029.jpeg`, D.trip, e(1), { eraIcon: "two-cups" }),
-  P("여행 단체 1",                3, `${S}/030.jpeg`, D.trip, e(2), { eraIcon: "suitcase" }),
-  P("여행 단체 2",                3, `${S}/031.jpeg`, D.trip, e(3), { eraIcon: "suitcase" }),
-  P("여행 단체 3",                3, `${S}/032.jpeg`, D.trip, e(4), { eraIcon: "suitcase" }),
-  P("여행 단체 4",                3, `${S}/033.jpeg`, D.trip, e(5), { eraIcon: "suitcase" }),
+  // ── Act III — 함께 걸은 봄 (한국 청년기) ──────
+  // 아이콘은 섹션 시작에만 (여행 첫 장, 공연 첫 장, 갤러리 첫 장, 슬기 졸업)
+  P("여행 식사 1",                3, `${S}/028.jpeg`, D.trip, e(0), { eraIcon: "suitcase" }),
+  P("여행 식사 2",                3, `${S}/029.jpeg`, D.trip, e(1)),
+  P("여행 단체 1",                3, `${S}/030.jpeg`, D.trip, e(2)),
+  P("여행 단체 2",                3, `${S}/031.jpeg`, D.trip, e(3)),
+  P("여행 단체 3",                3, `${S}/032.jpeg`, D.trip, e(4)),
+  P("여행 단체 4",                3, `${S}/033.jpeg`, D.trip, e(5)),
   P("공연 1",                    3, `${S}/034.jpeg`, D.trip2, e(6), { eraIcon: "concert-ticket" }),
-  P("공연 2",                    3, `${S}/035.jpeg`, D.trip2, e(7), { eraIcon: "concert-ticket" }),
-  P("공연 3",                    3, `${S}/036.jpeg`, D.trip2, e(8), { eraIcon: "concert-ticket" }),
-  P("공연 4",                    3, `${S}/037.jpeg`, D.trip2, e(9), { eraIcon: "concert-ticket" }),
+  P("공연 2",                    3, `${S}/035.jpeg`, D.trip2, e(7)),
+  P("공연 3",                    3, `${S}/036.jpeg`, D.trip2, e(8)),
+  P("공연 4",                    3, `${S}/037.jpeg`, D.trip2, e(9)),
   P("갤러리 전시 1",              3, `${S}/038.jpeg`, D.date, "zoomIn",  { eraIcon: "gallery-frame" }),
-  P("갤러리 전시 2",              3, `${S}/039.jpeg`, D.date, "zoomOut", { eraIcon: "gallery-frame" }),
-  P("갤러리 전시 3",              3, `${S}/040.jpeg`, D.date, "panRight", { eraIcon: "gallery-frame" }),
-  P("갤러리 전시 4",              3, `${S}/041.jpeg`, D.date, "zoomIn",  { eraIcon: "gallery-frame" }),
+  P("갤러리 전시 2",              3, `${S}/039.jpeg`, D.date, "zoomOut"),
+  P("갤러리 전시 3",              3, `${S}/040.jpeg`, D.date, "panRight"),
+  P("갤러리 전시 4",              3, `${S}/041.jpeg`, D.date, "zoomIn"),
   P("슬기 학사 졸업",              3, `${S}/050.jpeg`, D.mile, "zoomIn",  { eraIcon: "grad-cap" }),
 
-  // ── Act IV — 바다를 사이에 두고 (2016~, 거리의 시간) ──────
-  // 예찬 군입대 → 슬기 뉴욕 유학 → 예찬 제대 → 뉴욕 방문
+  // ── Act IV — 바다를 사이에 두고 (2016~ 거리의 시간) ──────
+  // 아이콘은 섹션 시작 (군입대 첫, 뉴욕 첫, 졸업)
   P("예찬 군입대",                4, `${S}/046.jpg`,  D.mile, "zoomIn",  { eraIcon: "military-hat" }),
-  P("예찬 군입대 2",              4, `${S}/047.png`,  D.mile, "zoomOut", { eraIcon: "military-hat" }),
-  P("예찬 군입대 3",              4, `${S}/048.jpeg`, D.mile, "panRight", { eraIcon: "military-hat" }),
-  P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn",  { eraIcon: "military-hat" }),
+  P("예찬 군입대 2",              4, `${S}/047.png`,  D.mile, "zoomOut"),
+  P("예찬 군입대 3",              4, `${S}/048.jpeg`, D.mile, "panRight"),
+  P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn"),
   P("뉴욕 1",                     4, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
-  P("뉴욕 2",                     4, `${S}/043.png`,  D.date, "panLeft", { eraIcon: "nyc-skyline" }),
-  P("뉴욕 3",                     4, `${S}/044.jpg`,  D.date, "zoomOut", { eraIcon: "nyc-skyline" }),
-  P("뉴욕 4",                     4, `${S}/045.png`,  D.date, "zoomIn",  { eraIcon: "subway-map" }),
+  P("뉴욕 2",                     4, `${S}/043.png`,  D.date, "panLeft"),
+  P("뉴욕 3",                     4, `${S}/044.jpg`,  D.date, "zoomOut"),
+  P("뉴욕 4",                     4, `${S}/045.png`,  D.date, "zoomIn"),
   P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut", { eraIcon: "diploma" }),
 
-  // ── Act V — 그리고, 오늘 (2026, 재회·연인·결혼) ──────
+  // ── Act V — 그리고, 오늘 (2026 재회·연인·결혼) ──────
+  // 아이콘은 시작·중간·마지막 3장에만 (과하지 않게)
   P("두 사람 1",                  5, `${S}/052.jpg`, D.us, "zoomIn", { eraIcon: "two-cups" }),
-  P("두 사람 2",                  5, `${S}/053.jpg`, D.us, "zoomOut", { eraIcon: "two-cups" }),
-  P("두 사람 3",                  5, `${S}/054.jpg`, D.us, "panRight", { eraIcon: "open-window" }),
-  P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn", { eraIcon: "open-window" }),
+  P("두 사람 2",                  5, `${S}/053.jpg`, D.us, "zoomOut"),
+  P("두 사람 3",                  5, `${S}/054.jpg`, D.us, "panRight"),
+  P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn"),
   P("두 사람 5",                  5, `${S}/056.jpg`, D.us, "panLeft", { eraIcon: "bouquet" }),
-  P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut", { eraIcon: "bouquet" }),
-  P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn", { eraIcon: "ring-box" }),
-  P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut", { eraIcon: "ring-box" }),
+  P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut"),
+  P("두 사람 7",                  5, `${S}/058.jpg`, D.us, "zoomIn"),
+  P("두 사람 8",                  5, `${S}/059.jpg`, D.us, "zoomOut"),
   P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn", { eraIcon: "linked-rings" }),
 ];
 
