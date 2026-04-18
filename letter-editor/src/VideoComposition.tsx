@@ -465,48 +465,61 @@ const SplitScene: React.FC<{
   overlayType: OverlayType; particlesType: ParticleType;
   bg: BackgroundStyle;
   style: SplitStyle;
-}> = ({ left, right, dur, isFirst, isLast, cf, mergeOut, overlayType, particlesType, bg, style }) => {
+  kenBurnsAmount: number;
+}> = ({ left, right, dur, isFirst, isLast, cf, mergeOut, overlayType, particlesType, bg, style, kenBurnsAmount }) => {
   const frame = useCurrentFrame();
   const fadeIn = isFirst ? 1 : interpolate(frame, [0, cf], [0, 1], { extrapolateRight: "clamp" });
   const fadeOut = isLast ? 1 : interpolate(frame, [dur - cf, dur], [1, 0], { extrapolateLeft: "clamp" });
   const opacity = Math.min(fadeIn, fadeOut);
   const t = Math.min(1, frame / dur);
 
-  // ─── Polaroid variant: two tilted polaroids on cream paper ───
+  // ─── Polaroid variant: two large tilted polaroids on cream paper ───
   if (style === "polaroid") {
     const scale = 1 + 0.02 * t;
     const pull = mergeOut
-      ? interpolate(frame, [dur * 0.5, dur - cf], [0, 40], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+      ? interpolate(frame, [dur * 0.5, dur - cf], [0, 60], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
       : 0;
+    // Each photo has its own Ken Burns inside its polaroid
+    const leftKen = kenBurns(left.effect, t, left.focalPoint.x, left.focalPoint.y, kenBurnsAmount);
+    const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, kenBurnsAmount);
     const polaroidBase: React.CSSProperties = {
       background: "white",
-      padding: "16px 16px 56px 16px",
-      boxShadow: "0 12px 40px rgba(60,40,15,0.35), 0 2px 6px rgba(60,40,15,0.2)",
-      width: "32%",
+      padding: "22px 22px 78px 22px",
+      boxShadow: "0 20px 60px rgba(60,40,15,0.4), 0 4px 12px rgba(60,40,15,0.25)",
+      width: "48%",
       position: "absolute",
     };
-    const imgStyle: React.CSSProperties = {
+    const imgFrameStyle: React.CSSProperties = {
       width: "100%",
       aspectRatio: "1 / 1.1",
-      objectFit: "cover",
-      display: "block",
+      overflow: "hidden",
     };
     const captionStyle: React.CSSProperties = {
-      position: "absolute", bottom: 16, left: 0, right: 0,
+      position: "absolute", bottom: 22, left: 0, right: 0,
       textAlign: "center",
-      fontFamily: SCRIPT_KR, fontSize: 22, color: "rgba(60,40,15,0.6)",
+      fontFamily: SCRIPT_KR, fontSize: 30, color: "rgba(60,40,15,0.65)",
     };
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground />
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "relative", width: "72%", height: "72%" }}>
-            <div style={{ ...polaroidBase, left: `calc(10% - ${pull}px)`, top: "14%", transform: `rotate(-4deg) scale(${scale})` }}>
-              <Img src={srcOf(left)} style={imgStyle} />
+          <div style={{ position: "relative", width: "94%", height: "92%" }}>
+            <div style={{ ...polaroidBase, left: `calc(-2% - ${pull}px)`, top: "2%", transform: `rotate(-3deg) scale(${scale})`, transformOrigin: "center" }}>
+              <div style={imgFrameStyle}>
+                <Img src={srcOf(left)} style={{
+                  width: "100%", height: "100%", objectFit: "cover", display: "block",
+                  transform: `scale(${leftKen.scale}) translate(${leftKen.tx * 100}%, ${leftKen.ty * 100}%)`,
+                }} />
+              </div>
               <div style={captionStyle}>{left.tag.split(" ")[0]}</div>
             </div>
-            <div style={{ ...polaroidBase, right: `calc(10% - ${pull}px)`, top: "10%", transform: `rotate(3deg) scale(${scale})` }}>
-              <Img src={srcOf(right)} style={imgStyle} />
+            <div style={{ ...polaroidBase, right: `calc(-2% - ${pull}px)`, top: "6%", transform: `rotate(2.5deg) scale(${scale})`, transformOrigin: "center" }}>
+              <div style={imgFrameStyle}>
+                <Img src={srcOf(right)} style={{
+                  width: "100%", height: "100%", objectFit: "cover", display: "block",
+                  transform: `scale(${rightKen.scale}) translate(${rightKen.tx * 100}%, ${rightKen.ty * 100}%)`,
+                }} />
+              </div>
               <div style={captionStyle}>{right.tag.split(" ")[0]}</div>
             </div>
           </div>
@@ -520,31 +533,39 @@ const SplitScene: React.FC<{
   // ─── Cameo variant: two circular portraits on cream paper ───
   if (style === "cameo") {
     const scale = 1 + 0.02 * t;
+    const leftKen = kenBurns(left.effect, t, left.focalPoint.x, left.focalPoint.y, kenBurnsAmount);
+    const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, kenBurnsAmount);
     const cameoStyle: React.CSSProperties = {
-      width: 340, height: 340,
+      width: 560, height: 560,
       borderRadius: "50%",
       overflow: "hidden",
-      border: `4px solid ${GOLD_SOFT}`,
-      boxShadow: "0 8px 32px rgba(60,40,15,0.35), inset 0 0 0 1px rgba(255,255,255,0.4)",
+      border: `6px solid ${GOLD_SOFT}`,
+      boxShadow: "0 16px 56px rgba(60,40,15,0.4), inset 0 0 0 1px rgba(255,255,255,0.5)",
       transform: `scale(${scale})`,
     };
     const nameStyle: React.CSSProperties = {
-      marginTop: 24, textAlign: "center",
-      fontFamily: SERIF_KR, fontSize: 32, color: INK, letterSpacing: 6,
+      marginTop: 32, textAlign: "center",
+      fontFamily: SERIF_KR, fontSize: 44, color: INK, letterSpacing: 8,
     };
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground />
-        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 120 }}>
+        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 160 }}>
           <div>
             <div style={cameoStyle}>
-              <Img src={srcOf(left)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Img src={srcOf(left)} style={{
+                width: "100%", height: "100%", objectFit: "cover",
+                transform: `scale(${leftKen.scale}) translate(${leftKen.tx * 100}%, ${leftKen.ty * 100}%)`,
+              }} />
             </div>
             <div style={nameStyle}>{left.tag.split(" ")[0]}</div>
           </div>
           <div>
             <div style={cameoStyle}>
-              <Img src={srcOf(right)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Img src={srcOf(right)} style={{
+                width: "100%", height: "100%", objectFit: "cover",
+                transform: `scale(${rightKen.scale}) translate(${rightKen.tx * 100}%, ${rightKen.ty * 100}%)`,
+              }} />
             </div>
             <div style={nameStyle}>{right.tag.split(" ")[0]}</div>
           </div>
@@ -688,6 +709,7 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
                 particlesType={item.left.particlesOverride ?? config.particles}
                 bg={config.backgroundStyle}
                 style={item.left.splitStyle ?? "standard"}
+                kenBurnsAmount={config.kenBurnsAmount}
               />
             )}
             {item.kind === "ending" && (
