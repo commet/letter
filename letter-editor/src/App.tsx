@@ -553,13 +553,13 @@ export const App: React.FC = () => {
           >
             {theme === "dark" ? "☾" : "☀"}
           </button>
-          <button className="btn btn-primary" onClick={() => {
+          <button className="btn btn-save" onClick={() => {
             setSaveStatus("saving");
             saveConfig(config).then((ok) => {
               setSaveStatus(ok ? "saved" : "idle");
               if (ok) setTimeout(() => setSaveStatus("idle"), 2000);
             });
-          }}>저장</button>
+          }}>💾 저장</button>
           <button className="btn btn-ghost" onClick={resetConfig}>초기화</button>
         </div>
       </header>
