@@ -530,6 +530,33 @@ export const App: React.FC = () => {
     }));
   };
 
+  // ── Year markers (연도 타임스탬프) ───────────
+
+  const addYearMarkerAfter = (photoIdx: number) => {
+    const newMarker = {
+      id: `y${Date.now()}`,
+      afterPhotoIndex: photoIdx,
+      year: "2020",
+      location: "장소",
+      durationSec: 3.0,
+    };
+    setConfig((c) => ({ ...c, yearMarkers: [...(c.yearMarkers ?? []), newMarker] }));
+  };
+
+  const updateYearMarker = (id: string, patch: Partial<{ year: string; location: string; durationSec: number }>) => {
+    setConfig((c) => ({
+      ...c,
+      yearMarkers: (c.yearMarkers ?? []).map((y) => y.id === id ? { ...y, ...patch } : y),
+    }));
+  };
+
+  const deleteYearMarker = (id: string) => {
+    setConfig((c) => ({
+      ...c,
+      yearMarkers: (c.yearMarkers ?? []).filter((y) => y.id !== id),
+    }));
+  };
+
   // ── AI prompt edit ──────────────────────────
 
   const handleAiEdit = async () => {
@@ -975,13 +1002,43 @@ export const App: React.FC = () => {
                               </div>
                             </div>
                           ))}
-                          <button
-                            className="btn btn-xs btn-moment-add"
-                            onClick={() => addMomentAfter(idx)}
-                            title="이 사진 다음에 '이때' 모먼트 카드 삽입"
-                          >
-                            + 모먼트 카드 삽입
-                          </button>
+                          {/* Year markers attached to this photo (inserted BEFORE next photo) */}
+                          {(config.yearMarkers ?? []).filter((y) => y.afterPhotoIndex === idx).map((y) => (
+                            <div key={y.id} className="moment-editor" style={{ borderColor: "#9f7a3a" }}>
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label" style={{ color: "#c79a52" }}>연도 마커 (다음 사진 직전)</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteYearMarker(y.id)}>&#10005;</button>
+                              </div>
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <input className="input input-sm" placeholder="연도" value={y.year}
+                                  onChange={(e) => updateYearMarker(y.id, { year: e.target.value })} style={{ flex: 1 }} />
+                                <input className="input input-sm" placeholder="장소" value={y.location}
+                                  onChange={(e) => updateYearMarker(y.id, { location: e.target.value })} style={{ flex: 2 }} />
+                                <input className="input input-sm" type="number" step="0.5" min="1.5" max="6"
+                                  value={y.durationSec ?? 3.0}
+                                  onChange={(e) => updateYearMarker(y.id, { durationSec: parseFloat(e.target.value) })}
+                                  style={{ flex: 1 }} title="지속(초)" />
+                              </div>
+                            </div>
+                          ))}
+                          <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+                            <button
+                              className="btn btn-xs btn-moment-add"
+                              onClick={() => addMomentAfter(idx)}
+                              title="이 사진 다음에 '이때' 모먼트 카드 삽입"
+                              style={{ flex: 1 }}
+                            >
+                              + 모먼트
+                            </button>
+                            <button
+                              className="btn btn-xs btn-moment-add"
+                              onClick={() => addYearMarkerAfter(idx)}
+                              title="이 사진 다음에 연도 마커 삽입"
+                              style={{ flex: 1 }}
+                            >
+                              + 연도 마커
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

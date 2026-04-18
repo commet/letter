@@ -97,6 +97,14 @@ export type MomentCard = {
   durationSec?: number;    // default 2.0
 };
 
+export type YearMarker = {
+  id: string;
+  afterPhotoIndex: number; // inserted BEFORE photo at (afterPhotoIndex + 1)
+  year: string;            // e.g., "2013"
+  location: string;        // e.g., "분당"
+  durationSec?: number;    // default 3.0
+};
+
 export type VideoConfig = {
   photos: PhotoEntry[];
   actTitles: Record<number, ActTitle>;
@@ -114,6 +122,7 @@ export type VideoConfig = {
   kenBurnsAmount: number;
   titleVariant: TitleVariant;
   moments?: MomentCard[]; // "이때" interstitial cards inserted between photos
+  yearMarkers?: YearMarker[]; // year / location title interstitials
 };
 
 // ─────────────────────────────────────────────
@@ -127,6 +136,7 @@ export type TimelineItem =
   | { kind: "photo"; photo: PhotoEntry; durationInFrames: number; enterTransition: TransitionMode; exitTransition: TransitionMode; name: string }
   | { kind: "split"; left: PhotoEntry; right: PhotoEntry; durationInFrames: number; mergeOut: boolean; name: string }
   | { kind: "moment"; card: MomentCard; durationInFrames: number; name: string }
+  | { kind: "yearMarker"; marker: YearMarker; durationInFrames: number; name: string }
   | { kind: "ending"; durationInFrames: number; name: string };
 
 export function buildTimeline(
@@ -134,7 +144,8 @@ export function buildTimeline(
   titleCardFrames: number,
   endingFrames: number,
   fps: number,
-  moments: MomentCard[] = []
+  moments: MomentCard[] = [],
+  yearMarkers: YearMarker[] = []
 ): TimelineItem[] {
   const items: TimelineItem[] = [];
   const seenActs = new Set<number>();
@@ -145,6 +156,14 @@ export function buildTimeline(
     const key = m.afterPhotoIndex + 1; // if afterPhotoIndex=-1, show before photo 0
     if (!momentsBefore.has(key)) momentsBefore.set(key, []);
     momentsBefore.get(key)!.push(m);
+  }
+
+  // Group year markers by insertion point
+  const yearsBefore = new Map<number, YearMarker[]>();
+  for (const y of yearMarkers) {
+    const key = y.afterPhotoIndex + 1;
+    if (!yearsBefore.has(key)) yearsBefore.set(key, []);
+    yearsBefore.get(key)!.push(y);
   }
 
   let i = 0;
@@ -161,7 +180,18 @@ export function buildTimeline(
       });
     }
 
-    // Insert any moment cards scheduled to appear before this photo
+    // Insert year markers first, then moment cards (year is more structural)
+    const yearsHere = yearsBefore.get(i);
+    if (yearsHere) {
+      for (const y of yearsHere) {
+        items.push({
+          kind: "yearMarker",
+          marker: y,
+          durationInFrames: Math.round((y.durationSec ?? 3.0) * fps),
+          name: `Year — ${y.year} · ${y.location}`,
+        });
+      }
+    }
     const before = momentsBefore.get(i);
     if (before) {
       for (const card of before) {
@@ -408,9 +438,9 @@ export const defaultConfig: VideoConfig = {
   photos: defaultPhotos,
   actTitles: defaultActTitles,
   ending: {
-    date: "2026 · XX · XX",
-    groomName: "신랑 ○○",
-    brideName: "신부 ○○",
+    date: "2026 · 05 · 05",
+    groomName: "이예찬",
+    brideName: "송슬기",
     message: "와주셔서 감사합니다",
   },
   titleCardSec: 4.0,   // slightly longer for breathing
@@ -424,11 +454,11 @@ export const defaultConfig: VideoConfig = {
   kenBurnsAmount: 0.04,      // NEW — half of previous 0.08 (calmer)
   titleVariant: "journal",   // NEW — elegant journal style for all acts
   moments: [                 // NEW — "이때" interstitial cards from Claude Design P0-2
-    // Placed BEFORE specific reveal photos to build anticipation.
-    // afterPhotoIndex is 0-based. Use -1 to place before the first photo.
-    // Example: place before photo 13 (★ 분당선교원) → afterPhotoIndex: 12
     { id: "m1", afterPhotoIndex: 12, l1: "그해 여름", l2: "우리는 같은 교회에 있었다", year: "2010", durationSec: 2.0 },
-    // Place before photo 15 (★ 붉은악마 단체 #16) → afterPhotoIndex: 14
     { id: "m2", afterPhotoIndex: 14, l1: "2002년, 붉은 광장에서", l2: "우리는 같은 팀이었다", year: "2002", durationSec: 2.0 },
+  ],
+  yearMarkers: [             // NEW — 연도 타임스탬프 카드 (P1-2)
+    // 여행/뉴욕 사진 직전 — Act III 후반 시작점
+    { id: "y1", afterPhotoIndex: 41, year: "2020", location: "뉴욕", durationSec: 3.0 },
   ],
 };
