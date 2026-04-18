@@ -502,6 +502,34 @@ export const App: React.FC = () => {
     if (confirm("기본 설정으로 되돌릴까요?")) setConfig(defaultConfig);
   };
 
+  // ── Moment cards (이때 interstitials) ────────
+
+  const addMomentAfter = (photoIdx: number) => {
+    const newCard = {
+      id: `m${Date.now()}`,
+      afterPhotoIndex: photoIdx,
+      l1: "그해 여름",
+      l2: "우리는 같은 자리에 있었다",
+      year: "2010",
+      durationSec: 2.0,
+    };
+    setConfig((c) => ({ ...c, moments: [...(c.moments ?? []), newCard] }));
+  };
+
+  const updateMoment = (id: string, patch: Partial<{ l1: string; l2: string; year: string; afterPhotoIndex: number; durationSec: number }>) => {
+    setConfig((c) => ({
+      ...c,
+      moments: (c.moments ?? []).map((m) => m.id === id ? { ...m, ...patch } : m),
+    }));
+  };
+
+  const deleteMoment = (id: string) => {
+    setConfig((c) => ({
+      ...c,
+      moments: (c.moments ?? []).filter((m) => m.id !== id),
+    }));
+  };
+
   // ── AI prompt edit ──────────────────────────
 
   const handleAiEdit = async () => {
@@ -926,6 +954,34 @@ export const App: React.FC = () => {
                               <button className="btn btn-xs" onClick={() => updateCaption(idx, { text: "", position: "bottom" })}>+ 캡션</button>
                             )}
                           </div>
+                          {/* Moment cards attached to this photo (inserted BEFORE next photo) */}
+                          {(config.moments ?? []).filter((m) => m.afterPhotoIndex === idx).map((m) => (
+                            <div key={m.id} className="moment-editor">
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label">이때 모먼트 (다음 사진 직전 삽입)</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteMoment(m.id)}>&#10005;</button>
+                              </div>
+                              <input className="input input-sm" placeholder="1행 (얇게)" value={m.l1}
+                                onChange={(e) => updateMoment(m.id, { l1: e.target.value })} />
+                              <input className="input input-sm" placeholder="2행 (굵게)" value={m.l2}
+                                onChange={(e) => updateMoment(m.id, { l2: e.target.value })} />
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <input className="input input-sm" placeholder="연도/태그" value={m.year}
+                                  onChange={(e) => updateMoment(m.id, { year: e.target.value })} style={{ flex: 2 }} />
+                                <input className="input input-sm" type="number" step="0.5" min="1" max="5"
+                                  value={m.durationSec ?? 2.0}
+                                  onChange={(e) => updateMoment(m.id, { durationSec: parseFloat(e.target.value) })}
+                                  style={{ flex: 1 }} title="지속(초)" />
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            className="btn btn-xs btn-moment-add"
+                            onClick={() => addMomentAfter(idx)}
+                            title="이 사진 다음에 '이때' 모먼트 카드 삽입"
+                          >
+                            + 모먼트 카드 삽입
+                          </button>
                         </div>
                       </div>
                     ))}

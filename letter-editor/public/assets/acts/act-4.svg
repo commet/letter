@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" fill="none" stroke="#1a1510" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <title>Act IV — 함께 걸어온 시간</title>
+  <desc>A single pair of footprints walking into the distance. Footprints overlap as the couple walks close together. Trail starts from bottom-right and recedes toward upper-center, leaving bottom-left clear for caption.</desc>
+
+  
+  <path d="M 420 380 L 1500 380" stroke-width="1" opacity="0.18"></path>
+
+  
+  <g fill="#1a1510" stroke="none" opacity="0.28">
+    <circle cx="1180" cy="920" r="1"></circle>
+    <circle cx="1360" cy="950" r="1.2"></circle>
+    <circle cx="1540" cy="900" r="0.9"></circle>
+    <circle cx="1620" cy="1010" r="1.1"></circle>
+    <circle cx="1460" cy="1020" r="1"></circle>
+    <circle cx="1280" cy="980" r="1"></circle>
+    <circle cx="780" cy="740" r="0.9"></circle>
+    <circle cx="1080" cy="680" r="0.8"></circle>
+    <circle cx="1260" cy="620" r="0.8"></circle>
+    <circle cx="1420" cy="560" r="0.7"></circle>
+    <circle cx="1520" cy="500" r="0.6"></circle>
+    <circle cx="1560" cy="450" r="0.5"></circle>
+  </g>
+
+  
+  <g fill="#1a1510" stroke="none">
+    
+    <g transform="translate(1400, 1000) rotate(12)">
+      <ellipse cx="0" cy="0" rx="22" ry="34"></ellipse>
+      <ellipse cx="-2" cy="40" rx="14" ry="10"></ellipse>
+    </g>
+    <g transform="translate(1320, 980) rotate(10)">
+      <ellipse cx="0" cy="0" rx="22" ry="34"></ellipse>
+      <ellipse cx="-2" cy="40" rx="14" ry="10"></ellipse>
+    </g>
+
+    
+    <g transform="translate(1320, 890) rotate(14)">
+      <ellipse cx="0" cy="0" rx="19" ry="30"></ellipse>
+      <ellipse cx="-2" cy="35" rx="12" ry="9"></ellipse>
+    </g>
+    <g transform="translate(1240, 870) rotate(11)">
+      <ellipse cx="0" cy="0" rx="19" ry="30"></ellipse>
+      <ellipse cx="-2" cy="35" rx="12" ry="9"></ellipse>
+    </g>
+
+    
+    <g transform="translate(1230, 790) rotate(13)">
+      <ellipse cx="0" cy="0" rx="16" ry="26"></ellipse>
+      <ellipse cx="-1" cy="30" rx="10" ry="7"></ellipse>
+    </g>
+    <g transform="translate(1160, 770) rotate(10)">
+      <ellipse cx="0" cy="0" rx="16" ry="26"></ellipse>
+      <ellipse cx="-1" cy="30" rx="10" ry="7"></ellipse>
+    </g>
+
+    
+    <g transform="translate(1135, 700) rotate(14)">
+      <ellipse cx="0" cy="0" rx="13" ry="22"></ellipse>
+      <ellipse cx="-1" cy="26" rx="9" ry="6"></ellipse>
+    </g>
+    <g transform="translate(1080, 685) rotate(10)">
+      <ellipse cx="0" cy="0" rx="13" ry="22"></ellipse>
+      <ellipse cx="-1" cy="26" rx="9" ry="6"></ellipse>
+    </g>
+
+    
+    <g transform="translate(1055, 620) rotate(13)">
+      <ellipse cx="0" cy="0" rx="11" ry="18"></ellipse>
+      <ellipse cx="-1" cy="22" rx="7" ry="5"></ellipse>
+    </g>
+    <g transform="translate(1010, 610) rotate(10)">
+      <ellipse cx="0" cy="0" rx="11" ry="18"></ellipse>
+      <ellipse cx="-1" cy="22" rx="7" ry="5"></ellipse>
+    </g>
+
+    
+    <g transform="translate(985, 558) rotate(14)">
+      <ellipse cx="0" cy="0" rx="9" ry="15"></ellipse>
+      <ellipse cx="-1" cy="18" rx="6" ry="4"></ellipse>
+    </g>
+    <g transform="translate(950, 550) rotate(11)">
+      <ellipse cx="0" cy="0" rx="9" ry="15"></ellipse>
+      <ellipse cx="-1" cy="18" rx="6" ry="4"></ellipse>
+    </g>
+
+    
+    <g transform="translate(928, 508) rotate(14)">
+      <ellipse cx="0" cy="0" rx="7" ry="12"></ellipse>
+      <ellipse cx="-1" cy="15" rx="5" ry="3.5"></ellipse>
+    </g>
+    <g transform="translate(900, 502) rotate(11)">
+      <ellipse cx="0" cy="0" rx="7" ry="12"></ellipse>
+      <ellipse cx="-1" cy="15" rx="5" ry="3.5"></ellipse>
+    </g>
+
+    
+    <g transform="translate(880, 468) rotate(13)">
+      <ellipse cx="0" cy="0" rx="5.5" ry="9.5"></ellipse>
+      <ellipse cx="-1" cy="12" rx="4" ry="3"></ellipse>
+    </g>
+    <g transform="translate(860, 464) rotate(11)">
+      <ellipse cx="0" cy="0" rx="5.5" ry="9.5"></ellipse>
+      <ellipse cx="-1" cy="12" rx="4" ry="3"></ellipse>
+    </g>
+
+    
+    <g transform="translate(840, 440) rotate(13)">
+      <ellipse cx="0" cy="0" rx="4.5" ry="8"></ellipse>
+      <ellipse cx="-1" cy="10" rx="3.2" ry="2.5"></ellipse>
+    </g>
+    <g transform="translate(823, 436) rotate(11)">
+      <ellipse cx="0" cy="0" rx="4.5" ry="8"></ellipse>
+      <ellipse cx="-1" cy="10" rx="3.2" ry="2.5"></ellipse>
+    </g>
+
+    
+    <g transform="translate(805, 418) rotate(13)" opacity="0.85">
+      <ellipse cx="0" cy="0" rx="3.5" ry="6"></ellipse>
+    </g>
+    <g transform="translate(793, 416) rotate(11)" opacity="0.85">
+      <ellipse cx="0" cy="0" rx="3.5" ry="6"></ellipse>
+    </g>
+
+    
+    <g opacity="0.7">
+      <circle cx="772" cy="402" r="2.2"></circle>
+      <circle cx="761" cy="400" r="2"></circle>
+      <circle cx="744" cy="392" r="1.6"></circle>
+      <circle cx="735" cy="391" r="1.4"></circle>
+      <circle cx="722" cy="386" r="1.2"></circle>
+      <circle cx="714" cy="385" r="1"></circle>
+    </g>
+  </g>
+
+  
+  <path d="M 620 383 L 710 380" stroke-width="0.9" opacity="0.3"></path>
+</svg>

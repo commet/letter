@@ -305,12 +305,28 @@ const TitleCardScene: React.FC<{
   const fadeOut = interpolate(frame, [dur - cf, dur], [1, 0], { extrapolateLeft: "clamp" });
   const opacity = Math.min(fadeIn, fadeOut);
 
-  // Journal variant (cream paper, serif ink)
+  // Journal variant (cream paper, serif ink, with Act illustration)
   if (effectiveVariant === "journal") {
     const chars = Array.from(kr);
+    // Act illustration fades in slowly, stays subtle behind text
+    const illuOpacity = interpolate(frame, [0, 40], [0, 0.55], { extrapolateRight: "clamp" });
+    const illuScale = interpolate(frame, [0, dur], [1.0, 1.04], { extrapolateRight: "clamp" });
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground />
+        {/* Act illustration as ambient background layer */}
+        {act >= 1 && act <= 5 && (
+          <AbsoluteFill style={{
+            opacity: illuOpacity,
+            transform: `scale(${illuScale})`,
+            transformOrigin: "center center",
+          }}>
+            <Img src={`/assets/acts/act-${act}.svg`} style={{
+              width: "100%", height: "100%", objectFit: "contain",
+              display: "block",
+            }} />
+          </AbsoluteFill>
+        )}
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 32 }}>
           {/* Small uppercase chapter */}
           <div style={{
@@ -377,6 +393,97 @@ const TitleCardScene: React.FC<{
           })}
         </div>
       </div>
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
+// Moment Card Scene ("이때" interstitial — from Claude Design P0-2)
+// ─────────────────────────────────────────────
+
+const MomentCardScene: React.FC<{
+  l1: string; l2: string; year: string;
+  dur: number;
+  overlayType: OverlayType; particlesType: ParticleType;
+}> = ({ l1, l2, year, dur, overlayType, particlesType }) => {
+  const frame = useCurrentFrame();
+
+  // Timing matches Claude Design HTML exactly:
+  // Card fades: 0-0.4s in, hold, 0.4s out
+  // Subtitle rises at 0.15s, Year at 0.55s, Rule draws 0.30-0.90s
+  const fps = 30;
+  const cardFadeIn  = interpolate(frame, [0, 0.4 * fps], [0, 1], { extrapolateRight: "clamp" });
+  const cardFadeOut = interpolate(frame, [dur - 0.4 * fps, dur], [1, 0], { extrapolateLeft: "clamp" });
+  const cardOpacity = Math.min(cardFadeIn, cardFadeOut);
+
+  const subOpacity = interpolate(frame, [0.15 * fps, 0.55 * fps], [0, 1], { extrapolateRight: "clamp" });
+  const subY       = interpolate(frame, [0.15 * fps, 0.55 * fps], [8, 0], { extrapolateRight: "clamp" });
+
+  const yearOpacity = interpolate(frame, [0.55 * fps, 0.95 * fps], [0, 1], { extrapolateRight: "clamp" });
+  const yearY       = interpolate(frame, [0.55 * fps, 0.95 * fps], [8, 0], { extrapolateRight: "clamp" });
+
+  const ruleWidth = interpolate(frame, [0.30 * fps, 0.90 * fps], [0, 260], { extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ opacity: cardOpacity }}>
+      {/* Cream paper background with subtle radial warmth (from Claude Design) */}
+      <AbsoluteFill style={{
+        background: `radial-gradient(1400px 900px at 30% 20%, #faf2dc, ${PAPER} 60%), ${PAPER}`,
+      }} />
+      {/* Hanji fiber noise */}
+      <AbsoluteFill style={{
+        opacity: 0.55,
+        mixBlendMode: "multiply",
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' seed='5' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 0.07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+        backgroundSize: "300px 300px",
+      }} />
+      {/* Vignette */}
+      <AbsoluteFill style={{
+        background: "radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(168, 136, 72, 0.09) 85%, rgba(120, 90, 50, 0.16) 100%)",
+      }} />
+      {/* Center stack */}
+      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+        {/* Subtitle — two lines (Nanum Myeongjo 56px) */}
+        <div style={{
+          fontFamily: SERIF_KR,
+          fontWeight: 400,
+          fontSize: 56,
+          lineHeight: 1.45,
+          letterSpacing: "0.02em",
+          textAlign: "center",
+          color: INK,
+          opacity: subOpacity,
+          transform: `translateY(${subY}px)`,
+          whiteSpace: "nowrap",
+        }}>
+          <span>{l1}</span>
+          <span style={{ fontWeight: 700, display: "block", marginTop: 4 }}>{l2}</span>
+        </div>
+        {/* Ink rule */}
+        <div style={{
+          marginTop: 44, marginBottom: 28,
+          width: ruleWidth,
+          height: 1.5,
+          background: INK,
+          opacity: 0.85,
+        }} />
+        {/* Year / context (Cormorant 28px, uppercase, wide letter-spacing) */}
+        <div style={{
+          fontFamily: SERIF,
+          fontWeight: 300,
+          fontSize: 28,
+          letterSpacing: "0.34em",
+          textAlign: "center",
+          color: INK,
+          opacity: yearOpacity,
+          transform: `translateY(${yearY}px)`,
+          textTransform: "uppercase",
+        }}>
+          {year}
+        </div>
+      </AbsoluteFill>
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
     </AbsoluteFill>
@@ -700,8 +807,8 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
   const ef = Math.round(endingSec * fps);
 
   const timeline: TimelineItem[] = useMemo(
-    () => buildTimeline(photos, tcf, ef, fps),
-    [photos, tcf, ef, fps]
+    () => buildTimeline(photos, tcf, ef, fps, config.moments ?? []),
+    [photos, tcf, ef, fps, config.moments]
   );
 
   let cursor = 0;
@@ -751,6 +858,16 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
                 bg={config.backgroundStyle}
                 style={item.left.splitStyle ?? "standard"}
                 kenBurnsAmount={config.kenBurnsAmount}
+              />
+            )}
+            {item.kind === "moment" && (
+              <MomentCardScene
+                l1={item.card.l1}
+                l2={item.card.l2}
+                year={item.card.year}
+                dur={item.durationInFrames}
+                overlayType={config.overlay}
+                particlesType={config.particles}
               />
             )}
             {item.kind === "ending" && (
