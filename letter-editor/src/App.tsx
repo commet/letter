@@ -312,11 +312,11 @@ const ImageEditorModal: React.FC<{
             {mode === "focal" ? "클릭 = 포커스 지정 · 변경사항은 실시간 반영됨" : "클릭 = 강조 추가 · 변경사항은 실시간 반영됨"}
           </span>
           <button
-            className="btn btn-primary"
-            style={{ padding: "10px 28px", fontSize: 14, minWidth: 100 }}
+            className="btn-save"
+            style={{ minWidth: 110, fontSize: 15 }}
             onClick={onClose}
           >
-            확인 ✓
+            ✓ 확인
           </button>
         </div>
       </div>
