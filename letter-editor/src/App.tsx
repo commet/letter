@@ -97,9 +97,11 @@ type EditorMode = "focal" | "spotlight";
 
 const ImageEditorModal: React.FC<{
   photo: PhotoEntry;
+  kenBurnsAmount: number;
   onUpdatePhoto: (patch: Partial<PhotoEntry>) => void;
+  onUpdateKenBurnsAmount: (val: number) => void;
   onClose: () => void;
-}> = ({ photo, onUpdatePhoto, onClose }) => {
+}> = ({ photo, kenBurnsAmount, onUpdatePhoto, onUpdateKenBurnsAmount, onClose }) => {
   const [mode, setMode] = useState<EditorMode>("focal");
   const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -226,12 +228,56 @@ const ImageEditorModal: React.FC<{
                 <button className="btn btn-xs" onClick={() => onUpdatePhoto({ focalPoint: { x: 0.5, y: 0.5 } })}>
                   중앙 리셋
                 </button>
+                <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border-soft)" }}>
+                  <p className="hint" style={{ marginBottom: 6 }}>
+                    줌/확대 정도 (전체 영상 공통)
+                  </p>
+                  <label className="slider-label">
+                    <span>확대</span>
+                    <input
+                      type="range"
+                      className="slider"
+                      min={0}
+                      max={0.15}
+                      step={0.005}
+                      value={kenBurnsAmount}
+                      onChange={(e) => onUpdateKenBurnsAmount(parseFloat(e.target.value))}
+                    />
+                    <span>{(kenBurnsAmount * 100).toFixed(1)}%</span>
+                  </label>
+                  <button
+                    className="btn btn-xs"
+                    style={{ marginTop: 4 }}
+                    onClick={() => onUpdateKenBurnsAmount(0.04)}
+                  >
+                    기본값(4%)
+                  </button>
+                  <p className="hint hint-dim" style={{ marginTop: 6, fontSize: 11 }}>
+                    0% = 움직임 없음 · 4% = 잔잔함(권장) · 15% = 강한 줌
+                  </p>
+                </div>
               </>
             )}
 
             {mode === "spotlight" && (
               <>
-                <p className="hint">이미지를 클릭하면 강조 영역이 추가됩니다.<br />해당 영역만 밝고, 나머지는 어두워집니다.</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <p className="hint" style={{ margin: 0 }}>
+                    이미지를 클릭하면 강조 영역이 추가됩니다.<br />해당 영역만 밝고, 나머지는 어두워집니다.
+                  </p>
+                  {spots.length > 0 && (
+                    <button
+                      className="btn btn-xs"
+                      style={{ flexShrink: 0, marginLeft: 10 }}
+                      onClick={() => {
+                        onUpdatePhoto({ spotlights: [] });
+                        setSelectedSpot(null);
+                      }}
+                    >
+                      전체 리셋
+                    </button>
+                  )}
+                </div>
                 {spots.length === 0 && (
                   <p className="hint hint-dim">아직 강조 포인트가 없습니다.</p>
                 )}
@@ -263,9 +309,15 @@ const ImageEditorModal: React.FC<{
 
         <div className="modal-footer">
           <span className="modal-footer-hint">
-            {mode === "focal" ? "클릭 = 포커스 지정" : "클릭 = 강조 추가"}
+            {mode === "focal" ? "클릭 = 포커스 지정 · 변경사항은 실시간 반영됨" : "클릭 = 강조 추가 · 변경사항은 실시간 반영됨"}
           </span>
-          <button className="btn btn-primary" onClick={onClose}>확인</button>
+          <button
+            className="btn btn-primary"
+            style={{ padding: "10px 28px", fontSize: 14, minWidth: 100 }}
+            onClick={onClose}
+          >
+            확인 ✓
+          </button>
         </div>
       </div>
     </div>
@@ -910,7 +962,9 @@ export const App: React.FC = () => {
       {editorTarget !== null && config.photos[editorTarget] && (
         <ImageEditorModal
           photo={config.photos[editorTarget]}
+          kenBurnsAmount={config.kenBurnsAmount}
           onUpdatePhoto={(patch) => updatePhoto(editorTarget, patch)}
+          onUpdateKenBurnsAmount={(val) => setConfig((c) => ({ ...c, kenBurnsAmount: val }))}
           onClose={() => setEditorTarget(null)}
         />
       )}

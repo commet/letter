@@ -427,20 +427,36 @@ const PhotoScene: React.FC<{
       transform: slideTransform,
     }}>
       <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} />
-      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{
-          ...getFrameStyle(frameType),
-          transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)${frameType === "polaroid" ? " rotate(-1deg)" : ""}`,
-          boxShadow: frameType === "none" ? defaultShadow : getFrameStyle(frameType).boxShadow,
-        }}>
+      {frameType === "none" ? (
+        <AbsoluteFill>
           <Img src={src} style={{
-            width: "100%", maxWidth: frameType === "none" ? undefined : "100%",
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
             objectFit: "contain",
+            transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
+            transformOrigin: "center center",
             filter: filterCSS !== "none" ? filterCSS : undefined,
             display: "block",
           }} />
-        </div>
-      </AbsoluteFill>
+        </AbsoluteFill>
+      ) : (
+        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{
+            ...getFrameStyle(frameType),
+            transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)${frameType === "polaroid" ? " rotate(-1deg)" : ""}`,
+            boxShadow: getFrameStyle(frameType).boxShadow,
+          }}>
+            <Img src={src} style={{
+              width: "100%", maxWidth: "100%",
+              objectFit: "contain",
+              filter: filterCSS !== "none" ? filterCSS : undefined,
+              display: "block",
+            }} />
+          </div>
+        </AbsoluteFill>
+      )}
       {photo.spotlights?.length > 0 && (
         <SpotlightOverlay spotlights={photo.spotlights} />
       )}
