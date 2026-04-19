@@ -443,6 +443,16 @@ export const App: React.FC = () => {
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [config, loading]);
 
+  // ── Preload ALL photos upfront so polaroid pairs sync (fixes slow/fast image mismatch) ──
+  useEffect(() => {
+    if (loading) return;
+    const urls = config.photos.map((p) => p.file.startsWith("http") ? p.file : `/${p.file}`);
+    urls.forEach((url) => {
+      const img = new Image();
+      img.src = url;
+    });
+  }, [loading, config.photos.length]);
+
   // ── updaters ────────────────────────────────
 
   const updatePhoto = useCallback((idx: number, patch: Partial<PhotoEntry>) => {
