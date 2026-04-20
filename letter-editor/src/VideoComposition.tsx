@@ -946,7 +946,8 @@ const CollageScene: React.FC<{
   const frame = useCurrentFrame();
   const t = Math.max(0, Math.min(1, frame / dur));
 
-  const LAYOUTS = [
+  // Default 7-slot scrapbook layout (dense)
+  const LAYOUTS_7 = [
     { left: 140,  top: 90,   w: 360, h: 380, rot: -6, tapeCorner: "top-30",     tapeColor: "#d9a8a0" },
     { left: 620,  top: 70,   w: 400, h: 420, rot:  4, tapeCorner: "top-right",  tapeColor: "#a8c9d4" },
     { left: 1180, top: 100,  w: 380, h: 400, rot: -8, tapeCorner: "top-left",   tapeColor: "#d4b870" },
@@ -955,6 +956,40 @@ const CollageScene: React.FC<{
     { left: 260,  top: 820,  w: 320, h: 340, rot:  7, tapeCorner: "top-right",  tapeColor: "#b8a8c9" },
     { left: 1300, top: 540,  w: 400, h: 420, rot: -5, tapeCorner: "top-25",     tapeColor: "#d89a7a" },
   ];
+
+  // Count-specific layouts — for small collages we spread polaroids across the full canvas
+  // with breathing room and organic asymmetric rotations.
+  const LAYOUTS_BY_COUNT: Record<number, typeof LAYOUTS_7> = {
+    1: [
+      { left: 720, top: 260, w: 480, h: 560, rot: -2, tapeCorner: "top-30",    tapeColor: "#d9a8a0" },
+    ],
+    2: [
+      { left: 300, top: 240, w: 520, h: 580, rot: -5, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 1100, top: 280, w: 520, h: 580, rot:  3, tapeCorner: "top-left", tapeColor: "#a8c9d4" },
+    ],
+    3: [
+      { left: 180,  top: 230, w: 460, h: 530, rot: -7, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 730,  top: 170, w: 480, h: 560, rot:  3, tapeCorner: "top-30",    tapeColor: "#e8d9b8" },
+      { left: 1280, top: 250, w: 460, h: 530, rot: -5, tapeCorner: "top-left",  tapeColor: "#a8c9d4" },
+    ],
+    4: [
+      { left: 150,  top: 140, w: 420, h: 470, rot: -6, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 640,  top: 110, w: 440, h: 490, rot:  4, tapeCorner: "top-30",    tapeColor: "#a8c9d4" },
+      { left: 1150, top: 160, w: 420, h: 470, rot: -4, tapeCorner: "top-left",  tapeColor: "#d4b870" },
+      { left: 660,  top: 590, w: 480, h: 440, rot:  2, tapeCorner: "top-40",    tapeColor: "#e8d9b8" },
+    ],
+    5: [
+      { left: 100,  top: 150, w: 380, h: 430, rot: -7, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 540,  top: 110, w: 420, h: 470, rot:  3, tapeCorner: "top-30",    tapeColor: "#a8c9d4" },
+      { left: 1040, top: 140, w: 400, h: 440, rot: -4, tapeCorner: "top-left",  tapeColor: "#d4b870" },
+      { left: 1480, top: 180, w: 380, h: 430, rot:  5, tapeCorner: "top-right", tapeColor: "#a8b898" },
+      { left: 700,  top: 610, w: 460, h: 440, rot: -2, tapeCorner: "top-40",    tapeColor: "#e8d9b8" },
+    ],
+    6: LAYOUTS_7.slice(0, 6),
+    7: LAYOUTS_7,
+  };
+
+  const LAYOUTS = LAYOUTS_BY_COUNT[Math.min(7, Math.max(1, config.slots.length))] ?? LAYOUTS_7;
 
   // Drop-in timing (from original 4s drop, staggered 0.2s)
   // Normalize: each polaroid starts at (i * 0.05) t and drops over 0.5 t
@@ -1000,7 +1035,8 @@ const CollageScene: React.FC<{
             transform: `rotate(${L.rot}deg) translateY(${polaDropY(i)}px)`,
             transformOrigin: "center center",
             opacity: polaOpacity(i),
-            zIndex: i === 4 ? 3 : 1, // center largest on top
+            // Put the largest polaroid on top (in case of overlap)
+            zIndex: L.w * L.h === Math.max(...LAYOUTS.map((x) => x.w * x.h)) ? 3 : 1,
           }}>
             {/* Tape */}
             <div style={{

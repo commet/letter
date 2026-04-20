@@ -150,6 +150,8 @@ export type Collage = {
   afterPhotoIndex: number;
   slots: CollageSlot[];    // up to 7 entries
   durationSec?: number;    // default 6.0
+  beforeTitle?: boolean;   // if true, insert BEFORE the act title card at the transition point
+                           //   (use case: "end of prev act" bookend before the new act starts)
 };
 
 export type VideoConfig = {
@@ -247,6 +249,23 @@ export function buildTimeline(
   while (i < photos.length) {
     const p = photos[i];
 
+    // Collages with beforeTitle=true appear BEFORE the act title card
+    // (used as "end of previous act" bookends at act transition points).
+    const collagesAtI = collagesBefore.get(i) ?? [];
+    const collagesBeforeTitle = collagesAtI.filter((c) => c.beforeTitle);
+    const collagesAfterTitle  = collagesAtI.filter((c) => !c.beforeTitle);
+
+    if (collagesBeforeTitle.length > 0) {
+      for (const c of collagesBeforeTitle) {
+        items.push({
+          kind: "collage",
+          collage: c,
+          durationInFrames: Math.round((c.durationSec ?? 6.0) * fps),
+          name: `Collage (end of act) — ${c.slots.length} photos`,
+        });
+      }
+    }
+
     if (!seenActs.has(p.act)) {
       seenActs.add(p.act);
       items.push({
@@ -304,10 +323,9 @@ export function buildTimeline(
         });
       }
     }
-    // Collages
-    const collagesHere = collagesBefore.get(i);
-    if (collagesHere) {
-      for (const c of collagesHere) {
+    // Collages (only those WITHOUT beforeTitle — the others were inserted earlier)
+    if (collagesAfterTitle.length > 0) {
+      for (const c of collagesAfterTitle) {
         items.push({
           kind: "collage",
           collage: c,
@@ -505,10 +523,11 @@ const defaultPhotos: PhotoEntry[] = [
   P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut"),
   P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
   P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn"),
-  P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn"),
 
   // ── Act II — 같은 마당 (1994~ 분당교회) ──────
   // 단체사진 중 핵심 3장에 얼굴 스포트라이트. 아이콘은 섹션 경계에만.
+  // 경복궁은 Act II의 여는 사진 — 화살표 없는 버전(013b)으로 교체.
+  P("경복궁",                    2, `${S}/013b.jpg`, D.reveal, "zoomIn"),
   P("★ 분당선교원 단체",           2, `${S}/014.jpeg`, D.growStar, "zoomIn",  {
     eraIcon: "church-steeple",
     spotlights: [SP(0.38, 0.55), SP(0.62, 0.52)],  // 좌(슬기)·우(예찬) 중심 근처
@@ -607,8 +626,8 @@ export const defaultConfig: VideoConfig = {
   //   Act I 0-12 (13장 · 페어 6쌍 + 경복궁), Act II 13-24 (12장),
   //   Act III 25-39 (15장), Act IV 40-48 (9장), Act V 49-57 (9장)
   moments: [
-    // Act II 시작 (같은 마당) — 잔잔한 여는 말
-    { id: "m-2", afterPhotoIndex: 12, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
+    // Act II 시작 (같은 마당) — 잔잔한 여는 말. 경복궁(idx 12)보다 앞에 와서 Act II 오프닝.
+    { id: "m-2", afterPhotoIndex: 11, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
     // Act V 시작 (2026 재회) — 핵심 리빌
     { id: "m-5", afterPhotoIndex: 48, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],
@@ -619,8 +638,8 @@ export const defaultConfig: VideoConfig = {
   journeyMaps: [
     // Act I 시작 직전 (첫 장소 · 시작점) — 성모병원만 드러남
     { id: "jm-1", afterPhotoIndex: -1, title: "Our Journey",    visibleCount: 1, durationSec: 4.5 },
-    // Act II 시작 직전 — 비행기가 분당으로 이동
-    { id: "jm-2", afterPhotoIndex: 12, title: "Our Journey",    visibleCount: 2, durationSec: 6.5 },
+    // Act II 시작 직전 — 비행기가 분당으로 이동 (경복궁 앞)
+    { id: "jm-2", afterPhotoIndex: 11, title: "Our Journey",    visibleCount: 2, durationSec: 6.5 },
     // Act III 시작 직전 — 다음 leg (여행/곳곳 — 워딩 조정 예정)
     { id: "jm-3", afterPhotoIndex: 24, title: "Our Journey",    visibleCount: 3, durationSec: 6.5 },
     // Act IV 시작 직전 — 뉴욕 · 서울 (롱디)
@@ -629,5 +648,30 @@ export const defaultConfig: VideoConfig = {
     { id: "jm-5", afterPhotoIndex: 48, title: "Here, Today",    visibleCount: 5, durationSec: 7.5 },
   ],
   letterInterludes: [],      // 의도적으로 비움 — 편지 인터루드는 스토리에 맞지 않음
-  collages: [],              // 기본 0개. 에디터에서 추가 가능
+  collages: [
+    // Act I 엔딩 북엔드 — Act 1 마지막 페어(예찬 그림, idx 11) 뒤, Act II 타이틀 앞에 삽입.
+    // 2개 연속: 슬기 단독 모음 → 예찬 단독 모음.
+    {
+      id: "cg-sl-solo",
+      afterPhotoIndex: 11,
+      beforeTitle: true,
+      durationSec: 5.5,
+      slots: [
+        { file: `${S}/sl-solo-1.jpeg` },
+        { file: `${S}/sl-solo-2.jpeg` },
+        { file: `${S}/sl-solo-3.jpeg` },
+      ],
+    },
+    {
+      id: "cg-ye-solo",
+      afterPhotoIndex: 11,
+      beforeTitle: true,
+      durationSec: 5.5,
+      // ⚠️ 예찬 단독 3번 파일 없음 — 추가되면 여기 slots 배열에 append
+      slots: [
+        { file: `${S}/ye-solo-1.jpeg` },
+        { file: `${S}/ye-solo-2.jpeg` },
+      ],
+    },
+  ],
 };
