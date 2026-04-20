@@ -708,8 +708,10 @@ const JourneyMapScene: React.FC<{
     interpolate(t, [start, start + len], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   // Location reveal windows
-  const locOp = (start: number) =>
-    interpolate(t, [start, start + 0.04, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  const locOp = (start: number) => {
+    const fadeEnd = Math.min(start + 0.04, 0.91);
+    return interpolate(t, [start, fadeEnd, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  };
 
   // Plane progress along path: 0 at t=0.175, 1 at t=0.875
   const planeT = Math.max(0, Math.min(1, (t - 0.175) / (0.875 - 0.175)));

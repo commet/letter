@@ -624,7 +624,7 @@ export const App: React.FC = () => {
       id: `jm${Date.now()}`,
       afterPhotoIndex: photoIdx,
       title: "Our Journey",
-      subtitle: "성모병원 · 분당 · 붉은 광장 · 서울 · 뉴욕",
+      subtitle: "성모병원 · 분당 · 서울 · 뉴욕",
       caption: "",
       durationSec: 8.0,
     };
