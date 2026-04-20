@@ -671,6 +671,27 @@ const YearMarkerScene: React.FC<{
 // Journey Map Scene (Claude Design P2-2)
 // ─────────────────────────────────────────────
 
+// Journey map locations (5 points, shared across all Act maps).
+// Coordinates tuned for balanced layout on 1920×1080 with smooth catmull-rom curves.
+const JOURNEY_LOCATIONS = [
+  { cx: 260,  cy: 490, label: "성모병원",    year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
+  { cx: 540,  cy: 660, label: "분당",        year: "1994 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 880,  cy: 380, label: "곳곳",        year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
+  { cx: 1300, cy: 590, label: "뉴욕 · 서울", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 1650, cy: 380, label: "여기, 오늘",  year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
+];
+
+// Smooth cubic beziers between consecutive points — catmull-rom-derived control points.
+const JOURNEY_SEGMENTS = [
+  "M 260 490 C 353 547, 437 678, 540 660",
+  "M 540 660 C 643 642, 753 392, 880 380",
+  "M 880 380 C 1007 368, 1172 590, 1300 590",
+  "M 1300 590 C 1428 590, 1533 450, 1650 380",
+];
+
+// Raw stops for plane linear interpolation.
+const JOURNEY_STOPS: [number, number][] = JOURNEY_LOCATIONS.map((L) => [L.cx, L.cy]);
+
 const JourneyMapScene: React.FC<{
   config: JourneyMapConfig;
   dur: number;
@@ -678,55 +699,48 @@ const JourneyMapScene: React.FC<{
   particlesType: ParticleType;
 }> = ({ config, dur, overlayType, particlesType }) => {
   const frame = useCurrentFrame();
-  const fps = 30;
-
-  // 4 locations — 실제 커플 타임라인 반영 (붉은 광장 삭제).
-  // 성모병원(1988/1993 출생) → 분당(1994~ 교회) → 서울(청년기) → 뉴욕(2016~ 슬기 유학)
-  const LOCATIONS = [
-    { cx: 330,  cy: 430, label: "성모병원", year: "1988 · 1993", anchor: "start",  ly: -38, lx: -18 },
-    { cx: 620,  cy: 650, label: "분당",     year: "1994 ~",      anchor: "middle", ly:  66, lx:  0  },
-    { cx: 1050, cy: 380, label: "서울",     year: "2010 ~",      anchor: "start",  ly: -28, lx: 22  },
-    { cx: 1640, cy: 560, label: "뉴욕",     year: "2016 ~",      anchor: "end",    ly:  66, lx: 8   },
-  ];
-  const SEGMENTS = [
-    "M 330 430 C 430 500, 530 600, 620 650",
-    "M 620 650 C 760 560, 920 450, 1050 380",
-    "M 1050 380 C 1220 330, 1380 480, 1640 560",
-  ];
-  const FULL = SEGMENTS.join(" ").replace(/M /g, "L ").replace(/^L /, "M ");
-
-  // Normalize time t: 0 → 1 over full duration
   const t = Math.max(0, Math.min(1, frame / dur));
 
-  // Timing aligned to 8s original:
-  const titleOp = interpolate(t, [0.03, 0.10, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
-  const subOp   = interpolate(t, [0.06, 0.14, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
-  const capOp   = interpolate(t, [0.70, 0.78, 0.95, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
+  const vc = Math.max(1, Math.min(JOURNEY_LOCATIONS.length, config.visibleCount ?? JOURNEY_LOCATIONS.length));
+  const presentIdx = vc - 1; // index of the "present" location (highlighted, just arrived)
 
-  // Segment dash draw: start times 0.10/0.30/0.50/0.60, each ~0.18 to draw
-  const segProgress = (start: number, len = 0.18) =>
-    interpolate(t, [start, start + len], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // Title / subtitle / caption
+  const titleOp = interpolate(t, [0.03, 0.12, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  const subOp   = interpolate(t, [0.06, 0.16, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
+  const capOp   = interpolate(t, [0.72, 0.85, 0.95, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
 
-  // Location reveal windows
-  const locOp = (start: number) => {
-    const fadeEnd = Math.min(start + 0.04, 0.91);
-    return interpolate(t, [start, fadeEnd, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
-  };
+  // Past (all dots + segments up to but not including the present leg) fade in quickly together
+  const pastOp  = interpolate(t, [0.10, 0.28, 0.92, 1.0], [0, 0.55, 0.55, 0], { extrapolateRight: "clamp" });
 
-  // Plane progress along path: 0 at t=0.175, 1 at t=0.875
-  const planeT = Math.max(0, Math.min(1, (t - 0.175) / (0.875 - 0.175)));
-  const planeIdx = Math.floor(planeT * SEGMENTS.length * 0.999);
-  const segT = (planeT * SEGMENTS.length) - planeIdx;
-  // 3 segments: 성모병원 → 분당 → 서울 → 뉴욕
-  const segStarts = [[330, 430], [620, 650], [1050, 380]];
-  const segEnds   = [[620, 650], [1050, 380], [1640, 560]];
-  const safeIdx = Math.max(0, Math.min(2, planeIdx));
-  const px = segStarts[safeIdx][0] + (segEnds[safeIdx][0] - segStarts[safeIdx][0]) * segT;
-  const py = segStarts[safeIdx][1] + (segEnds[safeIdx][1] - segStarts[safeIdx][1]) * segT;
-  const planeVis = interpolate(t, [0.10, 0.14, 0.85, 0.92], [0, 1, 1, 0], { extrapolateRight: "clamp" });
-  const nextX = segStarts[safeIdx][0] + (segEnds[safeIdx][0] - segStarts[safeIdx][0]) * Math.min(1, segT + 0.02);
-  const nextY = segStarts[safeIdx][1] + (segEnds[safeIdx][1] - segStarts[safeIdx][1]) * Math.min(1, segT + 0.02);
-  const angle = Math.atan2(nextY - py, nextX - px) * 180 / Math.PI;
+  // Present segment dash draw (only when vc >= 2)
+  const hasPresentLeg = vc >= 2;
+  const segDashOffset = hasPresentLeg
+    ? interpolate(t, [0.28, 0.52], [1200, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 1200;
+  const segOp = hasPresentLeg
+    ? interpolate(t, [0.26, 0.34, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" })
+    : 0;
+
+  // Plane fly from prev stop → present stop over 0.40..0.78
+  const planeT = hasPresentLeg
+    ? interpolate(t, [0.40, 0.78], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 0;
+  const planeVis = hasPresentLeg
+    ? interpolate(t, [0.36, 0.42, 0.76, 0.82], [0, 1, 1, 0], { extrapolateRight: "clamp" })
+    : 0;
+
+  const planeStart = hasPresentLeg ? JOURNEY_STOPS[presentIdx - 1] : JOURNEY_STOPS[0];
+  const planeEnd   = JOURNEY_STOPS[presentIdx];
+  const px = planeStart[0] + (planeEnd[0] - planeStart[0]) * planeT;
+  const py = planeStart[1] + (planeEnd[1] - planeStart[1]) * planeT;
+  const angle = Math.atan2(planeEnd[1] - planeStart[1], planeEnd[0] - planeStart[0]) * 180 / Math.PI;
+
+  // Present dot pops on plane arrival (or for vc=1, early fade-in)
+  const presentDotOp = hasPresentLeg
+    ? interpolate(t, [0.72, 0.82, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" })
+    : interpolate(t, [0.20, 0.40, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+
+  const autoSubtitle = JOURNEY_LOCATIONS.slice(0, vc).map((L) => L.label).join(" · ");
 
   return (
     <AbsoluteFill>
@@ -748,7 +762,7 @@ const JourneyMapScene: React.FC<{
         position: "absolute", top: 120, left: 0, right: 0, textAlign: "center",
         fontFamily: SERIF_KR, fontSize: 26, color: INK, letterSpacing: "0.2em",
         opacity: subOp,
-      }}>{config.subtitle ?? "성모병원 · 분당 · 서울 · 뉴욕"}</div>
+      }}>{config.subtitle ?? autoSubtitle}</div>
 
       {/* Map SVG */}
       <svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
@@ -762,34 +776,47 @@ const JourneyMapScene: React.FC<{
           <text x={0} y={-44} fontFamily="EB Garamond" fontStyle="italic" fontSize={14} textAnchor="middle" fill="#3a2f22" stroke="none" opacity={0.8}>N</text>
         </g>
 
-        {/* Dotted path segments (3 segments, staggered draw) */}
-        {SEGMENTS.map((d, i) => {
-          const startT = [0.12, 0.38, 0.62][i];
-          const dashOffset = segProgress(startT, 0.20) * 1200;
-          const segOpacity = interpolate(t, [startT - 0.02, startT + 0.02, 0.92, 1.0], [0, 0.9, 0.9, 0], { extrapolateRight: "clamp" });
-          return (
-            <path key={i} d={d} fill="none" stroke={INK} strokeWidth={2.5}
-              strokeDasharray="6 10" strokeLinecap="round"
-              style={{ strokeDashoffset: dashOffset, opacity: segOpacity }} />
-          );
-        })}
+        {/* Past segments: all drawn uniformly, faded */}
+        {JOURNEY_SEGMENTS.slice(0, Math.max(0, presentIdx - 1)).map((d, i) => (
+          <path key={`past-seg-${i}`} d={d} fill="none" stroke={INK} strokeWidth={2}
+                strokeDasharray="5 9" strokeLinecap="round" opacity={pastOp * 0.85} />
+        ))}
 
-        {/* Location dots + labels (4 locations) */}
-        {LOCATIONS.map((L, i) => {
-          const startT = [0.20, 0.45, 0.68, 0.88][i];
-          const op = locOp(startT);
+        {/* Present segment: animates dash then plane flies along it */}
+        {hasPresentLeg && (
+          <path d={JOURNEY_SEGMENTS[presentIdx - 1]} fill="none" stroke={INK} strokeWidth={2.5}
+                strokeDasharray="6 10" strokeLinecap="round"
+                style={{ strokeDashoffset: segDashOffset, opacity: segOp }} />
+        )}
+
+        {/* Past dots */}
+        {JOURNEY_LOCATIONS.slice(0, presentIdx).map((L, i) => (
+          <g key={`past-loc-${i}`} opacity={pastOp}>
+            <circle cx={L.cx} cy={L.cy} r={14} fill={INK} opacity={0.12} />
+            <circle cx={L.cx} cy={L.cy} r={7} stroke={INK} fill="none" strokeWidth={1.6} />
+            <circle cx={L.cx} cy={L.cy} r={5} fill={INK} />
+            <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'Nanum Pen Script', cursive" fontSize={38} fill={INK}>{L.label}</text>
+            <text x={L.cx + L.lx} y={L.cy + L.ly + 22} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={20} fill="#3a2f22">{L.year}</text>
+          </g>
+        ))}
+
+        {/* Present dot — highlighted, pops on arrival */}
+        {(() => {
+          const L = JOURNEY_LOCATIONS[presentIdx];
           return (
-            <g key={i} style={{ opacity: op }}>
-              <circle cx={L.cx} cy={L.cy} r={18} fill={INK} opacity={0.12} />
-              <circle cx={L.cx} cy={L.cy} r={9} stroke={INK} fill="none" strokeWidth={2} />
-              <circle cx={L.cx} cy={L.cy} r={6} fill={INK} />
+            <g opacity={presentDotOp}>
+              <circle cx={L.cx} cy={L.cy} r={22} fill={INK} opacity={0.14} />
+              <circle cx={L.cx} cy={L.cy} r={11} stroke={INK} fill="none" strokeWidth={2.5} />
+              <circle cx={L.cx} cy={L.cy} r={7} fill={INK} />
               <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
-                fontFamily="'Nanum Pen Script', cursive" fontSize={44} fill={INK}>{L.label}</text>
-              <text x={L.cx + L.lx} y={L.cy + L.ly + 24} textAnchor={L.anchor as "start" | "middle" | "end"}
-                fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={22} fill="#3a2f22">{L.year}</text>
+                    fontFamily="'Nanum Pen Script', cursive" fontSize={48} fill={INK}>{L.label}</text>
+              <text x={L.cx + L.lx} y={L.cy + L.ly + 26} textAnchor={L.anchor as "start" | "middle" | "end"}
+                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={24} fill="#3a2f22">{L.year}</text>
             </g>
           );
-        })}
+        })()}
 
         {/* Plane */}
         {planeVis > 0 && (

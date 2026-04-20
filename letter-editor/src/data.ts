@@ -127,6 +127,7 @@ export type JourneyMap = {
   subtitle?: string;       // Korean subtitle under title
   caption?: string;        // bottom caption
   durationSec?: number;    // default 8.0
+  visibleCount?: number;   // 1..5 — reveal only first N locations (last one is "present"). Default 5 (all).
 };
 
 // P2-4 Letter interlude
@@ -616,13 +617,16 @@ export const defaultConfig: VideoConfig = {
     { id: "y-4", afterPhotoIndex: 39, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
   ],
   journeyMaps: [
-    // Act IV 뉴욕 파트 직전 — 성모병원 → 분당 → 서울 → 뉴욕 시각화
-    { id: "jm-nyc", afterPhotoIndex: 43,
-      title: "Across the Ocean",
-      subtitle: "성모병원 · 분당 · 서울 · 뉴욕",
-      caption: "계절이 몇 번, 그래도 서로에게",
-      durationSec: 8.0,
-    },
+    // Act I 시작 직전 (첫 장소 · 시작점) — 성모병원만 드러남
+    { id: "jm-1", afterPhotoIndex: -1, title: "Our Journey",    visibleCount: 1, durationSec: 4.5 },
+    // Act II 시작 직전 — 비행기가 분당으로 이동
+    { id: "jm-2", afterPhotoIndex: 12, title: "Our Journey",    visibleCount: 2, durationSec: 6.5 },
+    // Act III 시작 직전 — 다음 leg (여행/곳곳 — 워딩 조정 예정)
+    { id: "jm-3", afterPhotoIndex: 24, title: "Our Journey",    visibleCount: 3, durationSec: 6.5 },
+    // Act IV 시작 직전 — 뉴욕 · 서울 (롱디)
+    { id: "jm-4", afterPhotoIndex: 39, title: "Across the Ocean", visibleCount: 4, durationSec: 7.0, caption: "계절이 몇 번, 그래도 서로에게" },
+    // Act V 시작 직전 — 오늘, 재회
+    { id: "jm-5", afterPhotoIndex: 48, title: "Here, Today",    visibleCount: 5, durationSec: 7.5 },
   ],
   letterInterludes: [],      // 의도적으로 비움 — 편지 인터루드는 스토리에 맞지 않음
   collages: [],              // 기본 0개. 에디터에서 추가 가능
