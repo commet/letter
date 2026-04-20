@@ -858,19 +858,28 @@ const JourneyMapScene: React.FC<{
           </g>
         ))}
 
-        {/* Present dot — emphasized, grows, pulses */}
-        <g opacity={Math.min(1, presentOp * pulseOp)}
-           transform={`translate(${presentLoc.cx} ${presentLoc.cy}) scale(${presentScale * pulse}) translate(${-presentLoc.cx} ${-presentLoc.cy})`}>
-          <circle cx={presentLoc.cx} cy={presentLoc.cy} r={26} fill={INK} opacity={0.16} />
-          <circle cx={presentLoc.cx} cy={presentLoc.cy} r={13} stroke={INK} fill="none" strokeWidth={2.6} />
-          <circle cx={presentLoc.cx} cy={presentLoc.cy} r={7.5} fill={INK} />
-          <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly}
-                textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
-                fontFamily="'Nanum Pen Script', cursive" fontSize={62} fill={INK}>{presentLoc.label}</text>
-          <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly + 34}
-                textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
-                fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={30} fill="#3a2f22">{presentLoc.year}</text>
-        </g>
+        {/* Present dot — emphasized, grows, pulses.
+              Label/year cluster is pushed further from the dot than past/future
+              state so the enlarged glyphs clear the halo (r≈29 post-scale). */}
+        {(() => {
+          const dir = presentLoc.ly < 0 ? -1 : 1;
+          const labelY = presentLoc.cy + dir * 82;
+          const yearY  = labelY + 40;
+          return (
+            <g opacity={Math.min(1, presentOp * pulseOp)}
+               transform={`translate(${presentLoc.cx} ${presentLoc.cy}) scale(${presentScale * pulse}) translate(${-presentLoc.cx} ${-presentLoc.cy})`}>
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={26} fill={INK} opacity={0.16} />
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={13} stroke={INK} fill="none" strokeWidth={2.6} />
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={7.5} fill={INK} />
+              <text x={presentLoc.cx + presentLoc.lx} y={labelY}
+                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                    fontFamily="'Nanum Pen Script', cursive" fontSize={62} fill={INK}>{presentLoc.label}</text>
+              <text x={presentLoc.cx + presentLoc.lx} y={yearY}
+                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={30} fill="#3a2f22">{presentLoc.year}</text>
+            </g>
+          );
+        })()}
 
         {/* Plane */}
         {planeVis > 0 && (
@@ -1550,7 +1559,7 @@ const EndingScene: React.FC<{
       )}
 
       {/* Centered names row with heart between */}
-      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 120 }}>
+      <AbsoluteFill style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 120 }}>
         {/* Bride name */}
         <div style={{
           fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
