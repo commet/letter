@@ -46,6 +46,15 @@ export type SpotlightConfig = {
   strength: number;  // 0-1, dimming intensity outside (0.6 = 60% dim)
 };
 
+// Crop rectangle in normalized image coordinates (0-1).
+// The crop region [x, x+w] × [y, y+h] is what gets shown at viewport size.
+export type CropRect = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
 export type PhotoEntry = {
   tag: string;
   act: number;
@@ -57,6 +66,7 @@ export type PhotoEntry = {
   filter: FilterType;
   caption?: CaptionConfig;
   spotlights: SpotlightConfig[];
+  crop?: CropRect; // if set, only this rect of the image is shown (normalized 0-1)
   splitPair?: boolean; // true = this photo + next photo form a split screen
   splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
   splitLabel?: string; // custom label under polaroid/cameo (fallback: tag first word)

@@ -1062,20 +1062,38 @@ const PhotoScene: React.FC<{
     }}>
       <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} seed={hashSeed(photo.tag)} />
       {frameType === "none" ? (
-        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-          <Img src={src} style={{
-            maxWidth: "100%",
-            maxHeight: "100%",
-            width: "auto",
-            height: "auto",
-            objectFit: "contain",
-            transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
-            transformOrigin: "center center",
-            filter: filterCSS !== "none" ? filterCSS : undefined,
-            boxShadow: defaultShadow,
-            display: "block",
-          }} />
-        </AbsoluteFill>
+        photo.crop ? (
+          // Crop mode: wrapper clips to viewport, image is sized so crop rect fills wrapper
+          <AbsoluteFill style={{ overflow: "hidden" }}>
+            <Img src={src} style={{
+              position: "absolute",
+              left: `${-photo.crop.x / photo.crop.w * 100}%`,
+              top: `${-photo.crop.y / photo.crop.h * 100}%`,
+              width: `${100 / photo.crop.w}%`,
+              height: `${100 / photo.crop.h}%`,
+              objectFit: "fill",
+              transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
+              transformOrigin: "center center",
+              filter: filterCSS !== "none" ? filterCSS : undefined,
+              display: "block",
+            }} />
+          </AbsoluteFill>
+        ) : (
+          <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <Img src={src} style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              width: "auto",
+              height: "auto",
+              objectFit: "contain",
+              transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
+              transformOrigin: "center center",
+              filter: filterCSS !== "none" ? filterCSS : undefined,
+              boxShadow: defaultShadow,
+              display: "block",
+            }} />
+          </AbsoluteFill>
+        )
       ) : (
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{

@@ -17,6 +17,7 @@ import {
   BackgroundStyle,
   CaptionConfig,
   SpotlightConfig,
+  CropRect,
   defaultConfig,
   computeTotalFrames,
   getPhotoIndexAtFrame,
@@ -94,7 +95,10 @@ const BACKGROUND_STYLES: { value: BackgroundStyle; label: string }[] = [
 
 // ─── Image Editor Modal ──────────────────────
 
-type EditorMode = "focal" | "spotlight";
+type EditorMode = "focal" | "spotlight" | "crop";
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+const MIN_CROP = 0.1; // minimum width/height of crop rect
 
 const ImageEditorModal: React.FC<{
   photo: PhotoEntry;
@@ -107,6 +111,138 @@ const ImageEditorModal: React.FC<{
   const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  // Crop state
+  const crop: CropRect = photo.crop ?? { x: 0, y: 0, w: 1, h: 1 };
+  const [cropAspect, setCropAspect] = useState<number | null>(null); // null = 자유, else w/h ratio
+  const dragRef = useRef<
+    | null
+    | {
+        handle: "tl" | "tr" | "bl" | "br" | "body";
+        startCrop: CropRect;
+        startClientX: number;
+        startClientY: number;
+        containerW: number;
+        containerH: number;
+      }
+  >(null);
+
+  const setCrop = (c: CropRect) => {
+    const next: CropRect = {
+      x: clamp(c.x, 0, 1 - MIN_CROP),
+      y: clamp(c.y, 0, 1 - MIN_CROP),
+      w: clamp(c.w, MIN_CROP, 1 - c.x),
+      h: clamp(c.h, MIN_CROP, 1 - c.y),
+    };
+    onUpdatePhoto({ crop: next.w >= 0.999 && next.h >= 0.999 && next.x < 0.001 && next.y < 0.001 ? undefined : next });
+  };
+
+  const beginCropDrag = (
+    handle: "tl" | "tr" | "bl" | "br" | "body",
+    e: React.PointerEvent
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const img = imgRef.current;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    dragRef.current = {
+      handle,
+      startCrop: { ...crop },
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      containerW: rect.width,
+      containerH: rect.height,
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onCropPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = (e.clientX - d.startClientX) / d.containerW;
+    const dy = (e.clientY - d.startClientY) / d.containerH;
+    let { x, y, w, h } = d.startCrop;
+
+    if (d.handle === "body") {
+      x = clamp(x + dx, 0, 1 - w);
+      y = clamp(y + dy, 0, 1 - h);
+    } else {
+      // corner drag
+      let nx = x, ny = y, nw = w, nh = h;
+      if (d.handle === "tl" || d.handle === "bl") {
+        nx = clamp(x + dx, 0, x + w - MIN_CROP);
+        nw = w + (x - nx);
+      }
+      if (d.handle === "tr" || d.handle === "br") {
+        nw = clamp(w + dx, MIN_CROP, 1 - x);
+      }
+      if (d.handle === "tl" || d.handle === "tr") {
+        ny = clamp(y + dy, 0, y + h - MIN_CROP);
+        nh = h + (y - ny);
+      }
+      if (d.handle === "bl" || d.handle === "br") {
+        nh = clamp(h + dy, MIN_CROP, 1 - y);
+      }
+
+      // aspect ratio lock
+      if (cropAspect != null && imgRef.current) {
+        // cropAspect is pixel aspect target (w/h). Convert to normalized aspect using image natural size.
+        const imgW = imgRef.current.naturalWidth || 1;
+        const imgH = imgRef.current.naturalHeight || 1;
+        const targetNormW_over_H = cropAspect * (imgH / imgW);
+        // Decide which side to constrain. Compare which dim was dragged more.
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // width-driven
+          nh = nw / targetNormW_over_H;
+          if (nh > 1 - ny) {
+            nh = 1 - ny;
+            nw = nh * targetNormW_over_H;
+          }
+          if (d.handle === "tl" || d.handle === "tr") ny = y + h - nh;
+          if (d.handle === "tl" || d.handle === "bl") nx = x + w - nw;
+        } else {
+          // height-driven
+          nw = nh * targetNormW_over_H;
+          if (nw > 1 - nx) {
+            nw = 1 - nx;
+            nh = nw / targetNormW_over_H;
+          }
+          if (d.handle === "tl" || d.handle === "bl") nx = x + w - nw;
+          if (d.handle === "tl" || d.handle === "tr") ny = y + h - nh;
+        }
+      }
+      x = nx; y = ny; w = nw; h = nh;
+    }
+    setCrop({ x, y, w, h });
+  };
+
+  const endCropDrag = (e: React.PointerEvent) => {
+    if (dragRef.current) {
+      dragRef.current = null;
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    }
+  };
+
+  const applyAspectPreset = (aspect: number | null) => {
+    setCropAspect(aspect);
+    if (aspect == null || !imgRef.current) return;
+    // Center a crop rect with the chosen aspect
+    const imgW = imgRef.current.naturalWidth || 1;
+    const imgH = imgRef.current.naturalHeight || 1;
+    const targetNormWoverH = aspect * (imgH / imgW);
+    // Start as large as possible within image bounds
+    let nw = 1, nh = 1 / targetNormWoverH;
+    if (nh > 1) { nh = 1; nw = targetNormWoverH; }
+    const nx = (1 - nw) / 2;
+    const ny = (1 - nh) / 2;
+    setCrop({ x: nx, y: ny, w: nw, h: nh });
+  };
+
+  const resetCrop = () => {
+    setCropAspect(null);
+    onUpdatePhoto({ crop: undefined });
+  };
+
   const getClickPos = (e: React.MouseEvent<HTMLImageElement>) => {
     const img = imgRef.current;
     if (!img) return null;
@@ -118,16 +254,16 @@ const ImageEditorModal: React.FC<{
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (mode === "crop") return; // crop has its own drag handlers
     const pos = getClickPos(e);
     if (!pos) return;
 
     if (mode === "focal") {
       onUpdatePhoto({ focalPoint: pos });
-    } else {
-      // Add new spotlight
+    } else if (mode === "spotlight") {
       const newSpot: SpotlightConfig = { x: pos.x, y: pos.y, radius: 0.25, strength: 0.55 };
       onUpdatePhoto({ spotlights: [...(photo.spotlights ?? []), newSpot] });
-      setSelectedSpot((photo.spotlights ?? []).length); // select the new one
+      setSelectedSpot((photo.spotlights ?? []).length);
     }
   };
 
@@ -162,6 +298,9 @@ const ImageEditorModal: React.FC<{
               </button>
               <button className={`tab ${mode === "spotlight" ? "tab-active" : ""}`} onClick={() => setMode("spotlight")}>
                 강조 (스포트라이트)
+              </button>
+              <button className={`tab ${mode === "crop" ? "tab-active" : ""}`} onClick={() => setMode("crop")}>
+                자르기
               </button>
             </div>
           </div>
@@ -199,6 +338,70 @@ const ImageEditorModal: React.FC<{
                   <div className="focal-cross-h" />
                   <div className="focal-cross-v" />
                 </div>
+              )}
+
+              {/* Crop overlay: dim outside, rectangle with handles */}
+              {mode === "crop" && (
+                <>
+                  {/* Dim backdrop in 4 pieces so the inside stays clear */}
+                  <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                    <div style={{ position: "absolute", left: 0, top: 0, right: 0, height: `${crop.y * 100}%`, background: "rgba(0,0,0,0.55)" }} />
+                    <div style={{ position: "absolute", left: 0, top: `${(crop.y + crop.h) * 100}%`, right: 0, bottom: 0, background: "rgba(0,0,0,0.55)" }} />
+                    <div style={{ position: "absolute", left: 0, top: `${crop.y * 100}%`, width: `${crop.x * 100}%`, height: `${crop.h * 100}%`, background: "rgba(0,0,0,0.55)" }} />
+                    <div style={{ position: "absolute", left: `${(crop.x + crop.w) * 100}%`, top: `${crop.y * 100}%`, right: 0, height: `${crop.h * 100}%`, background: "rgba(0,0,0,0.55)" }} />
+                  </div>
+                  {/* Crop rect frame + body drag target */}
+                  <div
+                    onPointerDown={(e) => beginCropDrag("body", e)}
+                    onPointerMove={onCropPointerMove}
+                    onPointerUp={endCropDrag}
+                    onPointerCancel={endCropDrag}
+                    style={{
+                      position: "absolute",
+                      left: `${crop.x * 100}%`,
+                      top: `${crop.y * 100}%`,
+                      width: `${crop.w * 100}%`,
+                      height: `${crop.h * 100}%`,
+                      border: "2px solid rgba(255,255,255,0.95)",
+                      boxShadow: "0 0 0 1px rgba(0,0,0,0.4)",
+                      cursor: "move",
+                      touchAction: "none",
+                    }}
+                  >
+                    {/* Rule-of-thirds guides */}
+                    <div style={{ position: "absolute", left: "33.33%", top: 0, bottom: 0, width: 1, background: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", left: "66.66%", top: 0, bottom: 0, width: 1, background: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", top: "33.33%", left: 0, right: 0, height: 1, background: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", top: "66.66%", left: 0, right: 0, height: 1, background: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+                    {/* Corner handles */}
+                    {(["tl", "tr", "bl", "br"] as const).map((h) => {
+                      const pos =
+                        h === "tl" ? { left: -9, top: -9, cursor: "nwse-resize" } :
+                        h === "tr" ? { right: -9, top: -9, cursor: "nesw-resize" } :
+                        h === "bl" ? { left: -9, bottom: -9, cursor: "nesw-resize" } :
+                                     { right: -9, bottom: -9, cursor: "nwse-resize" };
+                      return (
+                        <div
+                          key={h}
+                          onPointerDown={(e) => beginCropDrag(h, e)}
+                          onPointerMove={onCropPointerMove}
+                          onPointerUp={endCropDrag}
+                          onPointerCancel={endCropDrag}
+                          style={{
+                            position: "absolute",
+                            width: 18, height: 18,
+                            borderRadius: 2,
+                            background: "#fff",
+                            border: "2px solid #222",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                            touchAction: "none",
+                            ...pos,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </>
               )}
 
               {/* Spotlight markers */}
@@ -268,7 +471,7 @@ const ImageEditorModal: React.FC<{
                       type="range"
                       className="slider"
                       min={0}
-                      max={0.15}
+                      max={0.5}
                       step={0.005}
                       value={kenBurnsAmount}
                       onChange={(e) => onUpdateKenBurnsAmount(parseFloat(e.target.value))}
@@ -279,10 +482,11 @@ const ImageEditorModal: React.FC<{
                   <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
                     {[
                       { label: "없음", val: 0, desc: "정적" },
-                      { label: "2%", val: 0.02, desc: "아주 잔잔" },
                       { label: "4%", val: 0.04, desc: "권장" },
                       { label: "8%", val: 0.08, desc: "눈에 띔" },
                       { label: "15%", val: 0.15, desc: "강함" },
+                      { label: "30%", val: 0.30, desc: "드라마틱" },
+                      { label: "50%", val: 0.50, desc: "극적" },
                     ].map((p) => {
                       const active = Math.abs(kenBurnsAmount - p.val) < 0.003;
                       return (
@@ -354,12 +558,65 @@ const ImageEditorModal: React.FC<{
                 ))}
               </>
             )}
+
+            {mode === "crop" && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <p className="hint" style={{ margin: 0 }}>
+                    모서리를 드래그해서 영역을 조절하거나, 박스 내부를 드래그해서 이동하세요.
+                  </p>
+                  {photo.crop && (
+                    <button className="btn btn-xs" style={{ flexShrink: 0, marginLeft: 10 }} onClick={resetCrop}>
+                      전체 리셋
+                    </button>
+                  )}
+                </div>
+                <div className="coord-display">
+                  x {(crop.x * 100).toFixed(0)}% · y {(crop.y * 100).toFixed(0)}% · w {(crop.w * 100).toFixed(0)}% · h {(crop.h * 100).toFixed(0)}%
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <p className="hint" style={{ marginBottom: 6 }}>비율 잠금</p>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {[
+                      { label: "자유", val: null as number | null },
+                      { label: "16:9", val: 16 / 9 },
+                      { label: "4:3", val: 4 / 3 },
+                      { label: "1:1", val: 1 },
+                      { label: "3:4", val: 3 / 4 },
+                      { label: "9:16", val: 9 / 16 },
+                    ].map((p) => {
+                      const active = cropAspect === p.val || (cropAspect == null && p.val == null);
+                      return (
+                        <button
+                          key={p.label}
+                          className="btn btn-xs"
+                          style={{
+                            flex: 1, minWidth: 52,
+                            background: active ? "var(--gold)" : undefined,
+                            color: active ? "#111" : undefined,
+                            fontWeight: active ? 700 : 500,
+                          }}
+                          onClick={() => applyAspectPreset(p.val)}
+                        >
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="hint hint-dim" style={{ marginTop: 8 }}>
+                    16:9은 영상 출력 비율과 같아 레터박스 없이 채워집니다.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         <div className="modal-footer">
           <span className="modal-footer-hint">
-            {mode === "focal" ? "클릭 = 포커스 지정 · 변경사항은 실시간 반영됨" : "클릭 = 강조 추가 · 변경사항은 실시간 반영됨"}
+            {mode === "focal" ? "클릭 = 포커스 지정 · 변경사항은 실시간 반영됨"
+              : mode === "spotlight" ? "클릭 = 강조 추가 · 변경사항은 실시간 반영됨"
+              : "드래그 = 자르기 영역 조절 · 변경사항은 실시간 반영됨"}
           </span>
           <button
             className="btn-save"
@@ -815,7 +1072,7 @@ export const App: React.FC = () => {
                   </label>
                   <label className="slider-label" style={{ width: "100%" }}>
                     <span>Ken Burns 세기: {(config.kenBurnsAmount * 100).toFixed(0)}%</span>
-                    <input type="range" className="slider" min={0} max={0.12} step={0.01}
+                    <input type="range" className="slider" min={0} max={0.5} step={0.01}
                       value={config.kenBurnsAmount}
                       onChange={(e) => setConfig((c) => ({ ...c, kenBurnsAmount: parseFloat(e.target.value) }))} />
                   </label>
