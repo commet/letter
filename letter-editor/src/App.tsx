@@ -24,7 +24,7 @@ import {
   getPhotoIndexAtFrame,
   getPhotoStartFrame,
 } from "./data";
-import { uploadPhoto, aiEditConfig } from "./supabase";
+import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
 import { ERA_ICONS, ERA_ICON_LABELS } from "./eraIcons";
 
 // Resolve photo src: full URL (supabase) or local path
@@ -715,10 +715,13 @@ export const App: React.FC = () => {
     if (typeof window === "undefined") return "light";
     return (localStorage.getItem("theme") as "dark" | "light") ?? "light";
   });
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
   const [loading, setLoading] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const playerRef = useRef<PlayerRef>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipFirstSave = useRef(true);
 
   // ── Derived values ──────────────────────────
   const currentPhotoIdx = getPhotoIndexAtFrame(currentFrame, config);
@@ -743,13 +746,28 @@ export const App: React.FC = () => {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // ── defaultConfig is the single source of truth ─────────────
-  // Supabase 저장 로직은 제거됨: data.ts의 defaultConfig이 항상 이김.
-  // 에디터에서 편집한 값은 세션 내에서만 유지되고, 페이지 리로드 시 defaultConfig로 초기화.
-  // 영구 반영은 Claude에게 요청해서 data.ts 커밋.
+  // ── Load from Supabase on mount (공유 편집 모드) ─────────────
   useEffect(() => {
-    setLoading(false);
+    loadConfig().then((saved) => {
+      if (saved) setConfig(saved);
+      setLoading(false);
+    });
   }, []);
+
+  // ── Auto-save to Supabase (debounced 2s) ────
+  useEffect(() => {
+    if (loading) return;
+    if (skipFirstSave.current) { skipFirstSave.current = false; return; }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      setSaveStatus("saving");
+      saveConfig(config).then((ok) => {
+        setSaveStatus(ok ? "saved" : "idle");
+        if (ok) setTimeout(() => setSaveStatus("idle"), 2000);
+      });
+    }, 2000);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [config, loading]);
 
   // ── Preload ALL images upfront so polaroid pairs sync and collages don't pop in late ──
   // Includes: photos, collage slot photos. (Interstitial assets like letters don't use images.)
@@ -1057,7 +1075,9 @@ export const App: React.FC = () => {
         <h1 className="logo">식전영상 에디터</h1>
         <div className="header-info">
           {Math.floor(totalSec / 60)}분 {Math.round(totalSec % 60)}초 &middot; {config.photos.length}장 &middot; {acts.length} Acts
-          <span className="save-dot idle" title="저장소: 코드 (data.ts) · 수정은 Claude에게 요청">세션 모드</span>
+          {saveStatus === "saving" && <span className="save-dot saving">저장 중...</span>}
+          {saveStatus === "saved" && <span className="save-dot saved">저장 완료</span>}
+          {saveStatus === "idle" && <span className="save-dot idle">자동 저장</span>}
         </div>
         <div className="header-actions">
           <button
@@ -1067,17 +1087,13 @@ export const App: React.FC = () => {
           >
             {theme === "dark" ? "☾" : "☀"}
           </button>
-          {/* JSON 내보내기 — 현재 편집 상태를 data.ts에 반영하고 싶을 때
-              다운로드 후 Claude에게 전달해 커밋 요청. */}
           <button className="btn btn-save" onClick={() => {
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `letter-video-config-${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}>📥 JSON 내보내기</button>
+            setSaveStatus("saving");
+            saveConfig(config).then((ok) => {
+              setSaveStatus(ok ? "saved" : "idle");
+              if (ok) setTimeout(() => setSaveStatus("idle"), 2000);
+            });
+          }}>💾 저장</button>
           <button className="btn btn-ghost" onClick={resetConfig}>초기화</button>
         </div>
       </header>
