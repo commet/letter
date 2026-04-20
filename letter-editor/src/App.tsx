@@ -643,8 +643,8 @@ export const App: React.FC = () => {
   const [assetTarget, setAssetTarget] = useState<"global" | "current">("current");
   const [currentFrame, setCurrentFrame] = useState(0);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
-    if (typeof window === "undefined") return "dark";
-    return (localStorage.getItem("theme") as "dark" | "light") ?? "dark";
+    if (typeof window === "undefined") return "light";
+    return (localStorage.getItem("theme") as "dark" | "light") ?? "light";
   });
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
   const [loading, setLoading] = useState(true);
