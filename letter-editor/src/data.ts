@@ -598,7 +598,7 @@ const defaultPhotos: PhotoEntry[] = [
 
 const defaultActTitles: Record<number, ActTitle> = {
   1: { chapter: "Act I",   kr: "그때의 우리",          year: "1988 · 1993" },
-  2: { chapter: "Act II",  kr: "같은 마당",            year: "1994 — " },
+  2: { chapter: "Act II",  kr: "같이, 자라다",          year: "1994 — " },
   3: { chapter: "Act III", kr: "청춘",                 year: "2008 — 2015" },
   4: { chapter: "Act IV",  kr: "바다를 사이에 두고",   year: "2016 — 2025" },
   5: { chapter: "Act V",   kr: "그리고, 오늘",         year: "2026" },
