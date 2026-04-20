@@ -34,9 +34,48 @@ export const FILTER_CSS: Record<FilterType, string> = {
   cool: "saturate(0.9) brightness(1.05) hue-rotate(10deg)",
 };
 
+// Legacy single-caption (kept for backward-compat; auto-migrated to CaptionEntry[]).
 export type CaptionConfig = {
   text: string;
   position: "top" | "bottom" | "center";
+};
+
+// Per-entry caption with full position + styling control.
+export type CaptionFont =
+  | "serif"       // italic EB Garamond — classic elegant
+  | "serif-kr"    // Nanum Myeongjo — formal Korean serif
+  | "script-kr"   // Nanum Pen Script — handwritten
+  | "brush-kr"    // Nanum Brush — calligraphy
+  | "sans-kr";    // Noto Sans — modern
+
+export type CaptionAlign = "left" | "center" | "right";
+
+export type CaptionBackground = {
+  color: string;         // rgba or hex — e.g., "rgba(15,12,8,0.45)"
+  paddingX?: number;     // default 20
+  paddingY?: number;     // default 8
+  radius?: number;       // default 4
+  blur?: boolean;        // backdrop blur behind box
+};
+
+export type CaptionEntry = {
+  id: string;
+  text: string;
+  speaker?: string;          // e.g., "예찬" | "슬기" — rendered as "speaker: text"
+  // Position in normalized 0-1 coords over the 1920×1080 canvas.
+  //   The anchor is interpreted by `align`:
+  //     center → box centered on (x,y)
+  //     left   → box's left edge at x
+  //     right  → box's right edge at x
+  //   y is the vertical center of the text box in all cases.
+  x: number;
+  y: number;
+  align?: CaptionAlign;
+  fontFamily?: CaptionFont;
+  fontSize?: number;         // px at 1920×1080
+  color?: string;
+  bg?: CaptionBackground;
+  maxWidthPct?: number;      // 0-100, max horizontal width as % of canvas (default 80)
 };
 
 export type SpotlightConfig = {
@@ -55,6 +94,19 @@ export type CropRect = {
   h: number;
 };
 
+// Annotation arrow — points to a person/object in a group photo, with optional label.
+// Coordinates are normalized to the image area (0-1, same basis as spotlights/focalPoint).
+export type ArrowStyle = "curve" | "straight" | "dashed" | "brush";
+export type AnnotationArrow = {
+  id: string;
+  tipX: number;            // where the arrow points
+  tipY: number;
+  labelX: number;          // where the label sits (arrow starts from near here)
+  labelY: number;
+  label?: string;          // optional text; arrow-only if omitted/empty
+  style?: ArrowStyle;      // default 'curve'
+};
+
 export type PhotoEntry = {
   tag: string;
   act: number;
@@ -64,10 +116,12 @@ export type PhotoEntry = {
   focalPoint: { x: number; y: number }; // 0-1, default 0.5,0.5
   transition: TransitionType;
   filter: FilterType;
-  caption?: CaptionConfig;
+  caption?: CaptionConfig;        // legacy — prefer `captions`
+  captions?: CaptionEntry[];      // multi-caption support (dialog, monologue)
   spotlights: SpotlightConfig[];
   crop?: CropRect; // if set, only this rect of the image is shown (normalized 0-1)
   kenBurnsAmount?: number; // per-photo override for zoom/pan intensity (0-1). undefined = use global.
+  annotations?: AnnotationArrow[]; // hand-drawn arrows pointing to people/objects in group photos
   splitPair?: boolean; // true = this photo + next photo form a split screen
   splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
   splitLabel?: string; // custom label under polaroid/cameo (fallback: tag first word)

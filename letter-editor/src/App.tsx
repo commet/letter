@@ -18,6 +18,8 @@ import {
   CaptionConfig,
   SpotlightConfig,
   CropRect,
+  AnnotationArrow,
+  ArrowStyle,
   JourneyMap,
   defaultConfig,
   computeTotalFrames,
@@ -96,7 +98,7 @@ const BACKGROUND_STYLES: { value: BackgroundStyle; label: string }[] = [
 
 // ─── Image Editor Modal ──────────────────────
 
-type EditorMode = "focal" | "spotlight" | "crop";
+type EditorMode = "focal" | "spotlight" | "crop" | "arrow";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const MIN_CROP = 0.1; // minimum width/height of crop rect
@@ -244,6 +246,123 @@ const ImageEditorModal: React.FC<{
     onUpdatePhoto({ crop: undefined });
   };
 
+  // ── Annotation arrow state ──────────────────
+  const annotations: AnnotationArrow[] = photo.annotations ?? [];
+  const [selectedArrow, setSelectedArrow] = useState<string | null>(null);
+  const arrowDragRef = useRef<
+    | null
+    | {
+        mode: "create" | "move-tip" | "move-label";
+        id: string; // id of the arrow being edited
+        startClientX: number;
+        startClientY: number;
+        imgRectLeft: number;
+        imgRectTop: number;
+        imgRectW: number;
+        imgRectH: number;
+      }
+  >(null);
+
+  const updateArrows = (next: AnnotationArrow[]) => {
+    onUpdatePhoto({ annotations: next.length > 0 ? next : undefined });
+  };
+
+  const beginArrowDrag = (
+    dmode: "create" | "move-tip" | "move-label",
+    id: string,
+    e: React.PointerEvent
+  ) => {
+    e.stopPropagation();
+    const img = imgRef.current;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    arrowDragRef.current = {
+      mode: dmode,
+      id,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      imgRectLeft: rect.left,
+      imgRectTop: rect.top,
+      imgRectW: rect.width,
+      imgRectH: rect.height,
+    };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const onArrowPointerMove = (e: React.PointerEvent) => {
+    const d = arrowDragRef.current;
+    if (!d) return;
+    const x = clamp((e.clientX - d.imgRectLeft) / d.imgRectW, 0, 1);
+    const y = clamp((e.clientY - d.imgRectTop) / d.imgRectH, 0, 1);
+    const next = annotations.map((a) => {
+      if (a.id !== d.id) return a;
+      if (d.mode === "create" || d.mode === "move-tip") {
+        return { ...a, tipX: x, tipY: y };
+      } else {
+        return { ...a, labelX: x, labelY: y };
+      }
+    });
+    updateArrows(next);
+  };
+
+  const endArrowDrag = () => {
+    const d = arrowDragRef.current;
+    if (!d) return;
+    arrowDragRef.current = null;
+    // If the newly created arrow is too small (just a click with no drag), keep default offset
+    if (d.mode === "create") {
+      const a = (photo.annotations ?? []).find((x) => x.id === d.id);
+      if (a && Math.hypot(a.tipX - a.labelX, a.tipY - a.labelY) < 0.04) {
+        // Tiny drag → place tip a bit to the right of label so arrow is visible
+        const nx = clamp(a.labelX + 0.15, 0, 1);
+        const ny = a.labelY;
+        updateArrows(
+          (photo.annotations ?? []).map((x) => x.id === d.id ? { ...x, tipX: nx, tipY: ny } : x)
+        );
+      }
+    }
+  };
+
+  // Pointer down on empty image area → start new arrow (label at click, tip follows drag)
+  const onArrowCanvasPointerDown = (e: React.PointerEvent) => {
+    if (mode !== "arrow") return;
+    const img = imgRef.current;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const x = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+    const y = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+    const id = `ar${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const newArrow: AnnotationArrow = {
+      id,
+      labelX: x, labelY: y,
+      tipX: x, tipY: y, // will follow drag; on release if tiny, nudged +0.15x
+      label: "",
+      style: "curve",
+    };
+    onUpdatePhoto({ annotations: [...annotations, newArrow] });
+    setSelectedArrow(id);
+    // Begin the drag
+    arrowDragRef.current = {
+      mode: "create",
+      id,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      imgRectLeft: rect.left,
+      imgRectTop: rect.top,
+      imgRectW: rect.width,
+      imgRectH: rect.height,
+    };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const updateArrow = (id: string, patch: Partial<AnnotationArrow>) => {
+    updateArrows(annotations.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  };
+  const deleteArrow = (id: string) => {
+    updateArrows(annotations.filter((a) => a.id !== id));
+    if (selectedArrow === id) setSelectedArrow(null);
+  };
+
   const getClickPos = (e: React.MouseEvent<HTMLImageElement>) => {
     const img = imgRef.current;
     if (!img) return null;
@@ -255,7 +374,7 @@ const ImageEditorModal: React.FC<{
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (mode === "crop") return; // crop has its own drag handlers
+    if (mode === "crop" || mode === "arrow") return; // crop/arrow have their own drag handlers
     const pos = getClickPos(e);
     if (!pos) return;
 
@@ -302,6 +421,9 @@ const ImageEditorModal: React.FC<{
               </button>
               <button className={`tab ${mode === "crop" ? "tab-active" : ""}`} onClick={() => setMode("crop")}>
                 자르기
+              </button>
+              <button className={`tab ${mode === "arrow" ? "tab-active" : ""}`} onClick={() => setMode("arrow")}>
+                화살표
               </button>
             </div>
           </div>
@@ -403,6 +525,98 @@ const ImageEditorModal: React.FC<{
                     })}
                   </div>
                 </>
+              )}
+
+              {/* Arrow overlay: catches pointer-down on empty area + shows existing arrows + handles */}
+              {mode === "arrow" && (
+                <div
+                  onPointerDown={onArrowCanvasPointerDown}
+                  onPointerMove={onArrowPointerMove}
+                  onPointerUp={endArrowDrag}
+                  onPointerCancel={endArrowDrag}
+                  style={{ position: "absolute", inset: 0, cursor: "crosshair", touchAction: "none" }}
+                >
+                  {/* SVG lines */}
+                  <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}
+                       viewBox="0 0 100 100" preserveAspectRatio="none">
+                    {annotations.map((a) => {
+                      const lx = a.labelX * 100, ly = a.labelY * 100, tx = a.tipX * 100, ty = a.tipY * 100;
+                      const sx = lx + (tx - lx) * 0.08, sy = ly + (ty - ly) * 0.08;
+                      let d = `M ${sx} ${sy} L ${tx} ${ty}`;
+                      if ((a.style ?? "curve") === "curve") {
+                        const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+                        const ddx = tx - sx, ddy = ty - sy;
+                        const nlen = Math.hypot(ddx, ddy) || 1;
+                        const bow = nlen * 0.18;
+                        const cx = mx + (-ddy / nlen) * bow;
+                        const cy = my + (ddx / nlen) * bow;
+                        d = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
+                      }
+                      const selected = selectedArrow === a.id;
+                      const col = a.style === "brush" ? "#a88848" : "#1a1510";
+                      const dash = a.style === "dashed" ? "3 4" : undefined;
+                      const w = a.style === "brush" ? 4.5 : 2.4;
+                      return (
+                        <path key={a.id} d={d} fill="none" stroke={col}
+                          strokeWidth={selected ? w + 1 : w}
+                          strokeDasharray={dash}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          vectorEffect="non-scaling-stroke"
+                          opacity={0.95} />
+                      );
+                    })}
+                  </svg>
+                  {/* Tip handles */}
+                  {annotations.map((a) => (
+                    <div
+                      key={`tip-${a.id}`}
+                      onPointerDown={(e) => { setSelectedArrow(a.id); beginArrowDrag("move-tip", a.id, e); }}
+                      style={{
+                        position: "absolute",
+                        left: `${a.tipX * 100}%`,
+                        top: `${a.tipY * 100}%`,
+                        width: 16, height: 16,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        border: `3px solid ${selectedArrow === a.id ? "var(--gold)" : "#1a1510"}`,
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                        transform: "translate(-50%, -50%)",
+                        cursor: "grab",
+                        touchAction: "none",
+                      }}
+                    />
+                  ))}
+                  {/* Label drag chips */}
+                  {annotations.map((a) => (
+                    <div
+                      key={`lbl-${a.id}`}
+                      onPointerDown={(e) => { setSelectedArrow(a.id); beginArrowDrag("move-label", a.id, e); }}
+                      style={{
+                        position: "absolute",
+                        left: `${a.labelX * 100}%`,
+                        top: `${a.labelY * 100}%`,
+                        transform: "translate(-50%, -50%)",
+                        fontFamily: "'Nanum Pen Script', cursive",
+                        fontSize: 22,
+                        color: "#1a1510",
+                        background: a.label ? "rgba(251, 244, 220, 0.92)" : "rgba(251, 244, 220, 0.55)",
+                        padding: a.label ? "3px 10px" : "4px",
+                        borderRadius: 2,
+                        border: selectedArrow === a.id ? "2px solid var(--gold)" : "1px dashed rgba(26,21,16,0.35)",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                        cursor: "grab",
+                        whiteSpace: "nowrap",
+                        touchAction: "none",
+                        minWidth: 18,
+                        minHeight: 18,
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {a.label || "●"}
+                    </div>
+                  ))}
+                </div>
               )}
 
               {/* Spotlight markers */}
@@ -624,6 +838,67 @@ const ImageEditorModal: React.FC<{
                 </div>
               </>
             )}
+
+            {mode === "arrow" && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <p className="hint" style={{ margin: 0 }}>
+                    이미지 위에서 드래그: 시작점(라벨)에서 끝점(화살촉)으로.<br />
+                    흰 원(끝점)과 라벨 박스를 드래그해 위치 조정.
+                  </p>
+                  {annotations.length > 0 && (
+                    <button className="btn btn-xs" style={{ flexShrink: 0, marginLeft: 10 }}
+                      onClick={() => { updateArrows([]); setSelectedArrow(null); }}>
+                      전체 리셋
+                    </button>
+                  )}
+                </div>
+                {annotations.length === 0 && (
+                  <p className="hint hint-dim">화살표가 없습니다. 이미지 위에 드래그해 만드세요.</p>
+                )}
+                {annotations.map((a) => {
+                  const isSel = selectedArrow === a.id;
+                  return (
+                    <div key={a.id}
+                      className={`spot-control ${isSel ? "spot-control--active" : ""}`}
+                      onClick={() => setSelectedArrow(a.id)}>
+                      <div className="spot-control-header">
+                        <span>화살표 #{annotations.indexOf(a) + 1}</span>
+                        <button className="btn-icon btn-icon--danger"
+                          onClick={(e) => { e.stopPropagation(); deleteArrow(a.id); }}>&#10005;</button>
+                      </div>
+                      <input className="input input-sm" placeholder="라벨 (비우면 화살표만)"
+                        value={a.label ?? ""}
+                        onChange={(e) => updateArrow(a.id, { label: e.target.value })} />
+                      <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                        {(["curve", "straight", "dashed", "brush"] as ArrowStyle[]).map((s) => {
+                          const active = (a.style ?? "curve") === s;
+                          const label = s === "curve" ? "곡선" : s === "straight" ? "직선" : s === "dashed" ? "점선" : "붓질";
+                          return (
+                            <button key={s} className="btn btn-xs"
+                              style={{
+                                flex: 1, minWidth: 52,
+                                background: active ? "var(--gold)" : undefined,
+                                color: active ? "#111" : undefined,
+                                fontWeight: active ? 700 : 500,
+                              }}
+                              onClick={(e) => { e.stopPropagation(); updateArrow(a.id, { style: s }); }}>
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, fontFamily: "monospace" }}>
+                        tip ({(a.tipX * 100).toFixed(0)},{(a.tipY * 100).toFixed(0)}) · label ({(a.labelX * 100).toFixed(0)},{(a.labelY * 100).toFixed(0)})
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="hint hint-dim" style={{ marginTop: 8 }}>
+                  애니메이션: 사진 등장 뒤 화살표가 그려지고 라벨이 페이드인됨.
+                </p>
+              </>
+            )}
           </div>
         </div>
 
@@ -631,7 +906,8 @@ const ImageEditorModal: React.FC<{
           <span className="modal-footer-hint">
             {mode === "focal" ? "클릭 = 포커스 지정 · 변경사항은 실시간 반영됨"
               : mode === "spotlight" ? "클릭 = 강조 추가 · 변경사항은 실시간 반영됨"
-              : "드래그 = 자르기 영역 조절 · 변경사항은 실시간 반영됨"}
+              : mode === "crop" ? "드래그 = 자르기 영역 조절 · 변경사항은 실시간 반영됨"
+              : "드래그 = 화살표 그리기 · 끝점/라벨 드래그로 조정"}
           </span>
           <button
             className="btn-save"

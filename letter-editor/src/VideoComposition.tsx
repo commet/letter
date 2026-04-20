@@ -13,6 +13,7 @@ import {
   EndingConfig,
   Effect,
   SpotlightConfig,
+  AnnotationArrow as AnnotationArrowConfig,
   TransitionMode,
   TimelineItem,
   OverlayType,
@@ -270,6 +271,134 @@ const getFrameStyle = (type: FrameType): React.CSSProperties => {
     default:
       return { maxWidth: "92%", maxHeight: "92%" };
   }
+};
+
+// ─── Annotation Arrow Layer ───────────────────
+// Arrows point to people/objects in group photos. Normalized coords (0-1)
+// relative to the photo area (so they live INSIDE the photo wrapper, next to Img).
+
+type ArrowPathInfo = {
+  d: string;           // SVG path
+  tipAngleDeg: number; // tangent angle at tip (for arrowhead rotation)
+};
+
+const buildArrowPath = (a: AnnotationArrowConfig): ArrowPathInfo => {
+  const lx = a.labelX * 100, ly = a.labelY * 100;
+  const tx = a.tipX * 100, ty = a.tipY * 100;
+  // Shrink start slightly so arrow doesn't start under the label box
+  const sx = lx + (tx - lx) * 0.08;
+  const sy = ly + (ty - ly) * 0.08;
+  if (a.style === "curve" || !a.style) {
+    const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+    const dx = tx - sx, dy = ty - sy;
+    const normLen = Math.hypot(dx, dy) || 1;
+    const perpX = -dy / normLen, perpY = dx / normLen;
+    const bow = normLen * 0.18;
+    const cx = mx + perpX * bow;
+    const cy = my + perpY * bow;
+    return {
+      d: `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`,
+      tipAngleDeg: Math.atan2(ty - cy, tx - cx) * 180 / Math.PI,
+    };
+  }
+  // straight / dashed / brush — same geometry
+  return {
+    d: `M ${sx} ${sy} L ${tx} ${ty}`,
+    tipAngleDeg: Math.atan2(ty - sy, tx - sx) * 180 / Math.PI,
+  };
+};
+
+const arrowStroke = (style?: string) => {
+  switch (style) {
+    case "brush":    return { color: "#a88848", width: 4.5, opacity: 0.92 };
+    case "dashed":   return { color: "#1a1510", width: 2,   opacity: 1 };
+    case "straight": return { color: "#1a1510", width: 2.2, opacity: 1 };
+    case "curve":
+    default:         return { color: "#1a1510", width: 2.4, opacity: 1 };
+  }
+};
+
+const AnnotationLayer: React.FC<{
+  annotations: AnnotationArrowConfig[];
+  dur: number;
+}> = ({ annotations, dur }) => {
+  const frame = useCurrentFrame();
+  if (!annotations || annotations.length === 0) return null;
+  const tN = Math.min(1, Math.max(0, frame / dur));
+  const drawT  = interpolate(tN, [0.20, 0.48], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const labelT = interpolate(tN, [0.45, 0.65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fadeO  = interpolate(tN, [0.90, 1.0],  [1, 0], { extrapolateLeft: "clamp" });
+  return (
+    <>
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        {annotations.map((a) => {
+          const info = buildArrowPath(a);
+          const stroke = arrowStroke(a.style);
+          // Approx path length via bbox — good enough for dash reveal
+          const dx = (a.tipX - a.labelX) * 100;
+          const dy = (a.tipY - a.labelY) * 100;
+          const approxLen = Math.hypot(dx, dy) * 1.15;
+          const dashLen = Math.max(approxLen, 1);
+          const isDashed = a.style === "dashed";
+          return (
+            <g key={a.id} opacity={stroke.opacity * fadeO}>
+              <path
+                d={info.d}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth={stroke.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                strokeDasharray={isDashed ? "3 4" : `${dashLen}`}
+                strokeDashoffset={isDashed ? 0 : (1 - drawT) * dashLen}
+              />
+              {drawT > 0.6 && (
+                <g transform={`translate(${a.tipX * 100} ${a.tipY * 100}) rotate(${info.tipAngleDeg})`}
+                   opacity={interpolate(drawT, [0.6, 1.0], [0, 1], { extrapolateRight: "clamp" })}>
+                  <path
+                    d={a.style === "brush"
+                      ? "M 0 0 L -3.5 -2 L -3.5 2 Z"
+                      : "M 0 0 L -2.6 -1.5 L -2.6 1.5 Z"}
+                    fill={stroke.color}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {annotations.map((a) => a.label && (
+        <div
+          key={`lbl-${a.id}`}
+          style={{
+            position: "absolute",
+            left: `${a.labelX * 100}%`,
+            top: `${a.labelY * 100}%`,
+            transform: "translate(-50%, -50%)",
+            fontFamily: "'Nanum Pen Script', 'Nanum Myeongjo', cursive",
+            fontSize: 26,
+            color: "#1a1510",
+            background: "rgba(251, 244, 220, 0.92)",
+            padding: "3px 11px",
+            borderRadius: 2,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+            whiteSpace: "nowrap",
+            opacity: labelT * fadeO,
+            pointerEvents: "none",
+            lineHeight: 1.1,
+          }}
+        >
+          {a.label}
+        </div>
+      ))}
+    </>
+  );
 };
 
 const SpotlightOverlay: React.FC<{ spotlights: SpotlightConfig[] }> = ({ spotlights }) => {
@@ -1213,6 +1342,9 @@ const PhotoScene: React.FC<{
             {photo.spotlights?.length > 0 && (
               <SpotlightOverlay spotlights={photo.spotlights} />
             )}
+            {photo.annotations?.length && (
+              <AnnotationLayer annotations={photo.annotations} dur={dur} />
+            )}
           </AbsoluteFill>
         ) : (
           <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
@@ -1241,6 +1373,9 @@ const PhotoScene: React.FC<{
               {photo.spotlights?.length > 0 && (
                 <SpotlightOverlay spotlights={photo.spotlights} />
               )}
+              {photo.annotations?.length && (
+                <AnnotationLayer annotations={photo.annotations} dur={dur} />
+              )}
             </div>
           </AbsoluteFill>
         )
@@ -1260,6 +1395,9 @@ const PhotoScene: React.FC<{
             }} />
             {photo.spotlights?.length > 0 && (
               <SpotlightOverlay spotlights={photo.spotlights} />
+            )}
+            {photo.annotations?.length && (
+              <AnnotationLayer annotations={photo.annotations} dur={dur} />
             )}
           </div>
         </AbsoluteFill>
@@ -1686,10 +1824,10 @@ const EndingScene: React.FC<{
         left: 0, right: 0, top: "68%",
         textAlign: "center",
         fontFamily: SERIF_KR,
-        fontSize: 34,
+        fontSize: 54,
         letterSpacing: 6,
-        color: onPaper ? "rgba(58,42,24,0.7)" : "rgba(255,255,255,0.75)",
-        opacity: Math.min(fadeAt(6.8), fadeOut),
+        color: onPaper ? "rgba(58,42,24,0.8)" : "rgba(255,255,255,0.8)",
+        opacity: Math.min(fadeAt(5.8), fadeOut),
       }}>
         {ending.message}
       </div>
