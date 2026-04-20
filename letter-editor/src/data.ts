@@ -495,7 +495,7 @@ const e = (i: number): Effect => fx[i % fx.length];
 // Helper to create photo entries with sensible defaults
 const P = (
   tag: string, act: number, file: string, durationSec: number, effect: Effect,
-  extra?: Partial<Pick<PhotoEntry, "focalPoint" | "transition" | "filter" | "caption" | "spotlights" | "splitPair" | "splitStyle" | "frameOverride" | "overlayOverride" | "particlesOverride">>
+  extra?: Partial<PhotoEntry>
 ): PhotoEntry => ({
   tag, act, file, durationSec, effect,
   focalPoint: { x: 0.5, y: 0.5 },
@@ -505,9 +505,10 @@ const P = (
   ...extra,
 });
 
-// Moderate spotlight helper — 부드러운 얼굴 강조 (다른 사람들 약간만 어둠)
-// 실제 얼굴 위치는 사용자가 에디터에서 미세 조정. 일단 합리적 중심 위치로 배치.
-const SP = (x: number, y: number): SpotlightConfig => ({ x, y, radius: 0.18, strength: 0.35 });
+// Spotlight helper for multi-spot config (default r=0.25, strength=0.55 — matches editor default)
+const SL = (x: number, y: number, radius = 0.25, strength = 0.55): SpotlightConfig => ({ x, y, radius, strength });
+// Focal helper
+const FP = (x: number, y: number) => ({ x, y });
 
 const defaultPhotos: PhotoEntry[] = [
   // ── Act I — 그때의 우리 (유년기 페어 6쌍 + 경복궁) ──────
@@ -525,33 +526,39 @@ const defaultPhotos: PhotoEntry[] = [
   P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
   P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn"),
 
-  // ── Act II — 같은 마당 (1994~ 분당교회) ──────
-  // 단체사진 중 핵심 3장에 얼굴 스포트라이트. 아이콘은 섹션 경계에만.
-  // 바다 여행 → 경복궁 순으로 Act II 여는 사진들.
+  // ── Act II — 분당 (1994~ 분당교회) ──────
+  // 순서: 경복궁 → 바다 여행 → 분당선교원 2 → 단체사진들 → ... (사용자 지정 순서)
+  P("경복궁",                    2, `${S}/013b.jpg`,   D.reveal, "zoomIn"),
   P("바다 여행 1",               2, `${S}/sea-1.jpeg`, D.reveal, "zoomIn"),
   P("바다 여행 2",               2, `${S}/sea-2.jpeg`, D.reveal, "panRight"),
-  P("경복궁",                    2, `${S}/013b.jpg`,   D.reveal, "zoomIn"),
-  P("★ 분당선교원 단체",           2, `${S}/014.jpeg`, D.growStar, "zoomIn",  {
-    eraIcon: "church-steeple",
-    spotlights: [SP(0.38, 0.55), SP(0.62, 0.52)],  // 좌(슬기)·우(예찬) 중심 근처
-  }),
   P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn", {
-    spotlights: [SP(0.42, 0.50), SP(0.60, 0.54)],
+    focalPoint: FP(0.577, 0.404),
+    spotlights: [SL(0.405, 0.317), SL(0.710, 0.579), SL(0.485, 0.225), SL(0.695, 0.526)],
   }),
-  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4), {
-    spotlights: [SP(0.40, 0.55), SP(0.58, 0.52)],
+  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, "zoomIn", {
+    spotlights: [SL(0.512, 0.414), SL(0.852, 0.416)],
   }),
-  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5)),
-  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, e(6), {
-    spotlights: [SP(0.42, 0.55), SP(0.60, 0.50)],
+  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, "zoomIn", {
+    focalPoint: FP(0.706, 0.392),
+    spotlights: [SL(0.678, 0.326), SL(0.776, 0.412), SL(0.575, 0.423), SL(0.781, 0.421)],
   }),
-  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, e(7)),
+  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, "zoomOut", {
+    focalPoint: FP(0.603, 0.497),
+    spotlights: [
+      { x: 0.42, y: 0.55, radius: 0.18, strength: 0.35 },
+      { x: 0.60, y: 0.50, radius: 0.18, strength: 0.35 },
+      SL(0.528, 0.452), SL(0.772, 0.528), SL(0.736, 0.507),
+    ],
+  }),
   P("붉은악마 단체",              2, `${S}/016.jpeg`, D.grow, "zoomIn"),
-  P("영화관",                     2, `${S}/023.jpeg`, D.grow, e(8)),
-  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, e(9)),
-  P("스키장",                     2, `${S}/025.jpeg`, D.grow, e(10)),
-  P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, e(11), { eraIcon: "grad-cap" }),
-  P("침례식",                     2, `${S}/027.jpeg`, D.grow, e(12), { eraIcon: "stained-glass" }),
+  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, "panLeft"),
+  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, "panRight"),
+  P("영화관",                     2, `${S}/023.jpeg`, D.grow, "zoomIn"),
+  P("스키장",                     2, `${S}/025.jpeg`, D.grow, "zoomIn", {
+    focalPoint: FP(0.573, 0.553),
+  }),
+  P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, "zoomIn", { eraIcon: "grad-cap" }),
+  P("침례식",                     2, `${S}/027.jpeg`, D.grow, "zoomIn", { eraIcon: "stained-glass" }),
 
   // ── Act III — 청춘 (한국 청년기) ──────
   // 아이콘은 섹션 시작에만 (여행 첫 장, 공연 첫 장, 갤러리 첫 장, 슬기 졸업)
@@ -579,7 +586,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn"),
   P("뉴욕 1",                     4, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
   P("뉴욕 2",                     4, `${S}/043.png`,  D.date, "panLeft"),
-  P("뉴욕 3",                     4, `${S}/044b.jpg`, D.date, "zoomOut"),
+  P("뉴욕 3",                     4, `${S}/044.jpg`,  D.date, "zoomOut"),
   P("뉴욕 4",                     4, `${S}/045.png`,  D.date, "zoomIn"),
   P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut", { eraIcon: "diploma" }),
 
@@ -612,7 +619,7 @@ export const defaultConfig: VideoConfig = {
     date: "2026 · 05 · 05",
     groomName: "이예찬",
     brideName: "송슬기",
-    message: "와주셔서 감사합니다",
+    message: "함께 해 주셔서 감사드립니다",
   },
   titleCardSec: 4.0,   // slightly longer for breathing
   endingSec: 13.0,     // extended for held silence + botanical sprig + message breath
@@ -624,29 +631,27 @@ export const defaultConfig: VideoConfig = {
   backgroundStyle: "paper",  // NEW — cream paper (vintage journal feel)
   kenBurnsAmount: 0.04,      // NEW — half of previous 0.08 (calmer)
   titleVariant: "journal",   // NEW — elegant journal style for all acts
-  // ── 인터스티셜 배치 (실제 스토리 기반) ──
-  // photos 인덱스 (경복궁 Act I 복귀 후):
-  //   Act I 0-12 (13장 · 페어 6쌍 + 경복궁), Act II 13-24 (12장),
-  //   Act III 25-39 (15장), Act IV 40-48 (9장), Act V 49-57 (9장)
+  // ── 인터스티셜 배치 ──
+  // photos 인덱스 (★분당선교원 단체 제거 후):
+  //   Act I   0-11  (12장 · 페어 6쌍)
+  //   Act II  12-25 (14장 · 경복궁/바다1/바다2 + 분당선교원 2 + 단체사진 등)
+  //   Act III 26-40 (15장)
+  //   Act IV  41-49 (9장)
+  //   Act V   50-58 (9장)
   moments: [
-    // Act V 시작 (2026 재회) — 핵심 리빌
-    { id: "m-5", afterPhotoIndex: 50, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
+    // Act V 시작 (2026 재회)
+    { id: "m-5", afterPhotoIndex: 49, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],
   yearMarkers: [
-    // Act IV 시작 (거리의 시간)
-    { id: "y-4", afterPhotoIndex: 41, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
+    // Act IV 시작 (거리의 시간) — before photo 41
+    { id: "y-4", afterPhotoIndex: 40, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
   ],
   journeyMaps: [
-    // Act I 시작 직전 (첫 장소 · 시작점) — 성모병원만 드러남
-    { id: "jm-1", afterPhotoIndex: -1, title: "Our Journey",    visibleCount: 1, durationSec: 4.5 },
-    // Act II 시작 직전 — 비행기가 분당으로 이동 (경복궁 앞)
-    { id: "jm-2", afterPhotoIndex: 11, title: "Our Journey",    visibleCount: 2, durationSec: 6.5 },
-    // Act III 시작 직전 — 다음 leg (청춘)
-    { id: "jm-3", afterPhotoIndex: 26, title: "Our Journey",    visibleCount: 3, durationSec: 6.5 },
-    // Act IV 시작 직전 — 뉴욕 · 서울 (롱디)
-    { id: "jm-4", afterPhotoIndex: 41, title: "Across the Ocean", visibleCount: 4, durationSec: 7.0, caption: "계절이 몇 번, 그래도 서로에게" },
-    // Act V 시작 직전 — 오늘, 재회
-    { id: "jm-5", afterPhotoIndex: 50, title: "Here, Today",    visibleCount: 5, durationSec: 7.5 },
+    { id: "jm-1", afterPhotoIndex: -1, title: "Our Journey",      visibleCount: 1, durationSec: 4.5 },
+    { id: "jm-2", afterPhotoIndex: 11, title: "Our Journey",      visibleCount: 2, durationSec: 6.5 },
+    { id: "jm-3", afterPhotoIndex: 25, title: "Our Journey",      visibleCount: 3, durationSec: 6.5 },
+    { id: "jm-4", afterPhotoIndex: 40, title: "Across the Ocean", visibleCount: 4, durationSec: 7.0, caption: "계절이 몇 번, 그래도 서로에게" },
+    { id: "jm-5", afterPhotoIndex: 49, title: "Here, Today",      visibleCount: 5, durationSec: 7.5 },
   ],
   letterInterludes: [],      // 의도적으로 비움 — 편지 인터루드는 스토리에 맞지 않음
   collages: [
