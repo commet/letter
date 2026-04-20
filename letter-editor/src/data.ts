@@ -586,14 +586,14 @@ const defaultPhotos: PhotoEntry[] = [
   P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn"),
   P("뉴욕 1",                     4, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
   P("뉴욕 2",                     4, `${S}/043.png`,  D.date, "panLeft"),
-  P("뉴욕 3",                     4, `${S}/044c.jpg`, D.date, "zoomOut"),
+  P("뉴욕 3",                     4, `${S}/044d.jpg`, D.date, "zoomOut"),
   P("뉴욕 4",                     4, `${S}/045.png`,  D.date, "zoomIn"),
   P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut", { eraIcon: "diploma" }),
 
   // ── Act V — 그리고, 오늘 (2026 재회·연인·결혼) ──────
   // 아이콘은 시작·중간·마지막 3장에만 (과하지 않게)
-  P("두 사람 1",                  5, `${S}/052.jpg`, D.us, "zoomIn", { eraIcon: "two-cups" }),
-  P("두 사람 2",                  5, `${S}/053c.jpg`, D.us, "zoomOut"),
+  P("두 사람 1",                  5, `${S}/052c.jpg`, D.us, "zoomIn", { eraIcon: "two-cups" }),
+  P("두 사람 2",                  5, `${S}/053d.jpg`, D.us, "zoomOut"),
   P("두 사람 3",                  5, `${S}/054.jpg`, D.us, "panRight"),
   P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn"),
   P("두 사람 5",                  5, `${S}/056.jpg`, D.us, "panLeft", { eraIcon: "bouquet" }),
