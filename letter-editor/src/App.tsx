@@ -755,15 +755,24 @@ export const App: React.FC = () => {
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [config, loading]);
 
-  // ── Preload ALL photos upfront so polaroid pairs sync (fixes slow/fast image mismatch) ──
+  // ── Preload ALL images upfront so polaroid pairs sync and collages don't pop in late ──
+  // Includes: photos, collage slot photos. (Interstitial assets like letters don't use images.)
   useEffect(() => {
     if (loading) return;
-    const urls = config.photos.map((p) => p.file.startsWith("http") ? p.file : `/${p.file}`);
+    const urls = new Set<string>();
+    for (const p of config.photos) {
+      if (p.file) urls.add(p.file);
+    }
+    for (const c of config.collages ?? []) {
+      for (const s of c.slots) {
+        if (s.file) urls.add(s.file);
+      }
+    }
     urls.forEach((url) => {
       const img = new Image();
-      img.src = url;
+      img.src = url.startsWith("http") ? url : `/${url}`;
     });
-  }, [loading, config.photos.length]);
+  }, [loading, config.photos, config.collages]);
 
   // ── updaters ────────────────────────────────
 
