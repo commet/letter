@@ -702,18 +702,65 @@ const JourneyMapScene: React.FC<{
   const t = Math.max(0, Math.min(1, frame / dur));
 
   const vc = Math.max(1, Math.min(JOURNEY_LOCATIONS.length, config.visibleCount ?? JOURNEY_LOCATIONS.length));
-  const presentIdx = vc - 1; // index of the "present" location (highlighted, just arrived)
+  const presentIdx = vc - 1;           // index of the "present" location
+  const hasPresentLeg = vc >= 2;        // is there a previous location → plane animates
 
   // Title / subtitle / caption
   const titleOp = interpolate(t, [0.03, 0.12, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
   const subOp   = interpolate(t, [0.06, 0.16, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
   const capOp   = interpolate(t, [0.72, 0.85, 0.95, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
 
-  // Past (all dots + segments up to but not including the present leg) fade in quickly together
-  const pastOp  = interpolate(t, [0.10, 0.28, 0.92, 1.0], [0, 0.55, 0.55, 0], { extrapolateRight: "clamp" });
+  // Base fade-in (shared) and global fade-out
+  const baseFade = interpolate(t, [0.08, 0.22, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
 
-  // Present segment dash draw (only when vc >= 2)
-  const hasPresentLeg = vc >= 2;
+  // Past: solid (already traveled, confidently drawn)
+  const pastOp   = baseFade * 0.82;
+  // Future: pale preview (foreshadows the road ahead)
+  const futureOp = baseFade * 0.22;
+
+  // Present emphasis timeline:
+  //   • Act 1 (no plane): present emerges early (0.10→0.28) and then pulses
+  //   • Act 2+ (with plane): present stays pale (future-level) until plane arrives, then emphasizes (0.72→0.85)
+  const presentEmphasizeStart = hasPresentLeg ? 0.72 : 0.10;
+  const presentEmphasizeEnd   = hasPresentLeg ? 0.85 : 0.28;
+
+  // Opacity lerps from the "pre" state (futureOp for Act 2+, 0 for Act 1) to full baseFade
+  const presentPreOp = hasPresentLeg ? futureOp : 0;
+  const presentOp = interpolate(
+    t,
+    [0.08, 0.22, presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
+    [0, presentPreOp, presentPreOp, baseFade, baseFade, 0],
+    { extrapolateRight: "clamp" },
+  );
+
+  // Scale grows into emphasis
+  const presentScale = interpolate(
+    t,
+    [presentEmphasizeStart, presentEmphasizeEnd],
+    [0.88, 1.12],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+
+  // Gentle pulse after emphasis has landed — subtle (~6% amplitude, slow sine)
+  const pulseActive = t > presentEmphasizeEnd;
+  const pulsePhase = (t - presentEmphasizeEnd) * 9.0;
+  const pulse = pulseActive ? 1 + 0.06 * Math.sin(pulsePhase) : 1;
+  const pulseOp = pulseActive ? 1 + 0.08 * Math.sin(pulsePhase + 0.4) : 1;
+
+  // Plane animation (Act 2+)
+  const planeT = hasPresentLeg
+    ? interpolate(t, [0.40, 0.78], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 0;
+  const planeVis = hasPresentLeg
+    ? interpolate(t, [0.36, 0.42, 0.76, 0.82], [0, 1, 1, 0], { extrapolateRight: "clamp" })
+    : 0;
+  const planeStart = hasPresentLeg ? JOURNEY_STOPS[presentIdx - 1] : JOURNEY_STOPS[0];
+  const planeEnd   = JOURNEY_STOPS[presentIdx];
+  const px = planeStart[0] + (planeEnd[0] - planeStart[0]) * planeT;
+  const py = planeStart[1] + (planeEnd[1] - planeStart[1]) * planeT;
+  const angle = Math.atan2(planeEnd[1] - planeStart[1], planeEnd[0] - planeStart[0]) * 180 / Math.PI;
+
+  // Present-segment dash-draw (animates as plane takes off)
   const segDashOffset = hasPresentLeg
     ? interpolate(t, [0.28, 0.52], [1200, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
     : 1200;
@@ -721,26 +768,8 @@ const JourneyMapScene: React.FC<{
     ? interpolate(t, [0.26, 0.34, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" })
     : 0;
 
-  // Plane fly from prev stop → present stop over 0.40..0.78
-  const planeT = hasPresentLeg
-    ? interpolate(t, [0.40, 0.78], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-    : 0;
-  const planeVis = hasPresentLeg
-    ? interpolate(t, [0.36, 0.42, 0.76, 0.82], [0, 1, 1, 0], { extrapolateRight: "clamp" })
-    : 0;
-
-  const planeStart = hasPresentLeg ? JOURNEY_STOPS[presentIdx - 1] : JOURNEY_STOPS[0];
-  const planeEnd   = JOURNEY_STOPS[presentIdx];
-  const px = planeStart[0] + (planeEnd[0] - planeStart[0]) * planeT;
-  const py = planeStart[1] + (planeEnd[1] - planeStart[1]) * planeT;
-  const angle = Math.atan2(planeEnd[1] - planeStart[1], planeEnd[0] - planeStart[0]) * 180 / Math.PI;
-
-  // Present dot pops on plane arrival (or for vc=1, early fade-in)
-  const presentDotOp = hasPresentLeg
-    ? interpolate(t, [0.72, 0.82, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" })
-    : interpolate(t, [0.20, 0.40, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
-
   const autoSubtitle = JOURNEY_LOCATIONS.slice(0, vc).map((L) => L.label).join(" · ");
+  const presentLoc = JOURNEY_LOCATIONS[presentIdx];
 
   return (
     <AbsoluteFill>
@@ -762,7 +791,7 @@ const JourneyMapScene: React.FC<{
         position: "absolute", top: 120, left: 0, right: 0, textAlign: "center",
         fontFamily: SERIF_KR, fontSize: 26, color: INK, letterSpacing: "0.2em",
         opacity: subOp,
-      }}>{config.subtitle ?? autoSubtitle}</div>
+      }}>{(config.subtitle && config.subtitle.trim()) || autoSubtitle}</div>
 
       {/* Map SVG */}
       <svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
@@ -776,22 +805,40 @@ const JourneyMapScene: React.FC<{
           <text x={0} y={-44} fontFamily="EB Garamond" fontStyle="italic" fontSize={14} textAnchor="middle" fill="#3a2f22" stroke="none" opacity={0.8}>N</text>
         </g>
 
-        {/* Past segments: all drawn uniformly, faded */}
-        {JOURNEY_SEGMENTS.slice(0, Math.max(0, presentIdx - 1)).map((d, i) => (
-          <path key={`past-seg-${i}`} d={d} fill="none" stroke={INK} strokeWidth={2}
-                strokeDasharray="5 9" strokeLinecap="round" opacity={pastOp * 0.85} />
+        {/* Future segments (pale preview of the road ahead) */}
+        {JOURNEY_SEGMENTS.slice(presentIdx).map((d, i) => (
+          <path key={`future-seg-${i}`} d={d} fill="none" stroke={INK} strokeWidth={1.4}
+                strokeDasharray="2 12" strokeLinecap="round" opacity={futureOp * 0.9} />
         ))}
 
-        {/* Present segment: animates dash then plane flies along it */}
+        {/* Past segments (solid-faded) */}
+        {JOURNEY_SEGMENTS.slice(0, Math.max(0, presentIdx - 1)).map((d, i) => (
+          <path key={`past-seg-${i}`} d={d} fill="none" stroke={INK} strokeWidth={2}
+                strokeDasharray="5 9" strokeLinecap="round" opacity={pastOp} />
+        ))}
+
+        {/* Present segment (animates as plane takes off) */}
         {hasPresentLeg && (
           <path d={JOURNEY_SEGMENTS[presentIdx - 1]} fill="none" stroke={INK} strokeWidth={2.5}
                 strokeDasharray="6 10" strokeLinecap="round"
                 style={{ strokeDashoffset: segDashOffset, opacity: segOp }} />
         )}
 
-        {/* Past dots */}
-        {JOURNEY_LOCATIONS.slice(0, presentIdx).map((L, i) => (
-          <g key={`past-loc-${i}`} opacity={pastOp}>
+        {/* Future dots (pale preview) */}
+        {JOURNEY_LOCATIONS.slice(presentIdx + 1).map((L) => (
+          <g key={`future-loc-${L.label}`} opacity={futureOp}>
+            <circle cx={L.cx} cy={L.cy} r={6} stroke={INK} fill="none" strokeWidth={1.2} />
+            <circle cx={L.cx} cy={L.cy} r={3.5} fill={INK} />
+            <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'Nanum Pen Script', cursive" fontSize={30} fill={INK}>{L.label}</text>
+            <text x={L.cx + L.lx} y={L.cy + L.ly + 20} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={16} fill="#3a2f22">{L.year}</text>
+          </g>
+        ))}
+
+        {/* Past dots (solid, already traveled) */}
+        {JOURNEY_LOCATIONS.slice(0, presentIdx).map((L) => (
+          <g key={`past-loc-${L.label}`} opacity={pastOp}>
             <circle cx={L.cx} cy={L.cy} r={14} fill={INK} opacity={0.12} />
             <circle cx={L.cx} cy={L.cy} r={7} stroke={INK} fill="none" strokeWidth={1.6} />
             <circle cx={L.cx} cy={L.cy} r={5} fill={INK} />
@@ -802,21 +849,19 @@ const JourneyMapScene: React.FC<{
           </g>
         ))}
 
-        {/* Present dot — highlighted, pops on arrival */}
-        {(() => {
-          const L = JOURNEY_LOCATIONS[presentIdx];
-          return (
-            <g opacity={presentDotOp}>
-              <circle cx={L.cx} cy={L.cy} r={22} fill={INK} opacity={0.14} />
-              <circle cx={L.cx} cy={L.cy} r={11} stroke={INK} fill="none" strokeWidth={2.5} />
-              <circle cx={L.cx} cy={L.cy} r={7} fill={INK} />
-              <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
-                    fontFamily="'Nanum Pen Script', cursive" fontSize={48} fill={INK}>{L.label}</text>
-              <text x={L.cx + L.lx} y={L.cy + L.ly + 26} textAnchor={L.anchor as "start" | "middle" | "end"}
-                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={24} fill="#3a2f22">{L.year}</text>
-            </g>
-          );
-        })()}
+        {/* Present dot — emphasized, grows, pulses */}
+        <g opacity={Math.min(1, presentOp * pulseOp)}
+           transform={`translate(${presentLoc.cx} ${presentLoc.cy}) scale(${presentScale * pulse}) translate(${-presentLoc.cx} ${-presentLoc.cy})`}>
+          <circle cx={presentLoc.cx} cy={presentLoc.cy} r={26} fill={INK} opacity={0.16} />
+          <circle cx={presentLoc.cx} cy={presentLoc.cy} r={13} stroke={INK} fill="none" strokeWidth={2.6} />
+          <circle cx={presentLoc.cx} cy={presentLoc.cy} r={7.5} fill={INK} />
+          <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly}
+                textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                fontFamily="'Nanum Pen Script', cursive" fontSize={52} fill={INK}>{presentLoc.label}</text>
+          <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly + 28}
+                textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={26} fill="#3a2f22">{presentLoc.year}</text>
+        </g>
 
         {/* Plane */}
         {planeVis > 0 && (

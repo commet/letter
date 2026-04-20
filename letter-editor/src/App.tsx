@@ -18,6 +18,7 @@ import {
   CaptionConfig,
   SpotlightConfig,
   CropRect,
+  JourneyMap,
   defaultConfig,
   computeTotalFrames,
   getPhotoIndexAtFrame,
@@ -631,6 +632,60 @@ const ImageEditorModal: React.FC<{
   );
 };
 
+// ─── Journey Map field editor ────────────────
+//   Keep labels in sync with JOURNEY_LOCATIONS in VideoComposition.tsx (5 fixed stops)
+
+const JOURNEY_LOCATION_LABELS = ["성모병원", "분당", "청춘", "뉴욕 · 서울", "여기, 오늘"];
+
+const JourneyMapFields: React.FC<{
+  m: JourneyMap;
+  acts: number[];
+  photosByAct: Record<number, { photo: PhotoEntry; idx: number }[]>;
+  updateJourneyMap: (id: string, patch: Partial<{ title: string; subtitle: string; caption: string; durationSec: number; visibleCount: number; afterPhotoIndex: number }>) => void;
+}> = ({ m, acts, photosByAct, updateJourneyMap }) => {
+  return (
+    <>
+      <input className="input input-sm" placeholder="상단 영문 제목" value={m.title ?? ""}
+        onChange={(e) => updateJourneyMap(m.id, { title: e.target.value })} />
+      <input className="input input-sm" placeholder="한글 부제 (비워두면 자동)" value={m.subtitle ?? ""}
+        onChange={(e) => updateJourneyMap(m.id, { subtitle: e.target.value })} />
+      <input className="input input-sm" placeholder="하단 캡션 (이탤릭)" value={m.caption ?? ""}
+        onChange={(e) => updateJourneyMap(m.id, { caption: e.target.value })} />
+      <div style={{ display: "flex", gap: 6 }}>
+        <select className="select select-sm" value={m.visibleCount ?? 5}
+          onChange={(e) => updateJourneyMap(m.id, { visibleCount: Number(e.target.value) })}
+          style={{ flex: 2 }} title="강조할 현재 위치 (이전은 진하게, 이후는 미리보기)">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>현재: {JOURNEY_LOCATION_LABELS[n - 1]}</option>
+          ))}
+        </select>
+        <input className="input input-sm" type="number" step="0.5" min="3" max="15"
+          value={m.durationSec ?? 8.0}
+          onChange={(e) => updateJourneyMap(m.id, { durationSec: parseFloat(e.target.value) })}
+          style={{ flex: 1 }} title="지속(초)" />
+      </div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 11, color: "#6a8aa0" }}>Act 시작 위치로 이동:</span>
+        {acts.map((a) => {
+          const firstIdx = photosByAct[a]?.[0]?.idx;
+          if (firstIdx === undefined) return null;
+          const target = firstIdx - 1;
+          const isActive = m.afterPhotoIndex === target;
+          return (
+            <button key={a} className="btn btn-xs"
+              onClick={() => updateJourneyMap(m.id, { afterPhotoIndex: target })}
+              disabled={isActive}
+              style={isActive ? { opacity: 0.5 } : undefined}
+              title={`Act ${a} 시작 직후로 이동 (afterPhotoIndex=${target})`}>
+              Act {ROMAN[a] ?? a}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+};
+
 // ─── App ─────────────────────────────────────
 
 export const App: React.FC = () => {
@@ -876,18 +931,17 @@ export const App: React.FC = () => {
 
   // ── Journey map ──────────────────────────────
 
-  const addJourneyMapAfter = (photoIdx: number) => {
-    const newMap = {
+  const addJourneyMapAfter = (photoIdx: number, visibleCount?: number) => {
+    const newMap: JourneyMap = {
       id: `jm${Date.now()}`,
       afterPhotoIndex: photoIdx,
       title: "Our Journey",
-      subtitle: "성모병원 · 분당 · 서울 · 뉴욕",
-      caption: "",
       durationSec: 8.0,
+      ...(visibleCount !== undefined ? { visibleCount } : {}),
     };
     setConfig((c) => ({ ...c, journeyMaps: [...(c.journeyMaps ?? []), newMap] }));
   };
-  const updateJourneyMap = (id: string, patch: Partial<{ title: string; subtitle: string; caption: string; durationSec: number }>) => {
+  const updateJourneyMap = (id: string, patch: Partial<{ title: string; subtitle: string; caption: string; durationSec: number; visibleCount: number; afterPhotoIndex: number }>) => {
     setConfig((c) => ({
       ...c,
       journeyMaps: (c.journeyMaps ?? []).map((m) => m.id === id ? { ...m, ...patch } : m),
@@ -974,6 +1028,13 @@ export const App: React.FC = () => {
     (photosByAct[photo.act] ??= []).push({ photo, idx });
   });
   const acts = Object.keys(photosByAct).map(Number).sort((a, b) => a - b);
+
+  // afterPhotoIndex values that correspond to "right after an Act title card"
+  //   (one per Act). Items at these positions render in the Act-start panel,
+  //   not attached to any photo card.
+  const actStartIndices = new Set<number>(
+    acts.map((a) => (photosByAct[a]?.[0]?.idx ?? 0) - 1)
+  );
 
   // ── render ──────────────────────────────────
 
@@ -1273,6 +1334,47 @@ export const App: React.FC = () => {
                       + 사진 추가
                     </button>
 
+                    {/* Act-start interstitials (shown right after the Act title card) */}
+                    {(() => {
+                      const firstIdx = actPhotos[0]?.idx;
+                      if (firstIdx === undefined) return null;
+                      const actStartIdx = firstIdx - 1;
+                      const actStartMaps = (config.journeyMaps ?? []).filter((m) => m.afterPhotoIndex === actStartIdx);
+                      return (
+                        <div className="moment-editor" style={{ borderColor: "#5a7a8a", borderStyle: "dashed", marginBottom: 10 }}>
+                          <div className="moment-editor-header">
+                            <span className="moment-editor-label" style={{ color: "#6a8aa0" }}>
+                              ▸ Act {ROMAN[act] ?? act} 시작 직후 (타이틀 카드 다음)
+                            </span>
+                            <button className="btn btn-xs btn-moment-add"
+                              onClick={() => addJourneyMapAfter(actStartIdx, act)}
+                              title="이 Act 시작 직후에 여정 지도 삽입">
+                              + 지도
+                            </button>
+                          </div>
+                          {actStartMaps.length === 0 && (
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", padding: "4px 0" }}>
+                              아직 인터스티셜이 없습니다.
+                            </div>
+                          )}
+                          {actStartMaps.map((m) => (
+                            <div key={m.id} className="moment-editor" style={{ borderColor: "#5a7a8a", marginTop: 8 }}>
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label" style={{ color: "#6a8aa0" }}>여정 지도</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteJourneyMap(m.id)}>&#10005;</button>
+                              </div>
+                              <JourneyMapFields
+                                m={m}
+                                acts={acts}
+                                photosByAct={photosByAct}
+                                updateJourneyMap={updateJourneyMap}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
                     {actPhotos.map(({ photo, idx }, localIdx) => (
                       <div key={idx} className="photo-card">
                         <div className="thumb-wrap" onClick={() => setEditorTarget(idx)} title="이미지 편집">
@@ -1416,19 +1518,21 @@ export const App: React.FC = () => {
                               </div>
                             </div>
                           ))}
-                          {/* Journey map editor */}
-                          {(config.journeyMaps ?? []).filter((m) => m.afterPhotoIndex === idx).map((m) => (
+                          {/* Journey map editor — skip maps at act-start positions (they render in the Act-start panel above) */}
+                          {(config.journeyMaps ?? [])
+                            .filter((m) => m.afterPhotoIndex === idx && !actStartIndices.has(idx))
+                            .map((m) => (
                             <div key={m.id} className="moment-editor" style={{ borderColor: "#5a7a8a" }}>
                               <div className="moment-editor-header">
                                 <span className="moment-editor-label" style={{ color: "#6a8aa0" }}>여정 지도 (다음 사진 직전)</span>
                                 <button className="btn-icon btn-icon--danger" onClick={() => deleteJourneyMap(m.id)}>&#10005;</button>
                               </div>
-                              <input className="input input-sm" placeholder="상단 영문 제목" value={m.title ?? ""}
-                                onChange={(e) => updateJourneyMap(m.id, { title: e.target.value })} />
-                              <input className="input input-sm" placeholder="한글 부제" value={m.subtitle ?? ""}
-                                onChange={(e) => updateJourneyMap(m.id, { subtitle: e.target.value })} />
-                              <input className="input input-sm" placeholder="하단 캡션 (이탤릭)" value={m.caption ?? ""}
-                                onChange={(e) => updateJourneyMap(m.id, { caption: e.target.value })} />
+                              <JourneyMapFields
+                                m={m}
+                                acts={acts}
+                                photosByAct={photosByAct}
+                                updateJourneyMap={updateJourneyMap}
+                              />
                             </div>
                           ))}
                           {/* Letter interlude editor */}
