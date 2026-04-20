@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>식전영상 사진 리뷰</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif; background:#111; color:#eee; }
+
+.top-bar { position:sticky; top:0; z-index:50; background:#111; border-bottom:1px solid #333; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; }
+.top-bar h1 { font-size:18px; }
+.top-bar .stats { font-size:13px; color:#888; }
+.top-bar button { padding:8px 20px; border:none; border-radius:6px; background:#6366f1; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+.top-bar button:hover { background:#4f46e5; }
+
+.help { text-align:center; padding:12px; font-size:13px; color:#666; background:#1a1a1a; }
+
+.act-section { margin:0 12px; }
+.act-label { display:flex; align-items:center; gap:10px; padding:16px 8px 8px; position:sticky; top:52px; z-index:40; background:#111; }
+.act-label .dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.act-label h2 { font-size:15px; font-weight:600; }
+.act-label .cnt { font-size:12px; color:#666; }
+
+.photo-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap:6px;
+  min-height:60px;
+  padding:4px;
+  border:2px dashed transparent;
+  border-radius:8px;
+  transition: border-color 0.15s;
+}
+.photo-grid.drag-over { border-color:#6366f1; background:rgba(99,102,241,0.05); }
+
+.photo {
+  position:relative;
+  border-radius:6px;
+  overflow:hidden;
+  cursor:grab;
+  border:2px solid #222;
+  transition:border-color 0.15s, opacity 0.15s;
+  aspect-ratio:4/3;
+  background:#000;
+}
+.photo:active { cursor:grabbing; }
+.photo.dragging { opacity:0.3; }
+.photo img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
+
+.photo .badge {
+  position:absolute; top:6px; left:6px;
+  background:rgba(0,0,0,0.75); color:#fff;
+  font-size:11px; padding:2px 8px; border-radius:10px;
+  pointer-events:none;
+}
+.photo .desc-label {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(transparent, rgba(0,0,0,0.85));
+  color:#ddd; font-size:11px; padding:20px 8px 6px;
+  pointer-events:none;
+  line-height:1.3;
+}
+.photo .act-btns {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.7);
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.photo:hover .act-btns { display:flex; }
+.photo .act-btns button {
+  width:140px; padding:8px; border:none; border-radius:6px;
+  font-size:13px; font-weight:500; cursor:pointer; color:#fff;
+  transition:transform 0.1s;
+}
+.photo .act-btns button:hover { transform:scale(1.05); }
+.btn1 { background:#3b82f6; }
+.btn2 { background:#22c55e; }
+.btn3 { background:#ec4899; }
+.btn4 { background:#f59e0b; }
+.btnX { background:#555; }
+
+.photo.a1 { border-color:#3b82f6; }
+.photo.a2 { border-color:#22c55e; }
+.photo.a3 { border-color:#ec4899; }
+.photo.a4 { border-color:#f59e0b; }
+.photo.a0 { border-color:#444; opacity:0.4; }
+
+.modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:12px; cursor:zoom-out; }
+.modal.show { display:flex; }
+.modal img { max-width:95vw; max-height:85vh; object-fit:contain; }
+.modal .info { color:#aaa; font-size:13px; text-align:center; }
+
+pre#output { background:#1a1a1a; margin:12px; padding:16px; border-radius:8px; font-size:11px; max-height:50vh; overflow:auto; display:none; white-space:pre-wrap; }
+
+footer { height:20px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>식전영상 리뷰</h1>
+  <span class="stats" id="stats"></span>
+  <button onclick="doExport()">Export</button>
+</div>
+<div class="help">사진 위에 마우스 → Act 배정 | 드래그로 순서 변경 | 사진 더블클릭 → 확대</div>
+
+<div id="app"></div>
+
+<div class="modal" id="modal" onclick="this.classList.remove('show')">
+  <img id="modal-img">
+  <div class="info" id="modal-info"></div>
+</div>
+
+<pre id="output"></pre>
+<footer></footer>
+
+<script>
+const ACTS = {
+  1:{name:"어린 시절",    color:"#3b82f6"},
+  2:{name:"교회·청년부",  color:"#22c55e"},
+  3:{name:"연애",         color:"#ec4899"},
+  4:{name:"지금",         color:"#f59e0b"},
+  0:{name:"제외",         color:"#555"},
+};
+
+const P = [
+  // id, file, desc, act
+  [1, "005.png","어린시절 고궁 - 두 아이 함께",1],
+  [2, "006.png","어린시절 생일파티 - 두 아이 함께",1],
+  [3, "001.jpeg","어항 앞 어린 신랑 솔로",1],
+  [4, "003.jpeg","책상 앞 어린 신부 솔로",1],
+  [5, "002.jpeg","붉은악마 Be The Reds 신랑",1],
+  [6, "004.jpeg","태극기 COREA 신부",1],
+  [7, "007.jpeg","1999년 유치부 단체",1],
+  [8, "008.jpeg","주일학교 어린이들 (1)",1],
+  [9, "009.jpeg","주일학교 어린이들 (2)",1],
+  [10,"010.jpeg","붉은악마 교회 행사 단체",1],
+  [11,"011.jpeg","빨간티 어린이 단체 (북)",1],
+  [12,"012.jpeg","눈밭 어린이 단체",1],
+  [13,"013.jpeg","교회 실내 활동",1],
+  [14,"014.jpeg","어린이 생일파티 케이크",1],
+  [15,"015.jpeg","교회 합창",1],
+  [16,"016.jpeg","어른들 선물 받는 장면",1],
+  [17,"017.jpeg","버스 앞 여름캠프",1],
+  [18,"018.jpeg","시골길 Y자 포즈",1],
+  [19,"019.jpeg","가을 공원 단체",1],
+  [20,"020.jpeg","청소년 꽃다발 (교회 무대)",1],
+  [21,"021.jpeg","교실 5인 꽃다발",1],
+  [22,"022.jpeg","교실 선생+학생 단체",1],
+  [23,"023.jpeg","영화관 3D 안경 6인",1],
+  [24,"024.jpeg","지하철 통로 단체",1],
+
+  [25,"025.jpeg","사무실 2인",2],
+  [26,"026.jpeg","청년부 예배당 11인 꽃다발",2],
+  [27,"027.jpeg","청년부 예배당 9인 꽃다발",2],
+  [28,"028.jpeg","스키장 밤 (세로)",2],
+  [29,"029.jpeg","스키장 밤 (가로)",2],
+  [30,"030.jpeg","대나무숲 9인 셀카",2],
+  [31,"031.jpeg","갈대밭 5인 셀카",2],
+  [32,"032.jpeg","청년부 셀카 9인",2],
+  [33,"033.jpeg","해변 소나무 단체",2],
+  [34,"034.jpeg","녹차밭 3인",2],
+  [35,"035.jpeg","긴 식당 단체",2],
+  [36,"036.jpeg","고기집 9인",2],
+  [37,"037.jpeg","크리스마스 공연 오프닝",2],
+  [38,"038.jpeg","크리스마스 공연 하트",2],
+  [39,"039.jpeg","크리스마스 공연 춤 (1)",2],
+  [40,"040.jpeg","크리스마스 공연 춤 (2)",2],
+  [41,"041.jpeg","크리스마스 공연 사슴뿔 2인",2],
+  [42,"042.jpeg","크리스마스 공연 4인 춤 (1)",2],
+  [43,"043.jpeg","크리스마스 공연 4인 춤 (2)",2],
+
+  [44,"044.jpeg","미술관 커플 정면",3],
+  [45,"045.jpeg","미술관 조각상 앞",3],
+  [46,"046.jpeg","미술관 그림 앞 뒷모습",3],
+  [47,"047.jpeg","미술관 사진 찍히는 장면",3],
+  [48,"048.png", "실내 셀카 (일상)",3],
+  [49,"049.png", "식당 셀카",3],
+  [50,"050.jpg", "테니스 경기장 (NY)",3],
+  [51,"051.png", "브루클린 브릿지 (NY)",3],
+  [52,"052.jpeg","졸업식 커플 (신부 학사모)",3],
+  [53,"053.jpg", "서울대 졸업 가족 (신랑)",3],
+  [54,"054.jpg", "신랑 부모님과",3],
+  [55,"055.jpg", "머리 자르고 난 뒤 (입대전)",3],
+  [56,"056.png", "군대 면회 벚꽃 (1)",3],
+  [57,"057.jpeg","군대 면회 벚꽃 (2)",3],
+  [58,"058.jpeg","군부대 가족·친구",3],
+  [59,"059.jpeg","군부대 대화",3],
+
+  [60,"060.jpg", "커플 신발 디테일",4],
+  [61,"061.png", "프리웨딩 소나무숲",4],
+  [62,"062.jpg", "프리웨딩 테이블 마주보기",4],
+  [63,"063.jpg", "프리웨딩 포즈",4],
+  [64,"064.jpg", "벚꽃 앞 커플",4],
+  [65,"065.jpg", "흰 터널 커플",4],
+  [66,"066.jpg", "엔딩 포즈",4],
+];
+
+let photos = P.map(([id,file,desc,act],i) => ({id,file,desc,act,order:i+1}));
+let dragId = null;
+
+function render() {
+  const app = document.getElementById('app');
+  let html = '';
+
+  [1,2,3,4,0].forEach(actNum => {
+    const items = photos.filter(p=>p.act===actNum).sort((a,b)=>a.order-b.order);
+    if (items.length === 0 && actNum !== 0) {
+      // still show empty drop zone
+    }
+    const a = ACTS[actNum];
+    html += `<div class="act-section">
+      <div class="act-label">
+        <span class="dot" style="background:${a.color}"></span>
+        <h2>${actNum>0?'Act '+actNum+': ':''}${a.name}</h2>
+        <span class="cnt">${items.length}장</span>
+      </div>
+      <div class="photo-grid" data-act="${actNum}"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${actNum})">`;
+
+    items.forEach((p,idx) => {
+      html += `<div class="photo a${p.act}" draggable="true" data-id="${p.id}"
+                ondragstart="onDragStart(event,${p.id})" ondragend="onDragEnd(event)"
+                ondblclick="showModal(${p.id})">
+        <img src="photos/${p.file}" loading="lazy">
+        <span class="badge">#${idx+1}</span>
+        <div class="desc-label">${p.desc}</div>
+        <div class="act-btns">
+          <button class="btn1" onclick="setAct(${p.id},1)">어린 시절</button>
+          <button class="btn2" onclick="setAct(${p.id},2)">교회·청년부</button>
+          <button class="btn3" onclick="setAct(${p.id},3)">연애</button>
+          <button class="btn4" onclick="setAct(${p.id},4)">지금</button>
+          <button class="btnX" onclick="setAct(${p.id},0)">제외</button>
+        </div>
+      </div>`;
+    });
+
+    html += '</div></div>';
+  });
+
+  app.innerHTML = html;
+  updateStats();
+}
+
+function setAct(id,act) {
+  const p = photos.find(x=>x.id===id);
+  if(p) { p.act=act; p.order=999; renumber(); render(); }
+}
+
+function renumber() {
+  [1,2,3,4,0].forEach(a => {
+    photos.filter(p=>p.act===a).sort((x,y)=>x.order-y.order).forEach((p,i)=>p.order=i+1);
+  });
+}
+
+function onDragStart(e,id) {
+  dragId=id;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function onDragEnd(e) { e.target.classList.remove('dragging'); dragId=null; }
+function onDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function onDrop(e,actNum) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(dragId===null) return;
+  const p = photos.find(x=>x.id===dragId);
+  if(!p) return;
+
+  // Find drop position from mouse
+  const grid = e.currentTarget;
+  const cards = [...grid.querySelectorAll('.photo')];
+  let insertIdx = cards.length;
+  for(let i=0;i<cards.length;i++){
+    const rect=cards[i].getBoundingClientRect();
+    if(e.clientY < rect.top+rect.height/2 && e.clientX < rect.left+rect.width/2) { insertIdx=i; break; }
+    if(e.clientY < rect.top+rect.height/2) { insertIdx=i; break; }
+  }
+
+  p.act = actNum;
+  // Reorder: place at insertIdx within this act
+  const sameAct = photos.filter(x=>x.act===actNum && x.id!==p.id).sort((a,b)=>a.order-b.order);
+  sameAct.splice(insertIdx,0,p);
+  sameAct.forEach((x,i)=>x.order=i+1);
+
+  render();
+}
+
+function showModal(id) {
+  const p = photos.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('modal-img').src='photos/'+p.file;
+  document.getElementById('modal-info').textContent=`#${p.id} · ${p.file} · ${p.desc}`;
+  document.getElementById('modal').classList.add('show');
+}
+
+function updateStats() {
+  const inc = photos.filter(p=>p.act>0);
+  const s = [1,2,3,4].map(a=>`${ACTS[a].name}: ${inc.filter(p=>p.act===a).length}`).join(' · ');
+  document.getElementById('stats').textContent=`${inc.length}장 · ${s}`;
+}
+
+function doExport() {
+  renumber();
+  const result = photos.filter(p=>p.act>0)
+    .sort((a,b)=>a.act!==b.act?a.act-b.act:a.order-b.order)
+    .map(p=>({id:p.id, file:p.file, desc:p.desc, act:p.act, order:p.order}));
+
+  const json = JSON.stringify(result, null, 2);
+  const el = document.getElementById('output');
+  el.textContent = json;
+  el.style.display = 'block';
+  el.scrollIntoView({behavior:'smooth'});
+
+  navigator.clipboard.writeText(json).then(()=>{
+    alert(`${result.length}장 Export 완료!\n클립보드에 복사됨.\n\nClaude에게 붙여넣기하면 manifest 자동 업데이트.`);
+  }).catch(()=>{
+    alert(`${result.length}장 Export 완료!\n아래 JSON 복사 → Claude에게 붙여넣기.`);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
