@@ -724,14 +724,23 @@ const JourneyMapScene: React.FC<{
   const presentEmphasizeStart = hasPresentLeg ? 0.72 : 0.10;
   const presentEmphasizeEnd   = hasPresentLeg ? 0.85 : 0.28;
 
-  // Opacity lerps from the "pre" state (futureOp for Act 2+, 0 for Act 1) to full baseFade
+  // Opacity lerps from the "pre" state (futureOp for Act 2+, 0 for Act 1) to full baseFade.
+  // For Act 1 the emphasis window (0.10→0.28) overlaps the base fade window, so we use
+  // a shorter 4-stop ramp. For Act 2+ the emphasis lives far later so we use the 6-stop ramp.
   const presentPreOp = hasPresentLeg ? futureOp : 0;
-  const presentOp = interpolate(
-    t,
-    [0.08, 0.22, presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
-    [0, presentPreOp, presentPreOp, baseFade, baseFade, 0],
-    { extrapolateRight: "clamp" },
-  );
+  const presentOp = hasPresentLeg
+    ? interpolate(
+        t,
+        [0.08, 0.22, presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
+        [0, presentPreOp, presentPreOp, baseFade, baseFade, 0],
+        { extrapolateRight: "clamp" },
+      )
+    : interpolate(
+        t,
+        [presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
+        [0, baseFade, baseFade, 0],
+        { extrapolateRight: "clamp" },
+      );
 
   // Scale grows into emphasis
   const presentScale = interpolate(
