@@ -514,7 +514,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo", eraIcon: "teddy-bear" }),
   P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn"),
   P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "birthday-cake" }),
-  P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut"),
+  P("예찬 생일",                  1, `${S}/004b.jpg`, D.split, "zoomOut"),
   P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn"),
   P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid", eraIcon: "rocking-horse" }),
@@ -526,8 +526,10 @@ const defaultPhotos: PhotoEntry[] = [
 
   // ── Act II — 같은 마당 (1994~ 분당교회) ──────
   // 단체사진 중 핵심 3장에 얼굴 스포트라이트. 아이콘은 섹션 경계에만.
-  // 경복궁은 Act II의 여는 사진 — 화살표 없는 버전(013b)으로 교체.
-  P("경복궁",                    2, `${S}/013b.jpg`, D.reveal, "zoomIn"),
+  // 바다 여행 → 경복궁 순으로 Act II 여는 사진들.
+  P("바다 여행 1",               2, `${S}/sea-1.jpeg`, D.reveal, "zoomIn"),
+  P("바다 여행 2",               2, `${S}/sea-2.jpeg`, D.reveal, "panRight"),
+  P("경복궁",                    2, `${S}/013b.jpg`,   D.reveal, "zoomIn"),
   P("★ 분당선교원 단체",           2, `${S}/014.jpeg`, D.growStar, "zoomIn",  {
     eraIcon: "church-steeple",
     spotlights: [SP(0.38, 0.55), SP(0.62, 0.52)],  // 좌(슬기)·우(예찬) 중심 근처
@@ -629,23 +631,23 @@ export const defaultConfig: VideoConfig = {
     // Act II 시작 (같은 마당) — 잔잔한 여는 말. 경복궁(idx 12)보다 앞에 와서 Act II 오프닝.
     { id: "m-2", afterPhotoIndex: 11, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
     // Act V 시작 (2026 재회) — 핵심 리빌
-    { id: "m-5", afterPhotoIndex: 48, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
+    { id: "m-5", afterPhotoIndex: 50, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],
   yearMarkers: [
     // Act IV 시작 (거리의 시간)
-    { id: "y-4", afterPhotoIndex: 39, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
+    { id: "y-4", afterPhotoIndex: 41, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
   ],
   journeyMaps: [
     // Act I 시작 직전 (첫 장소 · 시작점) — 성모병원만 드러남
     { id: "jm-1", afterPhotoIndex: -1, title: "Our Journey",    visibleCount: 1, durationSec: 4.5 },
     // Act II 시작 직전 — 비행기가 분당으로 이동 (경복궁 앞)
     { id: "jm-2", afterPhotoIndex: 11, title: "Our Journey",    visibleCount: 2, durationSec: 6.5 },
-    // Act III 시작 직전 — 다음 leg (여행/곳곳 — 워딩 조정 예정)
-    { id: "jm-3", afterPhotoIndex: 24, title: "Our Journey",    visibleCount: 3, durationSec: 6.5 },
+    // Act III 시작 직전 — 다음 leg (청춘)
+    { id: "jm-3", afterPhotoIndex: 26, title: "Our Journey",    visibleCount: 3, durationSec: 6.5 },
     // Act IV 시작 직전 — 뉴욕 · 서울 (롱디)
-    { id: "jm-4", afterPhotoIndex: 39, title: "Across the Ocean", visibleCount: 4, durationSec: 7.0, caption: "계절이 몇 번, 그래도 서로에게" },
+    { id: "jm-4", afterPhotoIndex: 41, title: "Across the Ocean", visibleCount: 4, durationSec: 7.0, caption: "계절이 몇 번, 그래도 서로에게" },
     // Act V 시작 직전 — 오늘, 재회
-    { id: "jm-5", afterPhotoIndex: 48, title: "Here, Today",    visibleCount: 5, durationSec: 7.5 },
+    { id: "jm-5", afterPhotoIndex: 50, title: "Here, Today",    visibleCount: 5, durationSec: 7.5 },
   ],
   letterInterludes: [],      // 의도적으로 비움 — 편지 인터루드는 스토리에 맞지 않음
   collages: [
@@ -667,10 +669,10 @@ export const defaultConfig: VideoConfig = {
       afterPhotoIndex: 11,
       beforeTitle: true,
       durationSec: 5.5,
-      // ⚠️ 예찬 단독 3번 파일 없음 — 추가되면 여기 slots 배열에 append
       slots: [
         { file: `${S}/ye-solo-1.jpeg` },
         { file: `${S}/ye-solo-2.jpeg` },
+        { file: `${S}/ye-solo-3.jpeg` },
       ],
     },
   ],
