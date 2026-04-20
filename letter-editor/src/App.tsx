@@ -437,79 +437,93 @@ const ImageEditorModal: React.FC<{
                   <p className="hint" style={{ marginBottom: 6 }}>
                     줌/확대 정도 (전체 영상 공통)
                   </p>
-                  {/* Visual preview: photo with zoom applied — updates live */}
-                  <div style={{
-                    width: "100%", aspectRatio: "16 / 9",
-                    border: "1px solid var(--border)", borderRadius: 4,
-                    background: "#2a241c", overflow: "hidden",
-                    position: "relative", marginBottom: 10,
-                  }}>
-                    <img
-                      src={photoSrc(photo.file)}
-                      alt=""
-                      draggable={false}
-                      style={{
-                        position: "absolute", inset: 0,
-                        width: "100%", height: "100%",
-                        objectFit: "contain",
-                        transform: `scale(${1 + kenBurnsAmount})`,
-                        transformOrigin: `${photo.focalPoint.x * 100}% ${photo.focalPoint.y * 100}%`,
-                        transition: "transform 0.25s ease-out",
-                      }}
-                    />
-                    <div style={{
-                      position: "absolute", bottom: 6, right: 8,
-                      color: "white", fontSize: 10,
-                      background: "rgba(0,0,0,0.55)", padding: "2px 8px", borderRadius: 2,
-                      letterSpacing: 0.5, fontFamily: "monospace",
-                    }}>
-                      최대 scale {(1 + kenBurnsAmount).toFixed(2)}×
-                    </div>
-                  </div>
-                  <label className="slider-label">
-                    <span>확대</span>
-                    <input
-                      type="range"
-                      className="slider"
-                      min={0}
-                      max={1.0}
-                      step={0.01}
-                      value={kenBurnsAmount}
-                      onChange={(e) => onUpdateKenBurnsAmount(parseFloat(e.target.value))}
-                    />
-                    <span>{(kenBurnsAmount * 100).toFixed(1)}%</span>
-                  </label>
-                  {/* Preset buttons with visual scale indicators */}
-                  <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
-                    {[
-                      { label: "없음", val: 0, desc: "정적" },
-                      { label: "4%", val: 0.04, desc: "권장" },
-                      { label: "15%", val: 0.15, desc: "강함" },
-                      { label: "30%", val: 0.30, desc: "드라마틱" },
-                      { label: "50%", val: 0.50, desc: "극적" },
-                      { label: "100%", val: 1.00, desc: "최대" },
-                    ].map((p) => {
-                      const active = Math.abs(kenBurnsAmount - p.val) < 0.003;
-                      return (
-                        <button
-                          key={p.val}
-                          className="btn btn-xs"
-                          style={{
-                            flex: 1,
-                            background: active ? "var(--gold)" : undefined,
-                            color: active ? "#111" : undefined,
-                            fontWeight: active ? 700 : 500,
-                            padding: "6px 4px",
-                            fontSize: 11,
-                          }}
-                          title={p.desc}
-                          onClick={() => onUpdateKenBurnsAmount(p.val)}
-                        >
-                          {p.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {/* Per-photo zoom: defaults to global, but edit here affects THIS photo only. */}
+                  {(() => {
+                    const effective = photo.kenBurnsAmount ?? kenBurnsAmount;
+                    const isOverridden = photo.kenBurnsAmount !== undefined;
+                    const setPerPhoto = (v: number) => onUpdatePhoto({ kenBurnsAmount: v });
+                    const clearOverride = () => onUpdatePhoto({ kenBurnsAmount: undefined });
+                    return (
+                      <>
+                        {/* Visual preview: photo with zoom applied — updates live */}
+                        <div style={{
+                          width: "100%", aspectRatio: "16 / 9",
+                          border: "1px solid var(--border)", borderRadius: 4,
+                          background: "#2a241c", overflow: "hidden",
+                          position: "relative", marginBottom: 10,
+                        }}>
+                          <img
+                            src={photoSrc(photo.file)}
+                            alt=""
+                            draggable={false}
+                            style={{
+                              position: "absolute", inset: 0,
+                              width: "100%", height: "100%",
+                              objectFit: "contain",
+                              transform: `scale(${1 + effective})`,
+                              transformOrigin: `${photo.focalPoint.x * 100}% ${photo.focalPoint.y * 100}%`,
+                              transition: "transform 0.25s ease-out",
+                            }}
+                          />
+                          <div style={{
+                            position: "absolute", bottom: 6, right: 8,
+                            color: "white", fontSize: 10,
+                            background: "rgba(0,0,0,0.55)", padding: "2px 8px", borderRadius: 2,
+                            letterSpacing: 0.5, fontFamily: "monospace",
+                          }}>
+                            최대 scale {(1 + effective).toFixed(2)}×
+                          </div>
+                        </div>
+                        <label className="slider-label">
+                          <span>확대 (이 사진만)</span>
+                          <input
+                            type="range"
+                            className="slider"
+                            min={0}
+                            max={1.0}
+                            step={0.01}
+                            value={effective}
+                            onChange={(e) => setPerPhoto(parseFloat(e.target.value))}
+                          />
+                          <span>{(effective * 100).toFixed(1)}%</span>
+                        </label>
+                        <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+                          {[
+                            { label: "없음", val: 0 },
+                            { label: "4%", val: 0.04 },
+                            { label: "15%", val: 0.15 },
+                            { label: "30%", val: 0.30 },
+                            { label: "50%", val: 0.50 },
+                            { label: "100%", val: 1.00 },
+                          ].map((p) => {
+                            const active = Math.abs(effective - p.val) < 0.003;
+                            return (
+                              <button
+                                key={p.val}
+                                className="btn btn-xs"
+                                style={{
+                                  flex: 1,
+                                  background: active ? "var(--gold)" : undefined,
+                                  color: active ? "#111" : undefined,
+                                  fontWeight: active ? 700 : 500,
+                                  padding: "6px 4px",
+                                  fontSize: 11,
+                                }}
+                                onClick={() => setPerPhoto(p.val)}
+                              >
+                                {p.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="hint hint-dim" style={{ marginTop: 6 }}>
+                          {isOverridden
+                            ? <>이 사진은 개별 값 <b>{(effective * 100).toFixed(0)}%</b> 적용 중 · <button className="btn btn-xs" onClick={clearOverride} style={{ padding: "2px 8px" }}>기본값으로</button></>
+                            : <>전체 기본값({(kenBurnsAmount * 100).toFixed(0)}%)을 따름</>}
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               </>
             )}

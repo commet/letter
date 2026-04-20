@@ -715,8 +715,8 @@ const JourneyMapScene: React.FC<{
 
   // Past: solid (already traveled, confidently drawn)
   const pastOp   = baseFade * 0.82;
-  // Future: pale preview (foreshadows the road ahead)
-  const futureOp = baseFade * 0.22;
+  // Future: preview — visible but deferred (foreshadows the road ahead)
+  const futureOp = baseFade * 0.42;
 
   // Present emphasis timeline:
   //   • Act 1 (no plane): present emerges early (0.10→0.28) and then pulses
@@ -866,10 +866,10 @@ const JourneyMapScene: React.FC<{
           <circle cx={presentLoc.cx} cy={presentLoc.cy} r={7.5} fill={INK} />
           <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly}
                 textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
-                fontFamily="'Nanum Pen Script', cursive" fontSize={52} fill={INK}>{presentLoc.label}</text>
-          <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly + 28}
+                fontFamily="'Nanum Pen Script', cursive" fontSize={62} fill={INK}>{presentLoc.label}</text>
+          <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly + 34}
                 textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
-                fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={26} fill="#3a2f22">{presentLoc.year}</text>
+                fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={30} fill="#3a2f22">{presentLoc.year}</text>
         </g>
 
         {/* Plane */}
@@ -1154,7 +1154,8 @@ const PhotoScene: React.FC<{
 }> = ({ photo, dur, isFirst, isLast, cf, enter, exit, frameType, overlayType, particlesType, bg, kenBurnsAmount }) => {
   const frame = useCurrentFrame();
   const t = Math.min(1, Math.max(0, frame / dur));
-  const { scale, tx, ty } = kenBurns(photo.effect, t, photo.focalPoint.x, photo.focalPoint.y, kenBurnsAmount);
+  const effectiveKenBurns = photo.kenBurnsAmount ?? kenBurnsAmount;
+  const { scale, tx, ty } = kenBurns(photo.effect, t, photo.focalPoint.x, photo.focalPoint.y, effectiveKenBurns);
 
   const ent = isFirst ? { opacity: 1, clipPath: undefined, transform: "" } : enterEffect(enter, frame, cf, dur);
   const ext = isLast ? { opacity: 1, clipPath: undefined, transform: "" } : exitEffect(exit, frame, cf, dur);
@@ -1404,8 +1405,10 @@ const SplitScene: React.FC<{
   // ─── Cameo variant: two circular portraits side-by-side on cream paper ───
   if (style === "cameo") {
     const scale = 1 + 0.02 * t;
-    const leftKen = kenBurns(left.effect, t, left.focalPoint.x, left.focalPoint.y, kenBurnsAmount);
-    const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, kenBurnsAmount);
+    const leftAmt  = left.kenBurnsAmount  ?? kenBurnsAmount;
+    const rightAmt = right.kenBurnsAmount ?? kenBurnsAmount;
+    const leftKen = kenBurns(left.effect, t, left.focalPoint.x, left.focalPoint.y, leftAmt);
+    const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, rightAmt);
     const cameoStyle: React.CSSProperties = {
       width: 420, height: 420,
       borderRadius: "50%",

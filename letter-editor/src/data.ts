@@ -67,6 +67,7 @@ export type PhotoEntry = {
   caption?: CaptionConfig;
   spotlights: SpotlightConfig[];
   crop?: CropRect; // if set, only this rect of the image is shown (normalized 0-1)
+  kenBurnsAmount?: number; // per-photo override for zoom/pan intensity (0-1). undefined = use global.
   splitPair?: boolean; // true = this photo + next photo form a split screen
   splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
   splitLabel?: string; // custom label under polaroid/cameo (fallback: tag first word)
