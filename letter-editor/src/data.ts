@@ -579,7 +579,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn"),
   P("뉴욕 1",                     4, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
   P("뉴욕 2",                     4, `${S}/043.png`,  D.date, "panLeft"),
-  P("뉴욕 3",                     4, `${S}/044.jpg`,  D.date, "zoomOut"),
+  P("뉴욕 3",                     4, `${S}/044b.jpg`, D.date, "zoomOut"),
   P("뉴욕 4",                     4, `${S}/045.png`,  D.date, "zoomIn"),
   P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut", { eraIcon: "diploma" }),
 
