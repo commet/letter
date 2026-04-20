@@ -511,7 +511,7 @@ const SP = (x: number, y: number): SpotlightConfig => ({ x, y, radius: 0.18, str
 const defaultPhotos: PhotoEntry[] = [
   // ── Act I — 그때의 우리 (유년기 페어 6쌍 + 경복궁) ──────
   // 아이콘은 페어당 1개만, 반복 피해서 절제
-  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo", eraIcon: "teddy-bear" }),
+  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "teddy-bear" }),
   P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn"),
   P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "birthday-cake" }),
   P("예찬 생일",                  1, `${S}/004b.jpg`, D.split, "zoomOut"),
@@ -552,7 +552,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, e(11), { eraIcon: "grad-cap" }),
   P("침례식",                     2, `${S}/027.jpeg`, D.grow, e(12), { eraIcon: "stained-glass" }),
 
-  // ── Act III — 함께 걸은 봄 (한국 청년기) ──────
+  // ── Act III — 청춘 (한국 청년기) ──────
   // 아이콘은 섹션 시작에만 (여행 첫 장, 공연 첫 장, 갤러리 첫 장, 슬기 졸업)
   P("여행 식사 1",                3, `${S}/028.jpeg`, D.trip, e(0), { eraIcon: "suitcase" }),
   P("여행 식사 2",                3, `${S}/029.jpeg`, D.trip, e(1)),
@@ -599,7 +599,7 @@ const defaultPhotos: PhotoEntry[] = [
 const defaultActTitles: Record<number, ActTitle> = {
   1: { chapter: "Act I",   kr: "그때의 우리",          year: "1988 · 1993" },
   2: { chapter: "Act II",  kr: "같은 마당",            year: "1994 — " },
-  3: { chapter: "Act III", kr: "함께 걸은 봄",         year: "2008 — 2015" },
+  3: { chapter: "Act III", kr: "청춘",                 year: "2008 — 2015" },
   4: { chapter: "Act IV",  kr: "바다를 사이에 두고",   year: "2016 — 2025" },
   5: { chapter: "Act V",   kr: "그리고, 오늘",         year: "2026" },
 };
