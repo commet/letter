@@ -27,7 +27,7 @@ import {
   LetterInterlude as LetterInterludeConfig,
   Collage as CollageConfig,
   CaptionEntry,
-  CaptionFont,
+  CAPTION_FONT_STACK,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
@@ -426,14 +426,6 @@ const SpotlightOverlay: React.FC<{ spotlights: SpotlightConfig[] }> = ({ spotlig
   );
 };
 
-export const CAPTION_FONT_STACK: Record<CaptionFont, { fontFamily: string; fontStyle: "normal" | "italic"; letterSpacing: string }> = {
-  "serif":     { fontFamily: "'EB Garamond', 'Cormorant Garamond', serif", fontStyle: "italic", letterSpacing: "0.12em" },
-  "serif-kr":  { fontFamily: "'Nanum Myeongjo', 'Gowun Batang', 'Noto Serif KR', serif", fontStyle: "normal", letterSpacing: "0.04em" },
-  "script-kr": { fontFamily: "'Nanum Pen Script', 'Gaegu', cursive", fontStyle: "normal", letterSpacing: "0.02em" },
-  "brush-kr":  { fontFamily: "'Nanum Brush Script', cursive", fontStyle: "normal", letterSpacing: "0.02em" },
-  "sans-kr":   { fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif", fontStyle: "normal", letterSpacing: "0.02em" },
-};
-
 // Convert legacy photo.caption → CaptionEntry (render-time safety net).
 const legacyCaptionToEntry = (c: { text: string; position: "top" | "bottom" | "center" }): CaptionEntry => ({
   id: "legacy",
@@ -445,10 +437,23 @@ const legacyCaptionToEntry = (c: { text: string; position: "top" | "bottom" | "c
   fontSize: 32,
 });
 
-const resolveCaptions = (photo: { captions?: CaptionEntry[]; caption?: { text: string; position: "top" | "bottom" | "center" } }): CaptionEntry[] => {
+const EMPTY_CAPTIONS: readonly CaptionEntry[] = Object.freeze([]);
+
+// Stable-ish legacy array cache keyed by the legacy caption object itself.
+// Photos whose legacy caption hasn't been migrated yet will still get the same
+// array on repeated calls (as long as the caption object is referentially stable).
+const _legacyCache = new WeakMap<object, CaptionEntry[]>();
+
+const resolveCaptions = (photo: { captions?: CaptionEntry[]; caption?: { text: string; position: "top" | "bottom" | "center" } }): readonly CaptionEntry[] => {
   if (photo.captions && photo.captions.length > 0) return photo.captions;
-  if (photo.caption && photo.caption.text) return [legacyCaptionToEntry(photo.caption)];
-  return [];
+  if (photo.caption && photo.caption.text) {
+    const cached = _legacyCache.get(photo.caption);
+    if (cached) return cached;
+    const fresh = [legacyCaptionToEntry(photo.caption)];
+    _legacyCache.set(photo.caption, fresh);
+    return fresh;
+  }
+  return EMPTY_CAPTIONS;
 };
 
 const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
@@ -499,7 +504,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
 };
 
 const CaptionsLayer: React.FC<{
-  captions: CaptionEntry[];
+  captions: readonly CaptionEntry[];
   dur: number;
 }> = ({ captions, dur }) => {
   const frame = useCurrentFrame();

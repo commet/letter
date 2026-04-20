@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Player, PlayerRef } from "@remotion/player";
 import { MainVideo } from "./VideoComposition";
 import {
@@ -20,6 +20,7 @@ import {
   CaptionFont,
   CaptionAlign,
   CaptionBackground,
+  CAPTION_FONT_STACK,
   SpotlightConfig,
   CropRect,
   AnnotationArrow,
@@ -104,17 +105,6 @@ const BACKGROUND_STYLES: { value: BackgroundStyle; label: string }[] = [
 ];
 
 // ─── Image Editor Modal ──────────────────────
-
-// Mirrors CAPTION_FONT_STACK in VideoComposition.tsx for the modal preview.
-const captionFontStackCSS = (font: CaptionFont): { fontFamily: string; fontStyle: "normal" | "italic"; letterSpacing: string } => {
-  switch (font) {
-    case "serif":     return { fontFamily: "'EB Garamond', 'Cormorant Garamond', serif", fontStyle: "italic", letterSpacing: "0.12em" };
-    case "serif-kr":  return { fontFamily: "'Nanum Myeongjo', 'Gowun Batang', 'Noto Serif KR', serif", fontStyle: "normal", letterSpacing: "0.04em" };
-    case "script-kr": return { fontFamily: "'Nanum Pen Script', 'Gaegu', cursive", fontStyle: "normal", letterSpacing: "0.02em" };
-    case "brush-kr":  return { fontFamily: "'Nanum Brush Script', cursive", fontStyle: "normal", letterSpacing: "0.02em" };
-    case "sans-kr":   return { fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif", fontStyle: "normal", letterSpacing: "0.02em" };
-  }
-};
 
 type EditorMode = "focal" | "spotlight" | "crop" | "arrow" | "caption";
 
@@ -420,19 +410,29 @@ const ImageEditorModal: React.FC<{
   >(null);
   const [selectedCaption, setSelectedCaption] = useState<string | null>(null);
 
-  const captions = photo.captions ?? (photo.caption ? [{
-    id: "legacy-view",
-    text: photo.caption.text,
-    x: 0.5,
-    y: photo.caption.position === "top" ? 0.08 : photo.caption.position === "center" ? 0.5 : 0.92,
-    align: "center" as const,
-    fontFamily: "serif" as const,
-    fontSize: 32,
-  }] : []);
+  // Always derive captions via the defensive helper so editing a legacy caption persists
+  // to `captions[]` on the very first interaction (and clears `caption`).
+  const captions = useMemo(() => materializeCaptions(photo), [photo.captions, photo.caption]);
+
+  // Scale font/padding in the caption-mode preview from 1920-canvas units to the
+  // actual container width, so the drag preview matches what renders in the player.
+  const [captionPreviewScale, setCaptionPreviewScale] = useState(1 / 3);
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    const update = () => {
+      const w = img.clientWidth;
+      if (w > 0) setCaptionPreviewScale(w / 1920);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(img);
+    return () => ro.disconnect();
+  }, []);
 
   const updateCaption = (capId: string, patch: Partial<CaptionEntry>) => {
     const next = captions.map((c) => (c.id === capId ? { ...c, ...patch } : c));
-    onUpdatePhoto({ captions: next });
+    onUpdatePhoto({ captions: next, caption: undefined });
   };
 
   const beginCaptionDrag = (capId: string, e: React.PointerEvent) => {
@@ -717,7 +717,7 @@ const ImageEditorModal: React.FC<{
                   style={{ position: "absolute", inset: 0, touchAction: "none" }}
                 >
                   {captions.map((cap) => {
-                    const font = captionFontStackCSS(cap.fontFamily ?? "serif");
+                    const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
                     const align = cap.align ?? "center";
                     const translate =
                       align === "left"  ? "translate(0, -50%)" :
@@ -738,11 +738,13 @@ const ImageEditorModal: React.FC<{
                           fontFamily: font.fontFamily,
                           fontStyle: font.fontStyle,
                           letterSpacing: font.letterSpacing,
-                          fontSize: Math.max(10, (cap.fontSize ?? 32) / 3),  // scale for preview (photo is shown smaller than 1920×1080)
+                          fontSize: Math.max(10, (cap.fontSize ?? 32) * captionPreviewScale),
                           color: cap.color ?? "#f5ecd7",
                           textAlign: align,
                           maxWidth: `${cap.maxWidthPct ?? 80}%`,
-                          padding: hasBg ? `${(cap.bg!.paddingY ?? 10) / 3}px ${(cap.bg!.paddingX ?? 22) / 3}px` : "4px 8px",
+                          padding: hasBg
+                            ? `${(cap.bg!.paddingY ?? 10) * captionPreviewScale}px ${(cap.bg!.paddingX ?? 22) * captionPreviewScale}px`
+                            : "4px 8px",
                           background: hasBg ? cap.bg!.color : "rgba(15,12,8,0.45)",
                           borderRadius: hasBg ? (cap.bg!.radius ?? 4) : 3,
                           border: isSelected ? "2px solid var(--gold, #a88848)" : "1px dashed rgba(255,255,255,0.35)",
@@ -1131,6 +1133,24 @@ const ImageEditorModal: React.FC<{
 
 // ─── Caption editor (multi-caption list per photo) ───
 
+// Defensive: always return an array, materializing any legacy `caption` on the fly.
+// Used by mutations so "edit the legacy caption" never silently drops the write.
+const materializeCaptions = (p: PhotoEntry): CaptionEntry[] => {
+  if (p.captions && p.captions.length > 0) return p.captions;
+  if (p.caption) {
+    return [{
+      id: `cap-legacy-${Math.random().toString(36).slice(2, 9)}`,
+      text: p.caption.text,
+      x: 0.5,
+      y: p.caption.position === "top" ? 0.08 : p.caption.position === "center" ? 0.5 : 0.92,
+      align: "center",
+      fontFamily: "serif",
+      fontSize: 32,
+    }];
+  }
+  return [];
+};
+
 const CAPTION_FONT_OPTIONS: { value: CaptionFont; label: string }[] = [
   { value: "serif",     label: "영문 세리프 (이탤릭)" },
   { value: "serif-kr",  label: "한글 명조" },
@@ -1181,18 +1201,14 @@ const CaptionsEditor: React.FC<{
             display: "flex", flexDirection: "column", gap: 4,
           }}>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <select className="select select-sm" value={cap.speaker ?? ""}
-                onChange={(e) => onUpdate(cap.id, { speaker: e.target.value || undefined })}
-                style={{ flex: 1, minWidth: 0 }}>
-                <option value="">(화자 없음)</option>
-                {CAPTION_SPEAKER_PRESETS.map((s) => <option key={s} value={s}>{s}:</option>)}
-                {cap.speaker && !CAPTION_SPEAKER_PRESETS.includes(cap.speaker) && (
-                  <option value={cap.speaker}>{cap.speaker}:</option>
-                )}
-              </select>
-              <input className="input input-sm" placeholder="직접 입력" value={cap.speaker ?? ""}
+              <input className="input input-sm" placeholder="화자 (예: 예찬)"
+                value={cap.speaker ?? ""}
+                list={`speaker-suggestions-${cap.id}`}
                 onChange={(e) => onUpdate(cap.id, { speaker: e.target.value || undefined })}
                 style={{ flex: 1, minWidth: 0 }} />
+              <datalist id={`speaker-suggestions-${cap.id}`}>
+                {CAPTION_SPEAKER_PRESETS.map((s) => <option key={s} value={s} />)}
+              </datalist>
               <button className="btn-icon btn-icon--danger" onClick={() => onDelete(cap.id)}>&#10005;</button>
             </div>
             <textarea className="input input-sm" placeholder="텍스트"
@@ -1431,11 +1447,7 @@ export const App: React.FC = () => {
       ...c,
       photos: c.photos.map((p, i) => {
         if (i !== idx) return p;
-        const existing = p.captions ?? (p.caption ? [{
-          id: makeCaptionId(), text: p.caption.text, x: 0.5,
-          y: p.caption.position === "top" ? 0.08 : p.caption.position === "center" ? 0.5 : 0.92,
-          align: "center" as const, fontFamily: "serif" as const, fontSize: 32,
-        }] : []);
+        const existing = materializeCaptions(p);
         const newCap: CaptionEntry = {
           id: makeCaptionId(),
           text: "",
@@ -1456,7 +1468,16 @@ export const App: React.FC = () => {
       ...c,
       photos: c.photos.map((p, i) => {
         if (i !== idx) return p;
-        return { ...p, captions: (p.captions ?? []).map((cap) => cap.id === capId ? { ...cap, ...patch } : cap) };
+        // Materialize first so edits to a legacy-derived caption actually persist.
+        const current = materializeCaptions(p);
+        const next = current.map((cap) => cap.id === capId ? { ...cap, ...patch } : cap);
+        // If the passed capId didn't match any (e.g. stale "legacy-view"), fall back to
+        // patching the first entry — keeps the edit from being silently dropped.
+        const matched = next.some((cap, j) => cap !== current[j]);
+        const finalList = matched ? next
+          : current.length ? [{ ...current[0], ...patch }, ...current.slice(1)]
+          : current;
+        return { ...p, captions: finalList, caption: undefined };
       }),
     }));
   }, []);
@@ -1466,8 +1487,11 @@ export const App: React.FC = () => {
       ...c,
       photos: c.photos.map((p, i) => {
         if (i !== idx) return p;
-        const remaining = (p.captions ?? []).filter((cap) => cap.id !== capId);
-        return { ...p, captions: remaining.length ? remaining : undefined };
+        const current = materializeCaptions(p);
+        const remaining = current.filter((cap) => cap.id !== capId);
+        // If capId didn't match (stale view id), fall back to removing the first entry.
+        const finalList = remaining.length !== current.length ? remaining : current.slice(1);
+        return { ...p, captions: finalList.length ? finalList : undefined, caption: undefined };
       }),
     }));
   }, []);
@@ -2149,15 +2173,7 @@ export const App: React.FC = () => {
                             </div>
                           )}
                           <CaptionsEditor
-                            captions={photo.captions ?? (photo.caption ? [{
-                              id: "legacy-view",
-                              text: photo.caption.text,
-                              x: 0.5,
-                              y: photo.caption.position === "top" ? 0.08 : photo.caption.position === "center" ? 0.5 : 0.92,
-                              align: "center",
-                              fontFamily: "serif",
-                              fontSize: 32,
-                            }] : [])}
+                            captions={materializeCaptions(photo)}
                             onAdd={(preset) => addCaptionEntry(idx, preset)}
                             onUpdate={(capId, patch) => updateCaptionEntry(idx, capId, patch)}
                             onDelete={(capId) => deleteCaptionEntry(idx, capId)}

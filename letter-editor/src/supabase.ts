@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { VideoConfig, defaultConfig } from "./data";
+import { VideoConfig, defaultConfig, PhotoEntry, CaptionEntry } from "./data";
 
 const SUPABASE_URL = "https://hgltvdshuyfffskvjmst.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -28,13 +28,34 @@ export async function loadConfig(): Promise<VideoConfig | null> {
   return {
     ...defaultConfig,
     ...raw,
-    photos: raw.photos.map((p) => ({
-      focalPoint: { x: 0.5, y: 0.5 },
-      transition: "fade" as const,
-      filter: "none" as const,
-      spotlights: [],
-      ...p,
-    })),
+    photos: raw.photos.map((p) => {
+      const base: PhotoEntry = {
+        focalPoint: { x: 0.5, y: 0.5 },
+        transition: "fade" as const,
+        filter: "none" as const,
+        spotlights: [],
+        ...p,
+      };
+      // Migrate legacy single caption → captions[0] if not already present.
+      // Always drop `caption` after processing so a deleted caption can't
+      // be resurrected on the next load.
+      if (base.caption) {
+        if (!base.captions || base.captions.length === 0) {
+          const legacy: CaptionEntry = {
+            id: `cap-legacy-${Math.random().toString(36).slice(2, 9)}`,
+            text: base.caption.text,
+            x: 0.5,
+            y: base.caption.position === "top" ? 0.08 : base.caption.position === "center" ? 0.5 : 0.92,
+            align: "center",
+            fontFamily: "serif",
+            fontSize: 32,
+          };
+          base.captions = [legacy];
+        }
+        base.caption = undefined;
+      }
+      return base;
+    }),
   };
 }
 
