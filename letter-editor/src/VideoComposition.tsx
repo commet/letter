@@ -1582,8 +1582,8 @@ const EndingScene: React.FC<{
         <AbsoluteFill style={{ backgroundColor: BG_DARK }} />
       )}
 
-      {/* Centered names row with heart between */}
-      <AbsoluteFill style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 120 }}>
+      {/* Centered names row with heart between — nudged up to leave breathing room below */}
+      <AbsoluteFill style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 120, paddingBottom: 160 }}>
         {/* Bride name */}
         <div style={{
           fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
@@ -1642,7 +1642,7 @@ const EndingScene: React.FC<{
       <div style={{
         position: "absolute",
         left: "50%",
-        top: "62%",
+        top: "56%",
         transform: "translateX(-50%)",
         width: 240, height: 60,
         opacity: Math.min(fadeAt(5.2, 0.55), fadeOut),
@@ -1665,10 +1665,10 @@ const EndingScene: React.FC<{
         </svg>
       </div>
 
-      {/* Date caption, bottom center */}
+      {/* Date caption, positioned below the names/sprig cluster (not pinned to bottom) */}
       <div style={{
         position: "absolute",
-        left: 0, right: 0, bottom: 140,
+        left: 0, right: 0, top: "66%",
         textAlign: "center",
         fontFamily: SERIF,
         fontWeight: 300,
@@ -1683,7 +1683,7 @@ const EndingScene: React.FC<{
       {/* Thank-you message */}
       <div style={{
         position: "absolute",
-        left: 0, right: 0, bottom: 70,
+        left: 0, right: 0, top: "74%",
         textAlign: "center",
         fontFamily: SERIF_KR,
         fontSize: 26,
