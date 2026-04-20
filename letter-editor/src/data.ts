@@ -642,10 +642,7 @@ export const defaultConfig: VideoConfig = {
     // Act V 시작 (2026 재회)
     { id: "m-5", afterPhotoIndex: 49, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],
-  yearMarkers: [
-    // Act IV 시작 (거리의 시간) — before photo 41
-    { id: "y-4", afterPhotoIndex: 40, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
-  ],
+  yearMarkers: [],
   journeyMaps: [
     { id: "jm-1", afterPhotoIndex: -1, title: "Our Journey",      visibleCount: 1, durationSec: 4.5 },
     { id: "jm-2", afterPhotoIndex: 11, title: "Our Journey",      visibleCount: 2, durationSec: 6.5 },
