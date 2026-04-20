@@ -629,8 +629,6 @@ export const defaultConfig: VideoConfig = {
   //   Act I 0-12 (13장 · 페어 6쌍 + 경복궁), Act II 13-24 (12장),
   //   Act III 25-39 (15장), Act IV 40-48 (9장), Act V 49-57 (9장)
   moments: [
-    // Act II 시작 (같은 마당) — 잔잔한 여는 말. 경복궁(idx 12)보다 앞에 와서 Act II 오프닝.
-    { id: "m-2", afterPhotoIndex: 11, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
     // Act V 시작 (2026 재회) — 핵심 리빌
     { id: "m-5", afterPhotoIndex: 50, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],

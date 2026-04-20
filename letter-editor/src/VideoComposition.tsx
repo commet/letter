@@ -366,8 +366,11 @@ const TitleCardScene: React.FC<{
   if (effectiveVariant === "journal") {
     const chars = Array.from(kr);
     // Act illustration fades in slowly, stays subtle behind text
-    const illuOpacity = interpolate(frame, [0, 40], [0, 0.55], { extrapolateRight: "clamp" });
+    const illuOpacity = interpolate(frame, [0, 40], [0, 0.40], { extrapolateRight: "clamp" });
     const illuScale = interpolate(frame, [0, dur], [1.0, 1.04], { extrapolateRight: "clamp" });
+    // Mask: hide the top half of the illustration so tall elements (e.g., Act II
+    // doorway arch) don't collide with the centered title text.
+    const illuMask = "linear-gradient(to bottom, transparent 0%, transparent 48%, black 72%, black 100%)";
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground seed={act * 7} />
@@ -377,6 +380,8 @@ const TitleCardScene: React.FC<{
             opacity: illuOpacity,
             transform: `scale(${illuScale})`,
             transformOrigin: "center center",
+            WebkitMaskImage: illuMask,
+            maskImage: illuMask,
           }}>
             <Img src={`/assets/acts/act-${act}.svg`} style={{
               width: "100%", height: "100%", objectFit: "contain",
