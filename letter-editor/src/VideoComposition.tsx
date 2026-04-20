@@ -14,6 +14,7 @@ import {
   Effect,
   SpotlightConfig,
   AnnotationArrow as AnnotationArrowConfig,
+  ARROW_COLOR_MAP,
   TransitionMode,
   TimelineItem,
   OverlayType,
@@ -25,6 +26,8 @@ import {
   JourneyMap as JourneyMapConfig,
   LetterInterlude as LetterInterludeConfig,
   Collage as CollageConfig,
+  CaptionEntry,
+  CaptionFont,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
@@ -308,13 +311,17 @@ const buildArrowPath = (a: AnnotationArrowConfig): ArrowPathInfo => {
   };
 };
 
-const arrowStroke = (style?: string) => {
+const arrowStroke = (style?: string, color?: string) => {
+  // If color explicitly set, use it; else fall back to style's implicit default
+  //   (brush=gold, others=ink — preserves existing defaults for untagged arrows)
+  const defaultColor = style === "brush" ? ARROW_COLOR_MAP.gold : ARROW_COLOR_MAP.ink;
+  const finalColor = color ? (ARROW_COLOR_MAP[color as keyof typeof ARROW_COLOR_MAP] ?? defaultColor) : defaultColor;
   switch (style) {
-    case "brush":    return { color: "#a88848", width: 4.5, opacity: 0.92 };
-    case "dashed":   return { color: "#1a1510", width: 2,   opacity: 1 };
-    case "straight": return { color: "#1a1510", width: 2.2, opacity: 1 };
+    case "brush":    return { color: finalColor, width: 4.5, opacity: 0.92 };
+    case "dashed":   return { color: finalColor, width: 2,   opacity: 1 };
+    case "straight": return { color: finalColor, width: 2.2, opacity: 1 };
     case "curve":
-    default:         return { color: "#1a1510", width: 2.4, opacity: 1 };
+    default:         return { color: finalColor, width: 2.4, opacity: 1 };
   }
 };
 
@@ -337,7 +344,7 @@ const AnnotationLayer: React.FC<{
       >
         {annotations.map((a) => {
           const info = buildArrowPath(a);
-          const stroke = arrowStroke(a.style);
+          const stroke = arrowStroke(a.style, a.color);
           // Approx path length via bbox — good enough for dash reveal
           const dx = (a.tipX - a.labelX) * 100;
           const dy = (a.tipY - a.labelY) * 100;
@@ -419,57 +426,93 @@ const SpotlightOverlay: React.FC<{ spotlights: SpotlightConfig[] }> = ({ spotlig
   );
 };
 
-const CaptionOverlay: React.FC<{
-  text: string;
-  position: "top" | "bottom" | "center";
+export const CAPTION_FONT_STACK: Record<CaptionFont, { fontFamily: string; fontStyle: "normal" | "italic"; letterSpacing: string }> = {
+  "serif":     { fontFamily: "'EB Garamond', 'Cormorant Garamond', serif", fontStyle: "italic", letterSpacing: "0.12em" },
+  "serif-kr":  { fontFamily: "'Nanum Myeongjo', 'Gowun Batang', 'Noto Serif KR', serif", fontStyle: "normal", letterSpacing: "0.04em" },
+  "script-kr": { fontFamily: "'Nanum Pen Script', 'Gaegu', cursive", fontStyle: "normal", letterSpacing: "0.02em" },
+  "brush-kr":  { fontFamily: "'Nanum Brush Script', cursive", fontStyle: "normal", letterSpacing: "0.02em" },
+  "sans-kr":   { fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif", fontStyle: "normal", letterSpacing: "0.02em" },
+};
+
+// Convert legacy photo.caption → CaptionEntry (render-time safety net).
+const legacyCaptionToEntry = (c: { text: string; position: "top" | "bottom" | "center" }): CaptionEntry => ({
+  id: "legacy",
+  text: c.text,
+  x: 0.5,
+  y: c.position === "top" ? 0.08 : c.position === "center" ? 0.5 : 0.92,
+  align: "center",
+  fontFamily: "serif",
+  fontSize: 32,
+});
+
+const resolveCaptions = (photo: { captions?: CaptionEntry[]; caption?: { text: string; position: "top" | "bottom" | "center" } }): CaptionEntry[] => {
+  if (photo.captions && photo.captions.length > 0) return photo.captions;
+  if (photo.caption && photo.caption.text) return [legacyCaptionToEntry(photo.caption)];
+  return [];
+};
+
+const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
+  const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
+  const align: "left" | "center" | "right" = cap.align ?? "center";
+  const xPct = Math.max(0, Math.min(1, cap.x)) * 100;
+  const yPct = Math.max(0, Math.min(1, cap.y)) * 100;
+  const translate =
+    align === "left"  ? "translate(0, -50%)" :
+    align === "right" ? "translate(-100%, -50%)" :
+                        "translate(-50%, -50%)";
+  const maxWidthPct = cap.maxWidthPct ?? 80;
+
+  const hasBg = !!cap.bg;
+  const bgStyle: React.CSSProperties = hasBg ? {
+    background: cap.bg!.color,
+    padding: `${cap.bg!.paddingY ?? 10}px ${cap.bg!.paddingX ?? 22}px`,
+    borderRadius: cap.bg!.radius ?? 4,
+    backdropFilter: cap.bg!.blur ? "blur(3px)" : undefined,
+    WebkitBackdropFilter: cap.bg!.blur ? "blur(3px)" : undefined,
+  } : {
+    textShadow: "0 2px 10px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.55)",
+  };
+
+  return (
+    <div style={{
+      position: "absolute",
+      left: `${xPct}%`,
+      top: `${yPct}%`,
+      transform: translate,
+      maxWidth: `${maxWidthPct}%`,
+      textAlign: align,
+      fontFamily: font.fontFamily,
+      fontStyle: font.fontStyle,
+      letterSpacing: font.letterSpacing,
+      fontSize: cap.fontSize ?? 32,
+      color: cap.color ?? (hasBg ? "#f5ecd7" : "#f5ecd7"),
+      whiteSpace: "pre-wrap",
+      lineHeight: 1.35,
+      ...bgStyle,
+    }}>
+      {cap.speaker ? (
+        <span style={{ fontWeight: 600, marginRight: 10, opacity: 0.95 }}>{cap.speaker}:</span>
+      ) : null}
+      <span>{cap.text}</span>
+    </div>
+  );
+};
+
+const CaptionsLayer: React.FC<{
+  captions: CaptionEntry[];
   dur: number;
-}> = ({ text, position, dur }) => {
+}> = ({ captions, dur }) => {
   const frame = useCurrentFrame();
   const fadeIn = interpolate(frame, [8, 30], [0, 1], { extrapolateRight: "clamp" });
   const fadeOut = interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" });
   const opacity = Math.min(fadeIn, fadeOut);
-  // Subtle vertical drift for elegance
-  const translateY = interpolate(frame, [8, 30], [6, 0], { extrapolateRight: "clamp" });
-
-  const posStyle: React.CSSProperties =
-    position === "top" ? { top: 72 } :
-    position === "center" ? { top: "50%", transform: `translate(0, calc(-50% + ${translateY}px))` } :
-    { bottom: 72 };
-
+  if (!captions.length) return null;
   return (
-    <div style={{
-      position: "absolute", left: 0, right: 0, ...posStyle,
-      display: "flex", justifyContent: "center", pointerEvents: "none",
-      opacity,
-    }}>
-      <div style={{
-        display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6,
-        transform: position !== "center" ? `translateY(${translateY}px)` : undefined,
-      }}>
-        {/* Thin gold hairline above (appears with text) */}
-        <div style={{ width: 32, height: 1, background: GOLD_SOFT, opacity: 0.6 }} />
-        {/* Caption text — cream paper label aesthetic */}
-        <div style={{
-          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
-          fontStyle: "italic",
-          fontWeight: 400,
-          fontSize: 32,
-          letterSpacing: "0.12em",
-          color: "#f5ecd7",
-          textShadow: "0 2px 10px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.55)",
-          padding: "8px 26px",
-          background: "linear-gradient(180deg, rgba(15,12,8,0.28) 0%, rgba(15,12,8,0.42) 100%)",
-          backdropFilter: "blur(1.5px)",
-          WebkitBackdropFilter: "blur(1.5px)",
-          border: "1px solid rgba(232,208,155,0.18)",
-          borderRadius: 2,
-        }}>
-          {text}
-        </div>
-        {/* Thin gold hairline below */}
-        <div style={{ width: 32, height: 1, background: GOLD_SOFT, opacity: 0.6 }} />
-      </div>
-    </div>
+    <AbsoluteFill style={{ opacity, pointerEvents: "none" }}>
+      {captions.map((c) => (
+        <CaptionItem key={c.id} cap={c} />
+      ))}
+    </AbsoluteFill>
   );
 };
 
@@ -1413,9 +1456,7 @@ const PhotoScene: React.FC<{
       )}
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
-      {photo.caption?.text && (
-        <CaptionOverlay text={photo.caption.text} position={photo.caption.position} dur={dur} />
-      )}
+      <CaptionsLayer captions={resolveCaptions(photo)} dur={dur} />
       {photo.eraIcon && ERA_ICONS[photo.eraIcon] && (
         <EraIconCorner iconKey={photo.eraIcon} position={photo.eraIconPosition ?? "tr"} dur={dur} bg={bg} />
       )}
@@ -1566,8 +1607,8 @@ const SplitScene: React.FC<{
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
-        {left.caption?.text && (
-          <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+        {resolveCaptions(left).length > 0 && (
+          <CaptionsLayer captions={resolveCaptions(left)} dur={dur} />
         )}
       </AbsoluteFill>
     );
@@ -1626,8 +1667,8 @@ const SplitScene: React.FC<{
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
-        {left.caption?.text && (
-          <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+        {resolveCaptions(left).length > 0 && (
+          <CaptionsLayer captions={resolveCaptions(left)} dur={dur} />
         )}
       </AbsoluteFill>
     );
@@ -1648,8 +1689,8 @@ const SplitScene: React.FC<{
       <div style={half}><Img src={srcOf(right)} style={img} /></div>
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
-      {left.caption?.text && (
-        <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+      {resolveCaptions(left).length > 0 && (
+        <CaptionsLayer captions={resolveCaptions(left)} dur={dur} />
       )}
     </AbsoluteFill>
   );

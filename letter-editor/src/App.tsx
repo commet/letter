@@ -16,10 +16,17 @@ import {
   TitleVariant,
   BackgroundStyle,
   CaptionConfig,
+  CaptionEntry,
+  CaptionFont,
+  CaptionAlign,
+  CaptionBackground,
   SpotlightConfig,
   CropRect,
   AnnotationArrow,
   ArrowStyle,
+  ArrowColor,
+  ARROW_COLOR_MAP,
+  ARROW_COLOR_LABELS,
   JourneyMap,
   defaultConfig,
   computeTotalFrames,
@@ -98,7 +105,18 @@ const BACKGROUND_STYLES: { value: BackgroundStyle; label: string }[] = [
 
 // ─── Image Editor Modal ──────────────────────
 
-type EditorMode = "focal" | "spotlight" | "crop" | "arrow";
+// Mirrors CAPTION_FONT_STACK in VideoComposition.tsx for the modal preview.
+const captionFontStackCSS = (font: CaptionFont): { fontFamily: string; fontStyle: "normal" | "italic"; letterSpacing: string } => {
+  switch (font) {
+    case "serif":     return { fontFamily: "'EB Garamond', 'Cormorant Garamond', serif", fontStyle: "italic", letterSpacing: "0.12em" };
+    case "serif-kr":  return { fontFamily: "'Nanum Myeongjo', 'Gowun Batang', 'Noto Serif KR', serif", fontStyle: "normal", letterSpacing: "0.04em" };
+    case "script-kr": return { fontFamily: "'Nanum Pen Script', 'Gaegu', cursive", fontStyle: "normal", letterSpacing: "0.02em" };
+    case "brush-kr":  return { fontFamily: "'Nanum Brush Script', cursive", fontStyle: "normal", letterSpacing: "0.02em" };
+    case "sans-kr":   return { fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif", fontStyle: "normal", letterSpacing: "0.02em" };
+  }
+};
+
+type EditorMode = "focal" | "spotlight" | "crop" | "arrow" | "caption";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const MIN_CROP = 0.1; // minimum width/height of crop rect
@@ -374,7 +392,7 @@ const ImageEditorModal: React.FC<{
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (mode === "crop" || mode === "arrow") return; // crop/arrow have their own drag handlers
+    if (mode === "crop" || mode === "arrow" || mode === "caption") return; // these have their own drag handlers
     const pos = getClickPos(e);
     if (!pos) return;
 
@@ -384,6 +402,73 @@ const ImageEditorModal: React.FC<{
       const newSpot: SpotlightConfig = { x: pos.x, y: pos.y, radius: 0.25, strength: 0.55 };
       onUpdatePhoto({ spotlights: [...(photo.spotlights ?? []), newSpot] });
       setSelectedSpot((photo.spotlights ?? []).length);
+    }
+  };
+
+  // ── Caption drag state ─────────────────────
+  const captionDragRef = useRef<
+    | null
+    | {
+        capId: string;
+        startClientX: number;
+        startClientY: number;
+        startX: number;
+        startY: number;
+        containerW: number;
+        containerH: number;
+      }
+  >(null);
+  const [selectedCaption, setSelectedCaption] = useState<string | null>(null);
+
+  const captions = photo.captions ?? (photo.caption ? [{
+    id: "legacy-view",
+    text: photo.caption.text,
+    x: 0.5,
+    y: photo.caption.position === "top" ? 0.08 : photo.caption.position === "center" ? 0.5 : 0.92,
+    align: "center" as const,
+    fontFamily: "serif" as const,
+    fontSize: 32,
+  }] : []);
+
+  const updateCaption = (capId: string, patch: Partial<CaptionEntry>) => {
+    const next = captions.map((c) => (c.id === capId ? { ...c, ...patch } : c));
+    onUpdatePhoto({ captions: next });
+  };
+
+  const beginCaptionDrag = (capId: string, e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const img = imgRef.current;
+    if (!img) return;
+    const cap = captions.find((c) => c.id === capId);
+    if (!cap) return;
+    const rect = img.getBoundingClientRect();
+    captionDragRef.current = {
+      capId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startX: cap.x,
+      startY: cap.y,
+      containerW: rect.width,
+      containerH: rect.height,
+    };
+    setSelectedCaption(capId);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onCaptionPointerMove = (e: React.PointerEvent) => {
+    const d = captionDragRef.current;
+    if (!d) return;
+    const dx = (e.clientX - d.startClientX) / d.containerW;
+    const dy = (e.clientY - d.startClientY) / d.containerH;
+    updateCaption(d.capId, {
+      x: Math.max(0, Math.min(1, d.startX + dx)),
+      y: Math.max(0, Math.min(1, d.startY + dy)),
+    });
+  };
+  const endCaptionDrag = (e: React.PointerEvent) => {
+    if (captionDragRef.current) {
+      captionDragRef.current = null;
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
     }
   };
 
@@ -424,6 +509,9 @@ const ImageEditorModal: React.FC<{
               </button>
               <button className={`tab ${mode === "arrow" ? "tab-active" : ""}`} onClick={() => setMode("arrow")}>
                 화살표
+              </button>
+              <button className={`tab ${mode === "caption" ? "tab-active" : ""}`} onClick={() => setMode("caption")}>
+                텍스트 위치
               </button>
             </div>
           </div>
@@ -553,7 +641,8 @@ const ImageEditorModal: React.FC<{
                         d = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
                       }
                       const selected = selectedArrow === a.id;
-                      const col = a.style === "brush" ? "#a88848" : "#1a1510";
+                      const defaultCol: ArrowColor = a.style === "brush" ? "gold" : "ink";
+                      const col = ARROW_COLOR_MAP[a.color ?? defaultCol];
                       const dash = a.style === "dashed" ? "3 4" : undefined;
                       const w = a.style === "brush" ? 4.5 : 2.4;
                       return (
@@ -616,6 +705,60 @@ const ImageEditorModal: React.FC<{
                       {a.label || "●"}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Caption overlay: draggable text boxes over the photo */}
+              {mode === "caption" && (
+                <div
+                  onPointerMove={onCaptionPointerMove}
+                  onPointerUp={endCaptionDrag}
+                  onPointerCancel={endCaptionDrag}
+                  style={{ position: "absolute", inset: 0, touchAction: "none" }}
+                >
+                  {captions.map((cap) => {
+                    const font = captionFontStackCSS(cap.fontFamily ?? "serif");
+                    const align = cap.align ?? "center";
+                    const translate =
+                      align === "left"  ? "translate(0, -50%)" :
+                      align === "right" ? "translate(-100%, -50%)" :
+                                           "translate(-50%, -50%)";
+                    const isSelected = selectedCaption === cap.id;
+                    const hasBg = !!cap.bg;
+                    const preview = `${cap.speaker ? cap.speaker + ": " : ""}${cap.text || "텍스트"}`;
+                    return (
+                      <div
+                        key={cap.id}
+                        onPointerDown={(e) => beginCaptionDrag(cap.id, e)}
+                        style={{
+                          position: "absolute",
+                          left: `${cap.x * 100}%`,
+                          top: `${cap.y * 100}%`,
+                          transform: translate,
+                          fontFamily: font.fontFamily,
+                          fontStyle: font.fontStyle,
+                          letterSpacing: font.letterSpacing,
+                          fontSize: Math.max(10, (cap.fontSize ?? 32) / 3),  // scale for preview (photo is shown smaller than 1920×1080)
+                          color: cap.color ?? "#f5ecd7",
+                          textAlign: align,
+                          maxWidth: `${cap.maxWidthPct ?? 80}%`,
+                          padding: hasBg ? `${(cap.bg!.paddingY ?? 10) / 3}px ${(cap.bg!.paddingX ?? 22) / 3}px` : "4px 8px",
+                          background: hasBg ? cap.bg!.color : "rgba(15,12,8,0.45)",
+                          borderRadius: hasBg ? (cap.bg!.radius ?? 4) : 3,
+                          border: isSelected ? "2px solid var(--gold, #a88848)" : "1px dashed rgba(255,255,255,0.35)",
+                          textShadow: hasBg ? undefined : "0 2px 10px rgba(0,0,0,0.75)",
+                          whiteSpace: "pre-wrap",
+                          cursor: "grab",
+                          touchAction: "none",
+                          userSelect: "none",
+                          lineHeight: 1.35,
+                        }}
+                        title="드래그해서 위치 이동"
+                      >
+                        {preview}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -888,6 +1031,34 @@ const ImageEditorModal: React.FC<{
                           );
                         })}
                       </div>
+                      {/* Color swatches */}
+                      <div style={{ display: "flex", gap: 4, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 40 }}>색</span>
+                        {(Object.keys(ARROW_COLOR_MAP) as ArrowColor[]).map((c) => {
+                          // 'default' is implicit: if user hasn't set color, brush→gold, others→ink
+                          const implicitDefault: ArrowColor = (a.style ?? "curve") === "brush" ? "gold" : "ink";
+                          const active = (a.color ?? implicitDefault) === c;
+                          const swatchBg = ARROW_COLOR_MAP[c];
+                          return (
+                            <button
+                              key={c}
+                              title={ARROW_COLOR_LABELS[c]}
+                              onClick={(e) => { e.stopPropagation(); updateArrow(a.id, { color: c }); }}
+                              style={{
+                                width: 22, height: 22,
+                                borderRadius: "50%",
+                                background: swatchBg,
+                                border: active ? "2px solid var(--gold)" : "1px solid rgba(0,0,0,0.2)",
+                                boxShadow: active
+                                  ? "0 0 0 2px rgba(232,208,155,0.25)"
+                                  : "0 1px 2px rgba(0,0,0,0.15)",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, fontFamily: "monospace" }}>
                         tip ({(a.tipX * 100).toFixed(0)},{(a.tipY * 100).toFixed(0)}) · label ({(a.labelX * 100).toFixed(0)},{(a.labelY * 100).toFixed(0)})
                       </div>
@@ -899,6 +1070,41 @@ const ImageEditorModal: React.FC<{
                 </p>
               </>
             )}
+
+            {mode === "caption" && (
+              <>
+                <p className="hint">
+                  이미지 위 텍스트 박스를 드래그해서 위치를 조절하세요.
+                  텍스트 내용/폰트/배경은 사진 카드의 캡션 리스트에서 편집합니다.
+                </p>
+                {captions.length === 0 ? (
+                  <p className="hint hint-dim" style={{ marginTop: 8 }}>
+                    이 사진에 아직 캡션이 없습니다. 사진 카드에서 "+ 텍스트 추가"로 먼저 만들어주세요.
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                    {captions.map((cap) => (
+                      <div key={cap.id} style={{
+                        border: selectedCaption === cap.id ? "1px solid var(--gold, #a88848)" : "1px solid rgba(80,110,140,0.3)",
+                        borderRadius: 4, padding: 6, background: "rgba(30,40,50,0.25)",
+                        fontSize: 12,
+                      }}
+                        onClick={() => setSelectedCaption(cap.id)}>
+                        <div style={{ color: "#6a8aa0", fontWeight: 600, marginBottom: 2 }}>
+                          {cap.speaker ? `${cap.speaker}:` : "(화자 없음)"}
+                        </div>
+                        <div style={{ opacity: 0.85, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {cap.text || "(비어 있음)"}
+                        </div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+                          x {(cap.x * 100).toFixed(0)}% · y {(cap.y * 100).toFixed(0)}% · {cap.align ?? "center"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -907,6 +1113,7 @@ const ImageEditorModal: React.FC<{
             {mode === "focal" ? "클릭 = 포커스 지정 · 변경사항은 실시간 반영됨"
               : mode === "spotlight" ? "클릭 = 강조 추가 · 변경사항은 실시간 반영됨"
               : mode === "crop" ? "드래그 = 자르기 영역 조절 · 변경사항은 실시간 반영됨"
+              : mode === "caption" ? "텍스트 박스 드래그 = 위치 이동 · 변경사항은 실시간 반영됨"
               : "드래그 = 화살표 그리기 · 끝점/라벨 드래그로 조정"}
           </span>
           <button
@@ -918,6 +1125,138 @@ const ImageEditorModal: React.FC<{
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// ─── Caption editor (multi-caption list per photo) ───
+
+const CAPTION_FONT_OPTIONS: { value: CaptionFont; label: string }[] = [
+  { value: "serif",     label: "영문 세리프 (이탤릭)" },
+  { value: "serif-kr",  label: "한글 명조" },
+  { value: "script-kr", label: "한글 손글씨" },
+  { value: "brush-kr",  label: "한글 붓글씨" },
+  { value: "sans-kr",   label: "한글 산세리프" },
+];
+
+// 9-cell preset grid for x/y positioning.
+const CAPTION_POSITION_PRESETS: { label: string; x: number; y: number; align: CaptionAlign }[] = [
+  { label: "↖", x: 0.06, y: 0.08, align: "left"   },
+  { label: "↑", x: 0.50, y: 0.08, align: "center" },
+  { label: "↗", x: 0.94, y: 0.08, align: "right"  },
+  { label: "←", x: 0.06, y: 0.50, align: "left"   },
+  { label: "•", x: 0.50, y: 0.50, align: "center" },
+  { label: "→", x: 0.94, y: 0.50, align: "right"  },
+  { label: "↙", x: 0.06, y: 0.92, align: "left"   },
+  { label: "↓", x: 0.50, y: 0.92, align: "center" },
+  { label: "↘", x: 0.94, y: 0.92, align: "right"  },
+];
+
+const CAPTION_BG_PRESETS: { label: string; bg?: CaptionBackground }[] = [
+  { label: "없음" },
+  { label: "어두움",  bg: { color: "rgba(15,12,8,0.55)", paddingX: 22, paddingY: 10, radius: 4, blur: true } },
+  { label: "크림",    bg: { color: "rgba(245,236,215,0.92)", paddingX: 22, paddingY: 10, radius: 4 } },
+  { label: "투명 블러", bg: { color: "rgba(255,255,255,0.18)", paddingX: 22, paddingY: 10, radius: 4, blur: true } },
+];
+
+const CAPTION_SPEAKER_PRESETS = ["예찬", "슬기"];
+
+const CaptionsEditor: React.FC<{
+  captions: CaptionEntry[];
+  onAdd: (preset?: Partial<CaptionEntry>) => void;
+  onUpdate: (id: string, patch: Partial<CaptionEntry>) => void;
+  onDelete: (id: string) => void;
+  onOpenPositionEditor: () => void;
+}> = ({ captions, onAdd, onUpdate, onDelete, onOpenPositionEditor }) => {
+  return (
+    <div className="captions-block" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+      {captions.map((cap) => {
+        const bgIdx = CAPTION_BG_PRESETS.findIndex(
+          (p) => (p.bg?.color ?? "none") === (cap.bg?.color ?? "none")
+        );
+        return (
+          <div key={cap.id} style={{
+            border: "1px solid rgba(80,110,140,0.25)",
+            borderRadius: 4, padding: 6, background: "rgba(30,40,50,0.18)",
+            display: "flex", flexDirection: "column", gap: 4,
+          }}>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <select className="select select-sm" value={cap.speaker ?? ""}
+                onChange={(e) => onUpdate(cap.id, { speaker: e.target.value || undefined })}
+                style={{ flex: 1, minWidth: 0 }}>
+                <option value="">(화자 없음)</option>
+                {CAPTION_SPEAKER_PRESETS.map((s) => <option key={s} value={s}>{s}:</option>)}
+                {cap.speaker && !CAPTION_SPEAKER_PRESETS.includes(cap.speaker) && (
+                  <option value={cap.speaker}>{cap.speaker}:</option>
+                )}
+              </select>
+              <input className="input input-sm" placeholder="직접 입력" value={cap.speaker ?? ""}
+                onChange={(e) => onUpdate(cap.id, { speaker: e.target.value || undefined })}
+                style={{ flex: 1, minWidth: 0 }} />
+              <button className="btn-icon btn-icon--danger" onClick={() => onDelete(cap.id)}>&#10005;</button>
+            </div>
+            <textarea className="input input-sm" placeholder="텍스트"
+              value={cap.text} rows={2}
+              onChange={(e) => onUpdate(cap.id, { text: e.target.value })}
+              style={{ resize: "vertical" }} />
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              <select className="select select-sm" value={cap.fontFamily ?? "serif"}
+                onChange={(e) => onUpdate(cap.id, { fontFamily: e.target.value as CaptionFont })}
+                style={{ flex: 2, minWidth: 0 }}>
+                {CAPTION_FONT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <input className="input input-sm" type="number" min={12} max={96} step={2}
+                value={cap.fontSize ?? 32}
+                onChange={(e) => onUpdate(cap.id, { fontSize: parseInt(e.target.value, 10) || 32 })}
+                title="크기 (px @ 1920×1080)" style={{ width: 60 }} />
+              <select className="select select-sm" value={bgIdx >= 0 ? bgIdx : 0}
+                onChange={(e) => {
+                  const preset = CAPTION_BG_PRESETS[parseInt(e.target.value, 10)];
+                  onUpdate(cap.id, { bg: preset.bg });
+                }}
+                title="배경">
+                {CAPTION_BG_PRESETS.map((p, i) => <option key={i} value={i}>배경: {p.label}</option>)}
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 2 }}>위치:</span>
+              {CAPTION_POSITION_PRESETS.map((p) => {
+                const active = Math.abs((cap.x ?? 0.5) - p.x) < 0.02 && Math.abs((cap.y ?? 0.92) - p.y) < 0.02 && (cap.align ?? "center") === p.align;
+                return (
+                  <button key={p.label} className="btn btn-xs"
+                    onClick={() => onUpdate(cap.id, { x: p.x, y: p.y, align: p.align })}
+                    style={{
+                      width: 22, minWidth: 22, padding: "2px 0",
+                      opacity: active ? 1 : 0.6,
+                      background: active ? "rgba(80,120,160,0.45)" : undefined,
+                    }}
+                    title={`x=${p.x}, y=${p.y}, align=${p.align}`}>
+                    {p.label}
+                  </button>
+                );
+              })}
+              <button className="btn btn-xs" onClick={onOpenPositionEditor}
+                title="이미지에서 드래그해서 미세 조정">
+                드래그 편집
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      <button className="btn btn-xs btn-moment-add"
+        onClick={() => onAdd()}
+        style={{ alignSelf: "flex-start" }}>
+        + 텍스트 추가
+      </button>
+      {captions.length === 0 && CAPTION_SPEAKER_PRESETS.length > 0 && (
+        <div style={{ display: "flex", gap: 4 }}>
+          <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>빠른 시작:</span>
+          <button className="btn btn-xs" onClick={() => {
+            onAdd({ speaker: "예찬", y: 0.82, align: "center" });
+            onAdd({ speaker: "슬기", y: 0.90, align: "center" });
+          }}>대화 (예찬 / 슬기)</button>
+        </div>
+      )}
     </div>
   );
 };
@@ -1080,6 +1419,55 @@ export const App: React.FC = () => {
         if (i !== idx) return p;
         if (patch === null) return { ...p, caption: undefined };
         return { ...p, caption: { text: "", position: "bottom", ...p.caption, ...patch } };
+      }),
+    }));
+  }, []);
+
+  // ── Multi-caption (CaptionEntry[]) ───────────
+  const makeCaptionId = () => `cap-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const addCaptionEntry = useCallback((idx: number, preset?: Partial<CaptionEntry>) => {
+    setConfig((c) => ({
+      ...c,
+      photos: c.photos.map((p, i) => {
+        if (i !== idx) return p;
+        const existing = p.captions ?? (p.caption ? [{
+          id: makeCaptionId(), text: p.caption.text, x: 0.5,
+          y: p.caption.position === "top" ? 0.08 : p.caption.position === "center" ? 0.5 : 0.92,
+          align: "center" as const, fontFamily: "serif" as const, fontSize: 32,
+        }] : []);
+        const newCap: CaptionEntry = {
+          id: makeCaptionId(),
+          text: "",
+          x: 0.5,
+          y: 0.88,
+          align: "center",
+          fontFamily: "serif",
+          fontSize: 32,
+          ...preset,
+        };
+        return { ...p, captions: [...existing, newCap], caption: undefined };
+      }),
+    }));
+  }, []);
+
+  const updateCaptionEntry = useCallback((idx: number, capId: string, patch: Partial<CaptionEntry>) => {
+    setConfig((c) => ({
+      ...c,
+      photos: c.photos.map((p, i) => {
+        if (i !== idx) return p;
+        return { ...p, captions: (p.captions ?? []).map((cap) => cap.id === capId ? { ...cap, ...patch } : cap) };
+      }),
+    }));
+  }, []);
+
+  const deleteCaptionEntry = useCallback((idx: number, capId: string) => {
+    setConfig((c) => ({
+      ...c,
+      photos: c.photos.map((p, i) => {
+        if (i !== idx) return p;
+        const remaining = (p.captions ?? []).filter((cap) => cap.id !== capId);
+        return { ...p, captions: remaining.length ? remaining : undefined };
       }),
     }));
   }, []);
@@ -1760,23 +2148,21 @@ export const App: React.FC = () => {
                               )}
                             </div>
                           )}
-                          <div className="caption-row">
-                            {photo.caption ? (
-                              <>
-                                <input className="input input-sm" placeholder="캡션 텍스트" value={photo.caption.text}
-                                  onChange={(e) => updateCaption(idx, { text: e.target.value })} />
-                                <select className="select select-sm" value={photo.caption.position}
-                                  onChange={(e) => updateCaption(idx, { position: e.target.value as "top" | "bottom" | "center" })}>
-                                  <option value="top">상단</option>
-                                  <option value="center">중앙</option>
-                                  <option value="bottom">하단</option>
-                                </select>
-                                <button className="btn-icon btn-icon--danger" onClick={() => updateCaption(idx, null)}>&#10005;</button>
-                              </>
-                            ) : (
-                              <button className="btn btn-xs" onClick={() => updateCaption(idx, { text: "", position: "bottom" })}>+ 캡션</button>
-                            )}
-                          </div>
+                          <CaptionsEditor
+                            captions={photo.captions ?? (photo.caption ? [{
+                              id: "legacy-view",
+                              text: photo.caption.text,
+                              x: 0.5,
+                              y: photo.caption.position === "top" ? 0.08 : photo.caption.position === "center" ? 0.5 : 0.92,
+                              align: "center",
+                              fontFamily: "serif",
+                              fontSize: 32,
+                            }] : [])}
+                            onAdd={(preset) => addCaptionEntry(idx, preset)}
+                            onUpdate={(capId, patch) => updateCaptionEntry(idx, capId, patch)}
+                            onDelete={(capId) => deleteCaptionEntry(idx, capId)}
+                            onOpenPositionEditor={() => setEditorTarget(idx)}
+                          />
                           {/* Moment cards attached to this photo (inserted BEFORE next photo) */}
                           {(config.moments ?? []).filter((m) => m.afterPhotoIndex === idx).map((m) => (
                             <div key={m.id} className="moment-editor">

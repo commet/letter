@@ -97,6 +97,28 @@ export type CropRect = {
 // Annotation arrow — points to a person/object in a group photo, with optional label.
 // Coordinates are normalized to the image area (0-1, same basis as spotlights/focalPoint).
 export type ArrowStyle = "curve" | "straight" | "dashed" | "brush";
+export type ArrowColor = "ink" | "gold" | "burgundy" | "navy" | "sage" | "cream" | "white";
+
+export const ARROW_COLOR_MAP: Record<ArrowColor, string> = {
+  ink:      "#1a1510",           // classic black ink (default)
+  gold:     "#a88848",           // warm gold (matches palette)
+  burgundy: "#8a3a3a",           // deep red, classy
+  navy:     "#2a3a5a",           // deep blue
+  sage:     "#5a6e4f",           // muted green
+  cream:    "#d9c89f",           // paper-tone ink (subtle)
+  white:    "rgba(255,255,255,0.95)",
+};
+
+export const ARROW_COLOR_LABELS: Record<ArrowColor, string> = {
+  ink:      "잉크",
+  gold:     "금색",
+  burgundy: "버건디",
+  navy:     "네이비",
+  sage:     "세이지",
+  cream:    "크림",
+  white:    "화이트",
+};
+
 export type AnnotationArrow = {
   id: string;
   tipX: number;            // where the arrow points
@@ -105,6 +127,7 @@ export type AnnotationArrow = {
   labelY: number;
   label?: string;          // optional text; arrow-only if omitted/empty
   style?: ArrowStyle;      // default 'curve'
+  color?: ArrowColor;      // default 'ink' (or 'gold' for brush style)
 };
 
 export type PhotoEntry = {
