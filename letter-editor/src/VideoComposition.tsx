@@ -1642,7 +1642,7 @@ const EndingScene: React.FC<{
       <div style={{
         position: "absolute",
         left: "50%",
-        top: "56%",
+        top: "55%",
         transform: "translateX(-50%)",
         width: 240, height: 60,
         opacity: Math.min(fadeAt(5.2, 0.55), fadeOut),
@@ -1668,11 +1668,11 @@ const EndingScene: React.FC<{
       {/* Date caption, positioned below the names/sprig cluster (not pinned to bottom) */}
       <div style={{
         position: "absolute",
-        left: 0, right: 0, top: "66%",
+        left: 0, right: 0, top: "61%",
         textAlign: "center",
         fontFamily: SERIF,
         fontWeight: 300,
-        fontSize: 34,
+        fontSize: 46,
         letterSpacing: "0.42em",
         color: onPaper ? INK : "white",
         opacity: Math.min(fadeAt(5.5, 0.9), fadeOut),
@@ -1683,10 +1683,10 @@ const EndingScene: React.FC<{
       {/* Thank-you message */}
       <div style={{
         position: "absolute",
-        left: 0, right: 0, top: "74%",
+        left: 0, right: 0, top: "68%",
         textAlign: "center",
         fontFamily: SERIF_KR,
-        fontSize: 26,
+        fontSize: 34,
         letterSpacing: 6,
         color: onPaper ? "rgba(58,42,24,0.7)" : "rgba(255,255,255,0.75)",
         opacity: Math.min(fadeAt(6.8), fadeOut),
