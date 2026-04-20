@@ -1209,27 +1209,46 @@ const PhotoScene: React.FC<{
               filter: filterCSS !== "none" ? filterCSS : undefined,
               display: "block",
             }} />
+            {/* Spotlight inside wrapper — crop fills canvas so this covers crop only */}
+            {photo.spotlights?.length > 0 && (
+              <SpotlightOverlay spotlights={photo.spotlights} />
+            )}
           </AbsoluteFill>
         ) : (
           <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-            <Img src={src} style={{
+            {/* Wrapper sizes to the image (inline-block) and carries Ken Burns transform,
+                so the spotlight overlay, as an absolute child of the wrapper, covers ONLY
+                the image area — not the letterbox background. */}
+            <div style={{
+              position: "relative",
               maxWidth: "100%",
               maxHeight: "100%",
-              width: "auto",
-              height: "auto",
-              objectFit: "contain",
+              display: "inline-block",
+              lineHeight: 0,
               transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
               transformOrigin: "center center",
-              filter: filterCSS !== "none" ? filterCSS : undefined,
               boxShadow: defaultShadow,
-              display: "block",
-            }} />
+            }}>
+              <Img src={src} style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+                filter: filterCSS !== "none" ? filterCSS : undefined,
+                display: "block",
+              }} />
+              {photo.spotlights?.length > 0 && (
+                <SpotlightOverlay spotlights={photo.spotlights} />
+              )}
+            </div>
           </AbsoluteFill>
         )
       ) : (
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{
             ...getFrameStyle(frameType),
+            position: "relative",
             transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)${frameType === "polaroid" ? " rotate(-1deg)" : ""}`,
             boxShadow: getFrameStyle(frameType).boxShadow,
           }}>
@@ -1239,11 +1258,11 @@ const PhotoScene: React.FC<{
               filter: filterCSS !== "none" ? filterCSS : undefined,
               display: "block",
             }} />
+            {photo.spotlights?.length > 0 && (
+              <SpotlightOverlay spotlights={photo.spotlights} />
+            )}
           </div>
         </AbsoluteFill>
-      )}
-      {photo.spotlights?.length > 0 && (
-        <SpotlightOverlay spotlights={photo.spotlights} />
       )}
       {/* ★ 별표 사진에 따뜻한 골드 할로 비네트 (미묘한 강조) */}
       {photo.tag.startsWith("★") && (
