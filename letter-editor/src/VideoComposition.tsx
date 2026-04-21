@@ -14,7 +14,6 @@ import {
   Effect,
   SpotlightConfig,
   AnnotationArrow as AnnotationArrowConfig,
-  ARROW_COLOR_MAP,
   TransitionMode,
   TimelineItem,
   OverlayType,
@@ -33,6 +32,7 @@ import {
   buildTimeline,
 } from "./data";
 import { ERA_ICONS } from "./eraIcons";
+import { buildArrowPath, arrowStroke, arrowHeadPath } from "./arrow";
 
 // ─────────────────────────────────────────────
 // Shared
@@ -281,51 +281,6 @@ const getFrameStyle = (type: FrameType): React.CSSProperties => {
 // Arrows point to people/objects in group photos. Normalized coords (0-1)
 // relative to the photo area (so they live INSIDE the photo wrapper, next to Img).
 
-type ArrowPathInfo = {
-  d: string;           // SVG path
-  tipAngleDeg: number; // tangent angle at tip (for arrowhead rotation)
-};
-
-const buildArrowPath = (a: AnnotationArrowConfig): ArrowPathInfo => {
-  const lx = a.labelX * 100, ly = a.labelY * 100;
-  const tx = a.tipX * 100, ty = a.tipY * 100;
-  // Shrink start slightly so arrow doesn't start under the label box
-  const sx = lx + (tx - lx) * 0.08;
-  const sy = ly + (ty - ly) * 0.08;
-  if (a.style === "curve" || !a.style) {
-    const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-    const dx = tx - sx, dy = ty - sy;
-    const normLen = Math.hypot(dx, dy) || 1;
-    const perpX = -dy / normLen, perpY = dx / normLen;
-    const bow = normLen * 0.18;
-    const cx = mx + perpX * bow;
-    const cy = my + perpY * bow;
-    return {
-      d: `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`,
-      tipAngleDeg: Math.atan2(ty - cy, tx - cx) * 180 / Math.PI,
-    };
-  }
-  // straight / dashed / brush — same geometry
-  return {
-    d: `M ${sx} ${sy} L ${tx} ${ty}`,
-    tipAngleDeg: Math.atan2(ty - sy, tx - sx) * 180 / Math.PI,
-  };
-};
-
-const arrowStroke = (style?: string, color?: string) => {
-  // If color explicitly set, use it; else fall back to style's implicit default
-  //   (brush=gold, others=ink — preserves existing defaults for untagged arrows)
-  const defaultColor = style === "brush" ? ARROW_COLOR_MAP.gold : ARROW_COLOR_MAP.ink;
-  const finalColor = color ? (ARROW_COLOR_MAP[color as keyof typeof ARROW_COLOR_MAP] ?? defaultColor) : defaultColor;
-  switch (style) {
-    case "brush":    return { color: finalColor, width: 4.5, opacity: 0.92 };
-    case "dashed":   return { color: finalColor, width: 2,   opacity: 1 };
-    case "straight": return { color: finalColor, width: 2.2, opacity: 1 };
-    case "curve":
-    default:         return { color: finalColor, width: 2.4, opacity: 1 };
-  }
-};
-
 const AnnotationLayer: React.FC<{
   annotations: AnnotationArrowConfig[];
   dur: number;
@@ -369,9 +324,7 @@ const AnnotationLayer: React.FC<{
                 <g transform={`translate(${a.tipX * 100} ${a.tipY * 100}) rotate(${info.tipAngleDeg})`}
                    opacity={interpolate(drawT, [0.6, 1.0], [0, 1], { extrapolateRight: "clamp" })}>
                   <path
-                    d={a.style === "brush"
-                      ? "M 0 0 L -3.5 -2 L -3.5 2 Z"
-                      : "M 0 0 L -2.6 -1.5 L -2.6 1.5 Z"}
+                    d={arrowHeadPath(a.style)}
                     fill={stroke.color}
                     vectorEffect="non-scaling-stroke"
                   />

@@ -36,6 +36,7 @@ import {
   getPhotoIndexAtFrame,
   getPhotoStartFrame,
 } from "./data";
+import { buildArrowPath, arrowStroke, arrowHeadPath, ARROW_PRESETS, type ArrowPreset } from "./arrow";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
 import type { Comment, NewCommentInput } from "./supabase";
 import { useDisplayIdentity, useEditorChannel, useComments, type PresenceUser } from "./realtime";
@@ -376,6 +377,26 @@ const ImageEditorModal: React.FC<{
     if (selectedArrow === id) setSelectedArrow(null);
   };
 
+  // Drop a preset into the image center; user then drags tip/label to fine-tune.
+  // Stagger successive drops so they don't land on top of each other.
+  const insertArrowPreset = (preset: ArrowPreset) => {
+    const n = annotations.length;
+    const jitter = (n % 4) * 0.06;
+    const id = `ar${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const newArrow: AnnotationArrow = {
+      id,
+      labelX: 0.32 + jitter,
+      labelY: 0.48 + jitter,
+      tipX: 0.62 + jitter,
+      tipY: 0.48 + jitter,
+      label: "",
+      style: preset.style,
+      color: preset.color,
+    };
+    onUpdatePhoto({ annotations: [...annotations, newArrow] });
+    setSelectedArrow(id);
+  };
+
   const getClickPos = (e: React.MouseEvent<HTMLImageElement>) => {
     const img = imgRef.current;
     if (!img) return null;
@@ -629,35 +650,27 @@ const ImageEditorModal: React.FC<{
                   onPointerCancel={endArrowDrag}
                   style={{ position: "absolute", inset: 0, cursor: "crosshair", touchAction: "none" }}
                 >
-                  {/* SVG lines */}
+                  {/* SVG lines + arrowheads (WYSIWYG vs. video render) */}
                   <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}
                        viewBox="0 0 100 100" preserveAspectRatio="none">
                     {annotations.map((a) => {
-                      const lx = a.labelX * 100, ly = a.labelY * 100, tx = a.tipX * 100, ty = a.tipY * 100;
-                      const sx = lx + (tx - lx) * 0.08, sy = ly + (ty - ly) * 0.08;
-                      let d = `M ${sx} ${sy} L ${tx} ${ty}`;
-                      if ((a.style ?? "curve") === "curve") {
-                        const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-                        const ddx = tx - sx, ddy = ty - sy;
-                        const nlen = Math.hypot(ddx, ddy) || 1;
-                        const bow = nlen * 0.18;
-                        const cx = mx + (-ddy / nlen) * bow;
-                        const cy = my + (ddx / nlen) * bow;
-                        d = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
-                      }
+                      const info = buildArrowPath(a);
+                      const stroke = arrowStroke(a.style, a.color);
                       const selected = selectedArrow === a.id;
-                      const defaultCol: ArrowColor = a.style === "brush" ? "gold" : "ink";
-                      const col = ARROW_COLOR_MAP[a.color ?? defaultCol];
                       const dash = a.style === "dashed" ? "3 4" : undefined;
-                      const w = a.style === "brush" ? 4.5 : 2.4;
                       return (
-                        <path key={a.id} d={d} fill="none" stroke={col}
-                          strokeWidth={selected ? w + 1 : w}
-                          strokeDasharray={dash}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          vectorEffect="non-scaling-stroke"
-                          opacity={0.95} />
+                        <g key={a.id} opacity={stroke.opacity}>
+                          <path d={info.d} fill="none" stroke={stroke.color}
+                            strokeWidth={selected ? stroke.width + 1 : stroke.width}
+                            strokeDasharray={dash}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            vectorEffect="non-scaling-stroke" />
+                          <g transform={`translate(${a.tipX * 100} ${a.tipY * 100}) rotate(${info.tipAngleDeg})`}>
+                            <path d={arrowHeadPath(a.style)} fill={stroke.color}
+                              vectorEffect="non-scaling-stroke" />
+                          </g>
+                        </g>
                       );
                     })}
                   </svg>
@@ -993,8 +1006,7 @@ const ImageEditorModal: React.FC<{
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <p className="hint" style={{ margin: 0 }}>
-                    이미지 위에서 드래그: 시작점(라벨)에서 끝점(화살촉)으로.<br />
-                    흰 원(끝점)과 라벨 박스를 드래그해 위치 조정.
+                    프리셋을 눌러 추가하거나, 이미지 위에서 드래그해 직접 그리세요. 흰 원/라벨 박스를 드래그해 위치 조정.
                   </p>
                   {annotations.length > 0 && (
                     <button className="btn btn-xs" style={{ flexShrink: 0, marginLeft: 10 }}
@@ -1003,8 +1015,50 @@ const ImageEditorModal: React.FC<{
                     </button>
                   )}
                 </div>
+                {/* Preset palette — click to drop into image center */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
+                  gap: 6,
+                  marginBottom: 10,
+                  padding: 8,
+                  background: "rgba(20,28,38,0.3)",
+                  border: "1px dashed rgba(120,150,180,0.3)",
+                  borderRadius: 4,
+                }}>
+                  {ARROW_PRESETS.map((preset) => {
+                    const stroke = arrowStroke(preset.style, preset.color);
+                    const dash = preset.style === "dashed" ? "3 4" : undefined;
+                    const sample = { labelX: 0.08, labelY: 0.55, tipX: 0.82, tipY: 0.40, style: preset.style };
+                    const info = buildArrowPath(sample);
+                    return (
+                      <button key={preset.style} className="btn btn-xs"
+                        onClick={() => insertArrowPreset(preset)}
+                        title={`${preset.label} — 클릭해서 추가`}
+                        style={{
+                          display: "flex", flexDirection: "column", alignItems: "center",
+                          gap: 2, padding: "6px 4px", cursor: "copy",
+                        }}>
+                        <svg viewBox="0 0 100 100" width="70" height="22" preserveAspectRatio="none"
+                             style={{ opacity: stroke.opacity }}>
+                          <path d={info.d} fill="none" stroke={stroke.color}
+                            strokeWidth={stroke.width}
+                            strokeDasharray={dash}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            vectorEffect="non-scaling-stroke" />
+                          <g transform={`translate(${sample.tipX * 100} ${sample.tipY * 100}) rotate(${info.tipAngleDeg})`}>
+                            <path d={arrowHeadPath(preset.style)} fill={stroke.color}
+                              vectorEffect="non-scaling-stroke" />
+                          </g>
+                        </svg>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{preset.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
                 {annotations.length === 0 && (
-                  <p className="hint hint-dim">화살표가 없습니다. 이미지 위에 드래그해 만드세요.</p>
+                  <p className="hint hint-dim">프리셋을 클릭해서 화살표를 추가하세요.</p>
                 )}
                 {annotations.map((a) => {
                   const isSel = selectedArrow === a.id;
@@ -1021,19 +1075,18 @@ const ImageEditorModal: React.FC<{
                         value={a.label ?? ""}
                         onChange={(e) => updateArrow(a.id, { label: e.target.value })} />
                       <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-                        {(["curve", "straight", "dashed", "brush"] as ArrowStyle[]).map((s) => {
-                          const active = (a.style ?? "curve") === s;
-                          const label = s === "curve" ? "곡선" : s === "straight" ? "직선" : s === "dashed" ? "점선" : "붓질";
+                        {ARROW_PRESETS.map((preset) => {
+                          const active = (a.style ?? "curve") === preset.style;
                           return (
-                            <button key={s} className="btn btn-xs"
+                            <button key={preset.style} className="btn btn-xs"
                               style={{
-                                flex: 1, minWidth: 52,
+                                flex: 1, minWidth: 62,
                                 background: active ? "var(--gold)" : undefined,
                                 color: active ? "#111" : undefined,
                                 fontWeight: active ? 700 : 500,
                               }}
-                              onClick={(e) => { e.stopPropagation(); updateArrow(a.id, { style: s }); }}>
-                              {label}
+                              onClick={(e) => { e.stopPropagation(); updateArrow(a.id, { style: preset.style }); }}>
+                              {preset.label}
                             </button>
                           );
                         })}

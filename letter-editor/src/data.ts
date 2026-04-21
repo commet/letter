@@ -104,7 +104,14 @@ export type CropRect = {
 
 // Annotation arrow — points to a person/object in a group photo, with optional label.
 // Coordinates are normalized to the image area (0-1, same basis as spotlights/focalPoint).
-export type ArrowStyle = "curve" | "straight" | "dashed" | "brush";
+export type ArrowStyle =
+  | "curve"          // thin ink curve (default)
+  | "straight"       // thin ink straight
+  | "dashed"         // thin dashed
+  | "brush"          // thick gold brush
+  | "bold-curve"     // bold ink curve
+  | "bold-straight"  // bold ink straight
+  | "marker";        // extra-thick marker (heaviest body)
 export type ArrowColor = "ink" | "gold" | "burgundy" | "navy" | "sage" | "cream" | "white";
 
 export const ARROW_COLOR_MAP: Record<ArrowColor, string> = {
@@ -825,7 +832,7 @@ export const defaultConfig: VideoConfig = {
       beforeTitle: true,
       durationSec: 5.5,
       slots: [
-        { file: `${S}/sl-solo-1.jpeg` },
+        { file: `${S}/sl-solo-1b.png` },
         { file: `${S}/sl-solo-2.jpeg` },
         { file: `${S}/sl-solo-3.jpeg` },
       ],
