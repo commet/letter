@@ -845,17 +845,16 @@ export const defaultConfig: VideoConfig = {
       id: "chat-4",
       afterPhotoIndex: 40,   // Act IV 타이틀 + jm-4 (Across the Ocean) 직후, 예찬 군입대 직전
       header: "바다를 사이에 두고 · 2016 — 2025",
-      // 서사 미정. 슬기 먼저.
       messages: [
         {
           speaker: "슬기",
           side: "right",
-          text: "",
+          text: "내가 뉴욕으로 유학을 가게 됐지.....",
         },
         {
           speaker: "예찬",
           side: "left",
-          text: "",
+          text: "나도 카투사 입대로 한국 속의 미국에 갔고... 제대 이후에는 뉴욕을 계절마다 갔었지 ...",
         },
       ],
       durationSec: 12.0,
