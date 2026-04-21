@@ -7,7 +7,7 @@ const SUPABASE_ANON_KEY =
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const CONFIG_ID = "6551e0e3-cf5a-465b-89cc-58c597471a1e";
+export const CONFIG_ID = "6551e0e3-cf5a-465b-89cc-58c597471a1e";
 
 // ─── Config save / load ──────────────────────
 
@@ -29,12 +29,14 @@ export async function loadConfig(): Promise<VideoConfig | null> {
     ...defaultConfig,
     ...raw,
     photos: raw.photos.map((p) => {
+      // Fill missing fields via nullish fallback instead of spread-over-spread.
+      // (Avoids TS2783 duplicate-key warnings and makes "use p's value if set" explicit.)
       const base: PhotoEntry = {
-        focalPoint: { x: 0.5, y: 0.5 },
-        transition: "fade" as const,
-        filter: "none" as const,
-        spotlights: [],
         ...p,
+        focalPoint: p.focalPoint ?? { x: 0.5, y: 0.5 },
+        transition: p.transition ?? "fade",
+        filter: p.filter ?? "none",
+        spotlights: p.spotlights ?? [],
       };
       // Migrate legacy single caption → captions[0] if not already present.
       // Always drop `caption` after processing so a deleted caption can't
@@ -117,4 +119,65 @@ export async function uploadPhoto(file: File): Promise<string | null> {
 
   const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
   return data.publicUrl;
+}
+
+// ─── Comments ────────────────────────────────
+
+export type CommentAnchor = "photo" | "general";
+
+export type Comment = {
+  id: string;
+  config_id: string;
+  anchor_type: CommentAnchor;
+  anchor_id: string | null;
+  author_name: string;
+  body: string;
+  resolved: boolean;
+  created_at: string;
+};
+
+export type NewCommentInput = {
+  anchor_type: CommentAnchor;
+  anchor_id: string | null;
+  author_name: string;
+  body: string;
+};
+
+export async function listComments(): Promise<Comment[]> {
+  const { data, error } = await supabase
+    .from("letter_comments")
+    .select("*")
+    .eq("config_id", CONFIG_ID)
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return data as Comment[];
+}
+
+export async function addComment(input: NewCommentInput): Promise<Comment | null> {
+  const { data, error } = await supabase
+    .from("letter_comments")
+    .insert({
+      config_id: CONFIG_ID,
+      anchor_type: input.anchor_type,
+      anchor_id: input.anchor_id,
+      author_name: input.author_name,
+      body: input.body,
+    })
+    .select()
+    .single();
+  if (error || !data) return null;
+  return data as Comment;
+}
+
+export async function toggleResolved(id: string, resolved: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from("letter_comments")
+    .update({ resolved })
+    .eq("id", id);
+  return !error;
+}
+
+export async function deleteComment(id: string): Promise<boolean> {
+  const { error } = await supabase.from("letter_comments").delete().eq("id", id);
+  return !error;
 }

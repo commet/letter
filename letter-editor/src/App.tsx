@@ -35,6 +35,8 @@ import {
   getPhotoStartFrame,
 } from "./data";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
+import type { Comment, NewCommentInput } from "./supabase";
+import { useDisplayIdentity, useEditorChannel, useComments, type PresenceUser } from "./realtime";
 import { ERA_ICONS, ERA_ICON_LABELS } from "./eraIcons";
 
 // Resolve photo src: full URL (supabase) or local path
@@ -1133,13 +1135,24 @@ const ImageEditorModal: React.FC<{
 
 // ─── Caption editor (multi-caption list per photo) ───
 
+// Shared empty array so photos with no captions don't churn references every render.
+const EMPTY_CAPTIONS: CaptionEntry[] = [];
+
+// Stable cache for legacy-materialized arrays, keyed on the legacy caption object.
+// Same caption object → same array reference → React.memo can skip subtrees.
+const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
+
 // Defensive: always return an array, materializing any legacy `caption` on the fly.
 // Used by mutations so "edit the legacy caption" never silently drops the write.
+// The legacy id is deterministic so React keys stay stable across renders
+// (a random id would remount inputs and kill focus mid-typing).
 const materializeCaptions = (p: PhotoEntry): CaptionEntry[] => {
   if (p.captions && p.captions.length > 0) return p.captions;
   if (p.caption) {
-    return [{
-      id: `cap-legacy-${Math.random().toString(36).slice(2, 9)}`,
+    const cached = _legacyMaterializeCache.get(p.caption);
+    if (cached) return cached;
+    const fresh: CaptionEntry[] = [{
+      id: "cap-legacy",
       text: p.caption.text,
       x: 0.5,
       y: p.caption.position === "top" ? 0.08 : p.caption.position === "center" ? 0.5 : 0.92,
@@ -1147,8 +1160,10 @@ const materializeCaptions = (p: PhotoEntry): CaptionEntry[] => {
       fontFamily: "serif",
       fontSize: 32,
     }];
+    _legacyMaterializeCache.set(p.caption, fresh);
+    return fresh;
   }
-  return [];
+  return EMPTY_CAPTIONS;
 };
 
 const CAPTION_FONT_OPTIONS: { value: CaptionFont; label: string }[] = [
@@ -1181,19 +1196,25 @@ const CAPTION_BG_PRESETS: { label: string; bg?: CaptionBackground }[] = [
 
 const CAPTION_SPEAKER_PRESETS = ["예찬", "슬기"];
 
-const CaptionsEditor: React.FC<{
+// Typed CaptionsEditor takes photoIdx + stable top-level callbacks so we can
+// React.memo it and skip re-render when only another photo's state changes.
+type CaptionsEditorProps = {
+  photoIdx: number;
   captions: CaptionEntry[];
-  onAdd: (preset?: Partial<CaptionEntry>) => void;
-  onUpdate: (id: string, patch: Partial<CaptionEntry>) => void;
-  onDelete: (id: string) => void;
-  onOpenPositionEditor: () => void;
-}> = ({ captions, onAdd, onUpdate, onDelete, onOpenPositionEditor }) => {
+  onAdd: (idx: number, preset?: Partial<CaptionEntry>) => void;
+  onUpdate: (idx: number, capId: string, patch: Partial<CaptionEntry>) => void;
+  onDelete: (idx: number, capId: string) => void;
+  onOpenPositionEditor: (idx: number) => void;
+};
+
+const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, onAdd, onUpdate, onDelete, onOpenPositionEditor }) => {
   return (
-    <div className="captions-block" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
       {captions.map((cap) => {
         const bgIdx = CAPTION_BG_PRESETS.findIndex(
           (p) => (p.bg?.color ?? "none") === (cap.bg?.color ?? "none")
         );
+        const bgIsCustom = bgIdx < 0;
         return (
           <div key={cap.id} style={{
             border: "1px solid rgba(80,110,140,0.25)",
@@ -1204,33 +1225,35 @@ const CaptionsEditor: React.FC<{
               <input className="input input-sm" placeholder="화자 (예: 예찬)"
                 value={cap.speaker ?? ""}
                 list={`speaker-suggestions-${cap.id}`}
-                onChange={(e) => onUpdate(cap.id, { speaker: e.target.value || undefined })}
+                onChange={(e) => onUpdate(photoIdx, cap.id, { speaker: e.target.value || undefined })}
                 style={{ flex: 1, minWidth: 0 }} />
               <datalist id={`speaker-suggestions-${cap.id}`}>
                 {CAPTION_SPEAKER_PRESETS.map((s) => <option key={s} value={s} />)}
               </datalist>
-              <button className="btn-icon btn-icon--danger" onClick={() => onDelete(cap.id)}>&#10005;</button>
+              <button className="btn-icon btn-icon--danger" onClick={() => onDelete(photoIdx, cap.id)}>&#10005;</button>
             </div>
             <textarea className="input input-sm" placeholder="텍스트"
               value={cap.text} rows={2}
-              onChange={(e) => onUpdate(cap.id, { text: e.target.value })}
+              onChange={(e) => onUpdate(photoIdx, cap.id, { text: e.target.value })}
               style={{ resize: "vertical" }} />
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               <select className="select select-sm" value={cap.fontFamily ?? "serif"}
-                onChange={(e) => onUpdate(cap.id, { fontFamily: e.target.value as CaptionFont })}
+                onChange={(e) => onUpdate(photoIdx, cap.id, { fontFamily: e.target.value as CaptionFont })}
                 style={{ flex: 2, minWidth: 0 }}>
                 {CAPTION_FONT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               <input className="input input-sm" type="number" min={12} max={96} step={2}
                 value={cap.fontSize ?? 32}
-                onChange={(e) => onUpdate(cap.id, { fontSize: parseInt(e.target.value, 10) || 32 })}
+                onChange={(e) => onUpdate(photoIdx, cap.id, { fontSize: parseInt(e.target.value, 10) || 32 })}
                 title="크기 (px @ 1920×1080)" style={{ width: 60 }} />
-              <select className="select select-sm" value={bgIdx >= 0 ? bgIdx : 0}
+              <select className="select select-sm" value={bgIsCustom ? -1 : bgIdx}
                 onChange={(e) => {
-                  const preset = CAPTION_BG_PRESETS[parseInt(e.target.value, 10)];
-                  onUpdate(cap.id, { bg: preset.bg });
+                  const i = parseInt(e.target.value, 10);
+                  if (i < 0) return; // "커스텀" is display-only; no-op on select
+                  onUpdate(photoIdx, cap.id, { bg: CAPTION_BG_PRESETS[i].bg });
                 }}
                 title="배경">
+                {bgIsCustom && <option value={-1}>배경: 커스텀</option>}
                 {CAPTION_BG_PRESETS.map((p, i) => <option key={i} value={i}>배경: {p.label}</option>)}
               </select>
             </div>
@@ -1240,7 +1263,7 @@ const CaptionsEditor: React.FC<{
                 const active = Math.abs((cap.x ?? 0.5) - p.x) < 0.02 && Math.abs((cap.y ?? 0.92) - p.y) < 0.02 && (cap.align ?? "center") === p.align;
                 return (
                   <button key={p.label} className="btn btn-xs"
-                    onClick={() => onUpdate(cap.id, { x: p.x, y: p.y, align: p.align })}
+                    onClick={() => onUpdate(photoIdx, cap.id, { x: p.x, y: p.y, align: p.align })}
                     style={{
                       width: 22, minWidth: 22, padding: "2px 0",
                       opacity: active ? 1 : 0.6,
@@ -1251,7 +1274,7 @@ const CaptionsEditor: React.FC<{
                   </button>
                 );
               })}
-              <button className="btn btn-xs" onClick={onOpenPositionEditor}
+              <button className="btn btn-xs" onClick={() => onOpenPositionEditor(photoIdx)}
                 title="이미지에서 드래그해서 미세 조정">
                 드래그 편집
               </button>
@@ -1260,7 +1283,7 @@ const CaptionsEditor: React.FC<{
         );
       })}
       <button className="btn btn-xs btn-moment-add"
-        onClick={() => onAdd()}
+        onClick={() => onAdd(photoIdx)}
         style={{ alignSelf: "flex-start" }}>
         + 텍스트 추가
       </button>
@@ -1268,14 +1291,14 @@ const CaptionsEditor: React.FC<{
         <div style={{ display: "flex", gap: 4 }}>
           <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>빠른 시작:</span>
           <button className="btn btn-xs" onClick={() => {
-            onAdd({ speaker: "예찬", y: 0.82, align: "center" });
-            onAdd({ speaker: "슬기", y: 0.90, align: "center" });
+            onAdd(photoIdx, { speaker: "예찬", y: 0.82, align: "center" });
+            onAdd(photoIdx, { speaker: "슬기", y: 0.90, align: "center" });
           }}>대화 (예찬 / 슬기)</button>
         </div>
       )}
     </div>
   );
-};
+});
 
 // ─── Journey Map field editor ────────────────
 //   Keep labels in sync with JOURNEY_LOCATIONS in VideoComposition.tsx (5 fixed stops)
@@ -1331,6 +1354,195 @@ const JourneyMapFields: React.FC<{
   );
 };
 
+// ─── Presence chips (header) ─────────────────
+
+const PresenceChips: React.FC<{
+  me: { sessionId: string; name: string; color: string };
+  others: PresenceUser[];
+  photos: PhotoEntry[];
+  followSessionId: string | null;
+  onToggleFollow: (id: string) => void;
+  onRename: (next: string) => void;
+}> = ({ me, others, photos, followSessionId, onToggleFollow, onRename }) => {
+  const handleRename = () => {
+    const next = window.prompt("이름 변경", me.name);
+    if (next && next.trim()) onRename(next.trim());
+  };
+  return (
+    <div className="presence">
+      <button
+        className="presence-chip presence-chip--me"
+        style={{ ["--presence-color" as any]: me.color }}
+        title="클릭해서 이름 변경"
+        onClick={handleRename}
+      >
+        <span className="presence-dot" />
+        {me.name} (나)
+      </button>
+      {others.map((u) => {
+        const viewing = u.currentPhotoIdx !== null && u.currentPhotoIdx !== undefined
+          ? photos[u.currentPhotoIdx]?.tag ?? "—"
+          : "—";
+        const isFollowed = followSessionId === u.sessionId;
+        return (
+          <button
+            key={u.sessionId}
+            className={`presence-chip ${isFollowed ? "presence-chip--followed" : ""}`}
+            style={{ ["--presence-color" as any]: u.color }}
+            title={`${u.name} · ${viewing} 보는 중${isFollowed ? " · 팔로우 중 (클릭해 해제)" : " · 클릭해 팔로우"}`}
+            onClick={() => onToggleFollow(u.sessionId)}
+          >
+            <span className="presence-dot" />
+            {u.name}
+            {isFollowed && <span className="presence-follow-mark">↪</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Comments drawer (right side) ────────────
+
+const CommentsDrawer: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  comments: Comment[];
+  tab: "current" | "all" | "open";
+  setTab: (t: "current" | "all" | "open") => void;
+  draft: string;
+  setDraft: (s: string) => void;
+  currentPhotoTag: string | null;
+  authorName: string;
+  addComment: (input: NewCommentInput) => Promise<Comment | null>;
+  toggleResolved: (id: string, resolved: boolean) => Promise<boolean>;
+}> = ({ open, onClose, comments, tab, setTab, draft, setDraft, currentPhotoTag, authorName, addComment, toggleResolved }) => {
+  const [anchorChoice, setAnchorChoice] = useState<"photo" | "general">("photo");
+
+  const visible = useMemo(() => {
+    if (tab === "open") return comments.filter((c) => !c.resolved);
+    if (tab === "current") {
+      if (!currentPhotoTag) return comments.filter((c) => c.anchor_type === "general");
+      return comments.filter(
+        (c) =>
+          (c.anchor_type === "photo" && c.anchor_id === currentPhotoTag) ||
+          c.anchor_type === "general"
+      );
+    }
+    return comments;
+  }, [comments, tab, currentPhotoTag]);
+
+  const submit = async () => {
+    const body = draft.trim();
+    if (!body) return;
+    const anchor: "photo" | "general" =
+      anchorChoice === "photo" && currentPhotoTag ? "photo" : "general";
+    const input: NewCommentInput = {
+      anchor_type: anchor,
+      anchor_id: anchor === "photo" ? currentPhotoTag : null,
+      author_name: authorName,
+      body,
+    };
+    const row = await addComment(input);
+    if (row) setDraft("");
+  };
+
+  if (!open) return null;
+
+  return (
+    <aside className="comments-drawer" role="complementary">
+      <header className="comments-drawer-header">
+        <strong>코멘트</strong>
+        <button className="btn-icon" onClick={onClose} title="닫기">✕</button>
+      </header>
+      <div className="comments-tabs">
+        <button className={`tab ${tab === "current" ? "tab--active" : ""}`} onClick={() => setTab("current")}>
+          현재 사진
+        </button>
+        <button className={`tab ${tab === "open" ? "tab--active" : ""}`} onClick={() => setTab("open")}>
+          미해결
+        </button>
+        <button className={`tab ${tab === "all" ? "tab--active" : ""}`} onClick={() => setTab("all")}>
+          전체
+        </button>
+      </div>
+      <div className="comments-list">
+        {visible.length === 0 && (
+          <div className="comments-empty">아직 코멘트가 없습니다.</div>
+        )}
+        {visible.map((c) => (
+          <div key={c.id} className={`comment ${c.resolved ? "comment--resolved" : ""}`}>
+            <div className="comment-meta">
+              <span className="comment-author">{c.author_name}</span>
+              <span className="comment-time">
+                {new Date(c.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+              {c.anchor_type === "photo" && c.anchor_id && (
+                <span className="comment-anchor">📷 {c.anchor_id}</span>
+              )}
+              {c.anchor_type === "general" && (
+                <span className="comment-anchor comment-anchor--general">전체</span>
+              )}
+            </div>
+            <div className="comment-body">{c.body}</div>
+            <div className="comment-actions">
+              <button
+                className="btn btn-xs"
+                onClick={() => toggleResolved(c.id, !c.resolved)}
+                title={c.resolved ? "다시 열기" : "해결됨으로 표시"}
+              >
+                {c.resolved ? "↺ 열기" : "✓ 해결"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="comments-composer">
+        <div className="composer-anchor-row">
+          <label>
+            <input
+              type="radio"
+              name="comment-anchor"
+              checked={anchorChoice === "photo" && !!currentPhotoTag}
+              disabled={!currentPhotoTag}
+              onChange={() => setAnchorChoice("photo")}
+            />
+            현재 사진 ({currentPhotoTag ?? "없음"})
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="comment-anchor"
+              checked={anchorChoice === "general" || !currentPhotoTag}
+              onChange={() => setAnchorChoice("general")}
+            />
+            전체
+          </label>
+        </div>
+        <textarea
+          className="composer-textarea"
+          placeholder="코멘트..."
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          rows={3}
+        />
+        <div className="composer-actions">
+          <span className="composer-hint">⌘/Ctrl + Enter</span>
+          <button className="btn btn-save" onClick={submit} disabled={!draft.trim()}>
+            전송
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+};
+
 // ─── App ─────────────────────────────────────
 
 export const App: React.FC = () => {
@@ -1350,15 +1562,48 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  // Realtime collaboration state
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentTab, setCommentTab] = useState<"current" | "all" | "open">("current");
+  const [commentDraft, setCommentDraft] = useState("");
+  const [followSessionId, setFollowSessionId] = useState<string | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipFirstSave = useRef(true);
+  // Points at the VideoConfig object that was last applied from a peer broadcast.
+  // The auto-save and broadcast effects skip when config === this ref value,
+  // preventing a remote edit from being echoed back or re-saved by this client.
+  const remoteAppliedConfigRef = useRef<VideoConfig | null>(null);
+  const lastFollowedIdxRef = useRef<number | null>(null);
 
   // ── Derived values ──────────────────────────
   const currentPhotoIdx = getPhotoIndexAtFrame(currentFrame, config);
   const currentPhoto = currentPhotoIdx !== null ? config.photos[currentPhotoIdx] : null;
   const totalFrames = computeTotalFrames(config);
   const totalSec = totalFrames / config.fps;
+
+  // ── Realtime: identity, broadcast+presence, comments ──
+  const identity = useDisplayIdentity();
+  const { others } = useEditorChannel({
+    identity,
+    config,
+    setConfig,
+    loading,
+    currentPhotoIdx,
+    remoteAppliedConfigRef,
+  });
+  const { comments, addComment, toggleResolved } = useComments();
+
+  // Unresolved comment count per photo.tag (+ "__general__" bucket).
+  const commentCountByTag = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of comments) {
+      if (c.resolved) continue;
+      const key = c.anchor_type === "photo" && c.anchor_id ? c.anchor_id : "__general__";
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return map;
+  }, [comments]);
 
   // ── Effects ─────────────────────────────────
   useEffect(() => {
@@ -1389,6 +1634,10 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (loading) return;
     if (skipFirstSave.current) { skipFirstSave.current = false; return; }
+    // Skip when this config arrived from a peer broadcast — the peer that
+    // originated the edit will save it; duplicate saves waste requests and
+    // can lose writes under concurrent edits.
+    if (config === remoteAppliedConfigRef.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       setSaveStatus("saving");
@@ -1399,6 +1648,24 @@ export const App: React.FC = () => {
     }, 2000);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [config, loading]);
+
+  // ── Follow mode: seek Player to followed peer's photo ──
+  useEffect(() => {
+    if (!followSessionId) { lastFollowedIdxRef.current = null; return; }
+    const target = others.find((o) => o.sessionId === followSessionId);
+    if (!target || target.currentPhotoIdx === null || target.currentPhotoIdx === undefined) return;
+    if (target.currentPhotoIdx === lastFollowedIdxRef.current) return;
+    lastFollowedIdxRef.current = target.currentPhotoIdx;
+    const frame = getPhotoStartFrame(target.currentPhotoIdx, config);
+    try { playerRef.current?.seekTo(frame); } catch {}
+  }, [others, followSessionId, config]);
+
+  // Drop follow when the followed user leaves.
+  useEffect(() => {
+    if (followSessionId && !others.some((o) => o.sessionId === followSessionId)) {
+      setFollowSessionId(null);
+    }
+  }, [others, followSessionId]);
 
   // ── Preload ALL images upfront so polaroid pairs sync and collages don't pop in late ──
   // Includes: photos, collage slot photos. (Interstitial assets like letters don't use images.)
@@ -1767,7 +2034,22 @@ export const App: React.FC = () => {
           {saveStatus === "saved" && <span className="save-dot saved">저장 완료</span>}
           {saveStatus === "idle" && <span className="save-dot idle">자동 저장</span>}
         </div>
+        <PresenceChips
+          me={{ sessionId: identity.sessionId, name: identity.name, color: identity.color }}
+          others={others}
+          photos={config.photos}
+          followSessionId={followSessionId}
+          onToggleFollow={(id) => setFollowSessionId((cur) => (cur === id ? null : id))}
+          onRename={identity.rename}
+        />
         <div className="header-actions">
+          <button
+            className="btn btn-ghost btn-comments"
+            onClick={() => setCommentsOpen((v) => !v)}
+            title="코멘트"
+          >
+            💬 {comments.filter((c) => !c.resolved).length > 0 ? comments.filter((c) => !c.resolved).length : ""}
+          </button>
           <button
             className="theme-toggle"
             onClick={() => setTheme((t) => t === "dark" ? "light" : "dark")}
@@ -1785,6 +2067,20 @@ export const App: React.FC = () => {
           <button className="btn btn-ghost" onClick={resetConfig}>초기화</button>
         </div>
       </header>
+
+      <CommentsDrawer
+        open={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        comments={comments}
+        tab={commentTab}
+        setTab={setCommentTab}
+        draft={commentDraft}
+        setDraft={setCommentDraft}
+        currentPhotoTag={currentPhoto?.tag ?? null}
+        authorName={identity.name}
+        addComment={addComment}
+        toggleResolved={toggleResolved}
+      />
 
       <div className="main">
         <div className="player-wrap">
@@ -2086,13 +2382,24 @@ export const App: React.FC = () => {
                       );
                     })()}
 
-                    {actPhotos.map(({ photo, idx }, localIdx) => (
+                    {actPhotos.map(({ photo, idx }, localIdx) => {
+                      const openCount = commentCountByTag.get(photo.tag) ?? 0;
+                      return (
                       <div key={idx} className="photo-card">
                         <div className="thumb-wrap" onClick={() => setEditorTarget(idx)} title="이미지 편집">
                           <img src={photoSrc(photo.file)} alt={photo.tag} className="photo-thumb" />
                           <div className="focal-dot" style={{ left: `${photo.focalPoint.x * 100}%`, top: `${photo.focalPoint.y * 100}%` }} />
                           {(photo.spotlights?.length ?? 0) > 0 && (
                             <div className="spot-badge">{photo.spotlights?.length}</div>
+                          )}
+                          {openCount > 0 && (
+                            <div
+                              className="comment-badge"
+                              title={`미해결 코멘트 ${openCount}건`}
+                              onClick={(e) => { e.stopPropagation(); setCommentsOpen(true); setCommentTab("current"); setEditorTarget(idx); }}
+                            >
+                              💬 {openCount}
+                            </div>
                           )}
                           <div className="thumb-hint">편집</div>
                         </div>
@@ -2173,11 +2480,12 @@ export const App: React.FC = () => {
                             </div>
                           )}
                           <CaptionsEditor
+                            photoIdx={idx}
                             captions={materializeCaptions(photo)}
-                            onAdd={(preset) => addCaptionEntry(idx, preset)}
-                            onUpdate={(capId, patch) => updateCaptionEntry(idx, capId, patch)}
-                            onDelete={(capId) => deleteCaptionEntry(idx, capId)}
-                            onOpenPositionEditor={() => setEditorTarget(idx)}
+                            onAdd={addCaptionEntry}
+                            onUpdate={updateCaptionEntry}
+                            onDelete={deleteCaptionEntry}
+                            onOpenPositionEditor={setEditorTarget}
                           />
                           {/* Moment cards attached to this photo (inserted BEFORE next photo) */}
                           {(config.moments ?? []).filter((m) => m.afterPhotoIndex === idx).map((m) => (
@@ -2306,7 +2614,8 @@ export const App: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </section>
