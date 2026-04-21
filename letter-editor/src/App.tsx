@@ -118,11 +118,12 @@ const MIN_CROP = 0.1; // minimum width/height of crop rect
 const ImageEditorModal: React.FC<{
   photo: PhotoEntry;
   kenBurnsAmount: number;
+  initialMode?: EditorMode;
   onUpdatePhoto: (patch: Partial<PhotoEntry>) => void;
   onUpdateKenBurnsAmount: (val: number) => void;
   onClose: () => void;
-}> = ({ photo, kenBurnsAmount, onUpdatePhoto, onUpdateKenBurnsAmount, onClose }) => {
-  const [mode, setMode] = useState<EditorMode>("focal");
+}> = ({ photo, kenBurnsAmount, initialMode, onUpdatePhoto, onUpdateKenBurnsAmount, onClose }) => {
+  const [mode, setMode] = useState<EditorMode>(initialMode ?? "focal");
   const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -1602,6 +1603,7 @@ export const App: React.FC = () => {
   const [openActs, setOpenActs] = useState<Set<number>>(new Set());
   const [openEnding, setOpenEnding] = useState(false);
   const [editorTarget, setEditorTarget] = useState<number | null>(null);
+  const [editorInitialMode, setEditorInitialMode] = useState<EditorMode | null>(null);
   const [panelTab, setPanelTab] = useState<"edit" | "assets">("edit");
   const [assetTarget, setAssetTarget] = useState<"global" | "current">("current");
   const [currentFrame, setCurrentFrame] = useState(0);
@@ -1678,7 +1680,14 @@ export const App: React.FC = () => {
   // ── Load from Supabase on mount (공유 편집 모드) ─────────────
   useEffect(() => {
     loadConfig().then((saved) => {
-      if (saved) setConfig(saved);
+      if (saved) {
+        // Mark the loaded config as "remote-applied" so the broadcast effect
+        // skips sending it. Without this, each tab that opens would immediately
+        // broadcast its freshly-loaded (potentially stale) config and wipe any
+        // unsaved edits other peers are currently typing.
+        remoteAppliedConfigRef.current = saved;
+        setConfig(saved);
+      }
       setLoading(false);
     });
   }, []);
@@ -1738,6 +1747,13 @@ export const App: React.FC = () => {
       img.src = url.startsWith("http") ? url : `/${url}`;
     });
   }, [loading, config.photos, config.collages]);
+
+  // Open the image editor modal from the caption list's "드래그 편집" button —
+  // force the caption tab so the drag UI is immediately usable.
+  const openCaptionPositionEditor = useCallback((idx: number) => {
+    setEditorInitialMode("caption");
+    setEditorTarget(idx);
+  }, []);
 
   // ── updaters ────────────────────────────────
 
@@ -2455,19 +2471,27 @@ export const App: React.FC = () => {
                       if (firstIdx === undefined) return null;
                       const actStartIdx = firstIdx - 1;
                       const actStartMaps = (config.journeyMaps ?? []).filter((m) => m.afterPhotoIndex === actStartIdx);
+                      const actStartChats = (config.chatInterludes ?? []).filter((ch) => ch.afterPhotoIndex === actStartIdx);
                       return (
                         <div className="moment-editor" style={{ borderColor: "#5a7a8a", borderStyle: "dashed", marginBottom: 10 }}>
                           <div className="moment-editor-header">
                             <span className="moment-editor-label" style={{ color: "#6a8aa0" }}>
                               ▸ Act {ROMAN[act] ?? act} 시작 직후 (타이틀 카드 다음)
                             </span>
-                            <button className="btn btn-xs btn-moment-add"
-                              onClick={() => addJourneyMapAfter(actStartIdx, act)}
-                              title="이 Act 시작 직후에 여정 지도 삽입">
-                              + 지도
-                            </button>
+                            <div style={{ display: "flex", gap: 4 }}>
+                              <button className="btn btn-xs btn-moment-add"
+                                onClick={() => addJourneyMapAfter(actStartIdx, act)}
+                                title="이 Act 시작 직후에 여정 지도 삽입">
+                                + 지도
+                              </button>
+                              <button className="btn btn-xs btn-moment-add"
+                                onClick={() => addChatAfter(actStartIdx)}
+                                title="이 Act 시작 직후에 대화 씬 삽입">
+                                + 대화
+                              </button>
+                            </div>
                           </div>
-                          {actStartMaps.length === 0 && (
+                          {actStartMaps.length === 0 && actStartChats.length === 0 && (
                             <div style={{ fontSize: 11, color: "var(--text-muted)", padding: "4px 0" }}>
                               아직 인터스티셜이 없습니다.
                             </div>
@@ -2484,6 +2508,45 @@ export const App: React.FC = () => {
                                 photosByAct={photosByAct}
                                 updateJourneyMap={updateJourneyMap}
                               />
+                            </div>
+                          ))}
+                          {actStartChats.map((ch) => (
+                            <div key={ch.id} className="moment-editor" style={{ borderColor: "#3a7a8a", marginTop: 8 }}>
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label" style={{ color: "#5aa0b0" }}>대화 씬 ({ch.messages.length}개 메시지)</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteChat(ch.id)}>&#10005;</button>
+                              </div>
+                              <input className="input input-sm" placeholder="상단 헤더 (예: 성모병원 · 1988)" value={ch.header ?? ""}
+                                onChange={(e) => updateChat(ch.id, { header: e.target.value })} />
+                              {ch.messages.map((m, mi) => (
+                                <div key={mi} style={{ display: "flex", flexDirection: "column", gap: 4, padding: 6, background: "var(--bg-surface)", borderRadius: 4 }}>
+                                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                    <input className="input input-sm" placeholder="화자" value={m.speaker}
+                                      onChange={(e) => updateChatMessage(ch.id, mi, { speaker: e.target.value })}
+                                      style={{ flex: 1 }} />
+                                    <select className="select select-sm" value={m.side ?? "left"}
+                                      onChange={(e) => updateChatMessage(ch.id, mi, { side: e.target.value as "left" | "right" })}
+                                      style={{ flex: 1 }} title="버블 방향">
+                                      <option value="left">← 왼쪽</option>
+                                      <option value="right">오른쪽 →</option>
+                                    </select>
+                                    <button className="btn-icon btn-icon--danger" onClick={() => removeChatMessage(ch.id, mi)}
+                                      disabled={ch.messages.length <= 1} title="메시지 삭제">&#10005;</button>
+                                  </div>
+                                  <textarea className="input input-sm" placeholder="메시지 (비우면 ... 타이핑 인디케이터)"
+                                    value={m.text} rows={2}
+                                    onChange={(e) => updateChatMessage(ch.id, mi, { text: e.target.value })} />
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <button className="btn btn-xs btn-moment-add" onClick={() => addChatMessage(ch.id)} style={{ flex: 2 }}>
+                                  + 메시지 추가
+                                </button>
+                                <input className="input input-sm" type="number" step="0.5" min="4" max="30"
+                                  value={ch.durationSec ?? 12.0}
+                                  onChange={(e) => updateChat(ch.id, { durationSec: parseFloat(e.target.value) })}
+                                  style={{ flex: 1 }} title="지속(초)" />
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -2593,7 +2656,7 @@ export const App: React.FC = () => {
                             onAdd={addCaptionEntry}
                             onUpdate={updateCaptionEntry}
                             onDelete={deleteCaptionEntry}
-                            onOpenPositionEditor={setEditorTarget}
+                            onOpenPositionEditor={openCaptionPositionEditor}
                           />
                           {/* Moment cards attached to this photo (inserted BEFORE next photo) */}
                           {(config.moments ?? []).filter((m) => m.afterPhotoIndex === idx).map((m) => (
@@ -2667,8 +2730,10 @@ export const App: React.FC = () => {
                                 onChange={(e) => updateLetter(l.id, { l2: e.target.value })} />
                             </div>
                           ))}
-                          {/* Chat interlude editor */}
-                          {(config.chatInterludes ?? []).filter((ch) => ch.afterPhotoIndex === idx).map((ch) => (
+                          {/* Chat interlude editor — skip chats at act-start positions (rendered in Act-start panel above) */}
+                          {(config.chatInterludes ?? [])
+                            .filter((ch) => ch.afterPhotoIndex === idx && !actStartIndices.has(idx))
+                            .map((ch) => (
                             <div key={ch.id} className="moment-editor" style={{ borderColor: "#3a7a8a" }}>
                               <div className="moment-editor-header">
                                 <span className="moment-editor-label" style={{ color: "#5aa0b0" }}>대화 씬 ({ch.messages.length}개 메시지)</span>
@@ -2819,9 +2884,10 @@ export const App: React.FC = () => {
         <ImageEditorModal
           photo={config.photos[editorTarget]}
           kenBurnsAmount={config.kenBurnsAmount}
+          initialMode={editorInitialMode ?? undefined}
           onUpdatePhoto={(patch) => updatePhoto(editorTarget, patch)}
           onUpdateKenBurnsAmount={(val) => setConfig((c) => ({ ...c, kenBurnsAmount: val }))}
-          onClose={() => setEditorTarget(null)}
+          onClose={() => { setEditorTarget(null); setEditorInitialMode(null); }}
         />
       )}
     </div>

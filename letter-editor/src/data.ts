@@ -797,6 +797,24 @@ export const defaultConfig: VideoConfig = {
       ],
       durationSec: 12.0,
     },
+    {
+      id: "chat-2",
+      afterPhotoIndex: 11,   // Act II 타이틀 + jm-2 여정 지도 직후, 경복궁 직전
+      header: "분당 · 1994",
+      messages: [
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "내 첫 돌부터 함께 했었다니! 우리는 정말 어렸을 때부터 평생을 함께 자라왔네",
+        },
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",  // 아직 공백
+        },
+      ],
+      durationSec: 12.0,
+    },
   ],
   collages: [
     // Act I 엔딩 북엔드 — Act 1 마지막 페어(예찬 그림, idx 11) 뒤, Act II 타이틀 앞에 삽입.
