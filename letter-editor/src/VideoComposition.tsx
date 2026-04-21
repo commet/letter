@@ -1672,6 +1672,7 @@ const SplitScene: React.FC<{
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      position: "relative", // scope SpotlightOverlay's AbsoluteFill to the frame
     };
     // Deterministic washi tape selection per photo based on tag
     const tapes = [
@@ -1729,6 +1730,9 @@ const SplitScene: React.FC<{
                   width: "auto", height: "auto",
                   objectFit: "contain", display: "block",
                 }} />
+                {left.spotlights?.length > 0 && (
+                  <SpotlightOverlay spotlights={left.spotlights} />
+                )}
               </div>
               <div style={captionStyle}>{leftLabel}</div>
             </div>
@@ -1740,6 +1744,9 @@ const SplitScene: React.FC<{
                   width: "auto", height: "auto",
                   objectFit: "contain", display: "block",
                 }} />
+                {right.spotlights?.length > 0 && (
+                  <SpotlightOverlay spotlights={right.spotlights} />
+                )}
               </div>
               <div style={captionStyle}>{rightLabel}</div>
             </div>
@@ -1768,6 +1775,7 @@ const SplitScene: React.FC<{
       border: `6px solid ${GOLD_SOFT}`,
       boxShadow: "0 16px 56px rgba(60,40,15,0.4), inset 0 0 0 1px rgba(255,255,255,0.5)",
       transform: `scale(${scale})`,
+      position: "relative", // scope SpotlightOverlay's AbsoluteFill to the cameo
     };
     const nameStyle: React.CSSProperties = {
       marginTop: 24, textAlign: "center",
@@ -1792,6 +1800,9 @@ const SplitScene: React.FC<{
                 width: "100%", height: "100%", objectFit: "cover",
                 transform: `scale(${leftKen.scale}) translate(${leftKen.tx * 100}%, ${leftKen.ty * 100}%)`,
               }} />
+              {left.spotlights?.length > 0 && (
+                <SpotlightOverlay spotlights={left.spotlights} />
+              )}
             </div>
             <div style={nameStyle}>{leftLabel}</div>
           </div>
@@ -1801,6 +1812,9 @@ const SplitScene: React.FC<{
                 width: "100%", height: "100%", objectFit: "cover",
                 transform: `scale(${rightKen.scale}) translate(${rightKen.tx * 100}%, ${rightKen.ty * 100}%)`,
               }} />
+              {right.spotlights?.length > 0 && (
+                <SpotlightOverlay spotlights={right.spotlights} />
+              )}
             </div>
             <div style={nameStyle}>{rightLabel}</div>
           </div>
@@ -1824,9 +1838,19 @@ const SplitScene: React.FC<{
 
   return (
     <AbsoluteFill style={{ opacity, backgroundColor: "#000", display: "flex", flexDirection: "row" }}>
-      <div style={half}><Img src={srcOf(left)} style={img} /></div>
+      <div style={half}>
+        <Img src={srcOf(left)} style={img} />
+        {left.spotlights?.length > 0 && (
+          <SpotlightOverlay spotlights={left.spotlights} />
+        )}
+      </div>
       <div style={{ width: gap, background: "#000" }} />
-      <div style={half}><Img src={srcOf(right)} style={img} /></div>
+      <div style={half}>
+        <Img src={srcOf(right)} style={img} />
+        {right.spotlights?.length > 0 && (
+          <SpotlightOverlay spotlights={right.spotlights} />
+        )}
+      </div>
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
       {resolveCaptions(left).length > 0 && (
