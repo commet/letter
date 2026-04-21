@@ -1183,6 +1183,81 @@ body {
   pointer-events: none;
 }
 
+/* ─── Name selector modal ─── */
+.name-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.name-modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 32px;
+  min-width: 320px;
+  max-width: 92vw;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.name-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.name-modal-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+.name-modal-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.btn-name-preset {
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--gold-soft);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 80px;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-name-preset:hover {
+  background: var(--gold);
+  color: #fff;
+}
+.btn-name-custom-toggle {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+.name-modal-custom {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.name-modal-custom .input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 14px;
+}
+.name-modal-custom .input:focus { outline: none; border-color: var(--gold); }
+
 /* ─── Presence chips (header) ─── */
 .presence {
   display: flex;

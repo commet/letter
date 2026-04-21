@@ -22,13 +22,9 @@ function pickColor(seed: string): string {
 }
 
 function loadName(): string {
-  if (typeof window === "undefined") return "익명";
+  if (typeof window === "undefined") return "";
   const existing = localStorage.getItem(STORAGE_NAME_KEY);
-  if (existing && existing.trim()) return existing.trim();
-  const entered = window.prompt("이 창에서 사용할 이름을 입력하세요 (다른 사람에게 표시됩니다)", "");
-  const name = (entered ?? "").trim() || `익명-${Math.random().toString(36).slice(2, 5)}`;
-  localStorage.setItem(STORAGE_NAME_KEY, name);
-  return name;
+  return existing && existing.trim() ? existing.trim() : "";
 }
 
 export type Identity = {
@@ -80,6 +76,8 @@ type UseEditorChannelArgs = {
   // Shared ref: set to the config object that was applied from a remote broadcast.
   // App.tsx's auto-save effect reads this to skip redundant saves of remote edits.
   remoteAppliedConfigRef: React.MutableRefObject<VideoConfig | null>;
+  // When false, don't join the channel. Used to gate on "user picked a display name".
+  enabled?: boolean;
 };
 
 const BROADCAST_INTERVAL_MS = 150;
@@ -91,6 +89,7 @@ export function useEditorChannel({
   loading,
   currentPhotoIdx,
   remoteAppliedConfigRef,
+  enabled = true,
 }: UseEditorChannelArgs): { others: PresenceUser[] } {
   const { sessionId, name, color } = identity;
   const [others, setOthers] = useState<PresenceUser[]>([]);
@@ -105,8 +104,9 @@ export function useEditorChannel({
   const presenceRef = useRef({ sessionId, name, color, currentPhotoIdx });
   presenceRef.current = { sessionId, name, color, currentPhotoIdx };
 
-  // Set up the channel once (per session).
+  // Set up the channel once (per session). Skip until enabled (e.g., name picked).
   useEffect(() => {
+    if (!enabled) return;
     const channel = supabase.channel(`letter-editor:${CONFIG_ID}`, {
       config: {
         broadcast: { self: false },
@@ -150,7 +150,7 @@ export function useEditorChannel({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  }, [sessionId, enabled]);
 
   // Broadcast config changes (leading + trailing throttle).
   useEffect(() => {

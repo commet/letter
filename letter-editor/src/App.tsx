@@ -1354,6 +1354,55 @@ const JourneyMapFields: React.FC<{
   );
 };
 
+// ─── Name selector modal (first-visit gate) ──
+
+const NAME_PRESETS = ["예찬", "슬기", "향기"];
+
+const NameSelectorModal: React.FC<{ onSelect: (name: string) => void }> = ({ onSelect }) => {
+  const [customMode, setCustomMode] = useState(false);
+  const [customValue, setCustomValue] = useState("");
+
+  const submitCustom = () => {
+    const v = customValue.trim();
+    if (v) onSelect(v);
+  };
+
+  return (
+    <div className="name-modal-backdrop">
+      <div className="name-modal">
+        <h2 className="name-modal-title">이름을 선택하세요</h2>
+        <p className="name-modal-sub">다른 사람에게 이 이름으로 표시됩니다.</p>
+        <div className="name-modal-buttons">
+          {NAME_PRESETS.map((p) => (
+            <button key={p} className="btn btn-name-preset" onClick={() => onSelect(p)}>
+              {p}
+            </button>
+          ))}
+        </div>
+        {!customMode ? (
+          <button className="btn btn-ghost btn-name-custom-toggle" onClick={() => setCustomMode(true)}>
+            기타 (직접 입력)
+          </button>
+        ) : (
+          <div className="name-modal-custom">
+            <input
+              className="input"
+              autoFocus
+              value={customValue}
+              onChange={(e) => setCustomValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") submitCustom(); }}
+              placeholder="이름 입력"
+            />
+            <button className="btn btn-save" onClick={submitCustom} disabled={!customValue.trim()}>
+              확인
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Presence chips (header) ─────────────────
 
 const PresenceChips: React.FC<{
@@ -1584,6 +1633,7 @@ export const App: React.FC = () => {
 
   // ── Realtime: identity, broadcast+presence, comments ──
   const identity = useDisplayIdentity();
+  const hasName = !!identity.name;
   const { others } = useEditorChannel({
     identity,
     config,
@@ -1591,6 +1641,7 @@ export const App: React.FC = () => {
     loading,
     currentPhotoIdx,
     remoteAppliedConfigRef,
+    enabled: hasName,
   });
   const { comments, addComment, toggleResolved } = useComments();
 
@@ -2020,12 +2071,14 @@ export const App: React.FC = () => {
     return (
       <div className="app" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ color: "#e8d09b", fontSize: 18 }}>불러오는 중...</div>
+        {!hasName && <NameSelectorModal onSelect={identity.rename} />}
       </div>
     );
   }
 
   return (
     <div className="app">
+      {!hasName && <NameSelectorModal onSelect={identity.rename} />}
       <header className="header">
         <h1 className="logo">식전영상 에디터</h1>
         <div className="header-info">
