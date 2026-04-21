@@ -24,10 +24,25 @@ export async function loadConfig(): Promise<VideoConfig | null> {
   const raw = data.config as Partial<VideoConfig>;
   if (!raw.photos || raw.photos.length === 0) return null;
 
+  // Merge chatInterludes by ID — if a default's id is missing from raw, add it.
+  // Preserves user edits to existing chats AND user-added new chats.
+  // Rationale: adding new default chat scenes in code should surface on next load
+  // even if the DB row already has a chatInterludes key (which otherwise fully
+  // overrides the default via the spread below).
+  const rawChats = raw.chatInterludes ?? [];
+  const existingChatIds = new Set(rawChats.map((c) => c.id));
+  const missingDefaultChats = (defaultConfig.chatInterludes ?? []).filter(
+    (c) => !existingChatIds.has(c.id)
+  );
+  const mergedChats = [...rawChats, ...missingDefaultChats].sort(
+    (a, b) => a.afterPhotoIndex - b.afterPhotoIndex
+  );
+
   // Merge with defaults to ensure all fields exist (handles schema evolution)
   return {
     ...defaultConfig,
     ...raw,
+    chatInterludes: mergedChats,
     photos: raw.photos.map((p) => {
       // Fill missing fields via nullish fallback instead of spread-over-spread.
       // (Avoids TS2783 duplicate-key warnings and makes "use p's value if set" explicit.)

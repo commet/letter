@@ -841,6 +841,25 @@ export const defaultConfig: VideoConfig = {
       ],
       durationSec: 12.0,
     },
+    {
+      id: "chat-4",
+      afterPhotoIndex: 40,   // Act IV 타이틀 + jm-4 (Across the Ocean) 직후, 예찬 군입대 직전
+      header: "바다를 사이에 두고 · 2016 — 2025",
+      // 서사 미정 — 장거리 시기의 감정 톤 결정 후 채우면 됨.
+      messages: [
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "",
+        },
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",
+        },
+      ],
+      durationSec: 12.0,
+    },
   ],
   collages: [
     // Act I 엔딩 북엔드 — Act 1 마지막 페어(예찬 그림, idx 11) 뒤, Act II 타이틀 앞에 삽입.
