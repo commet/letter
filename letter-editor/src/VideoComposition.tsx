@@ -25,6 +25,7 @@ import {
   BackgroundStyle,
   JourneyMap as JourneyMapConfig,
   LetterInterlude as LetterInterludeConfig,
+  ChatInterlude as ChatInterludeConfig,
   Collage as CollageConfig,
   CaptionEntry,
   CAPTION_FONT_STACK,
@@ -490,7 +491,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
       fontStyle: font.fontStyle,
       letterSpacing: font.letterSpacing,
       fontSize: cap.fontSize ?? 32,
-      color: cap.color ?? (hasBg ? "#f5ecd7" : "#f5ecd7"),
+      color: cap.color ?? "#f5ecd7",
       whiteSpace: "pre-wrap",
       lineHeight: 1.35,
       ...bgStyle,
@@ -1179,6 +1180,187 @@ const LetterInterludeScene: React.FC<{
 };
 
 // ─────────────────────────────────────────────
+// Chat Interlude Scene — messenger-style with typing animation
+// ─────────────────────────────────────────────
+
+const ChatInterludeScene: React.FC<{
+  config: ChatInterludeConfig;
+  dur: number;
+  overlayType: OverlayType;
+  particlesType: ParticleType;
+}> = ({ config, dur, overlayType, particlesType }) => {
+  const frame = useCurrentFrame();
+  const t = Math.max(0, Math.min(1, frame / dur));
+
+  // Background + overall fade
+  const bgOp = interpolate(t, [0, 0.06, 0.94, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+
+  // Header appears early, stays until end
+  const headerOp = interpolate(t, [0.04, 0.10, 0.94, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+
+  // Distribute messages across the bulk of the duration.
+  // Each message gets an equal slot; within its slot: 80% typing, 20% hold.
+  const msgs = config.messages ?? [];
+  const msgCount = Math.max(1, msgs.length);
+  const bandStart = 0.14;
+  const bandEnd = 0.92;
+  const perMsg = (bandEnd - bandStart) / msgCount;
+
+  // Cursor blink (for the active typing message).
+  const cursorOn = Math.floor(frame / 9) % 2 === 0;
+
+  return (
+    <AbsoluteFill>
+      <PaperBackground seed={13} />
+      {/* Subtle darken to lift bubbles off the paper */}
+      <AbsoluteFill style={{
+        background: "radial-gradient(1400px 900px at 50% 55%, rgba(42,36,32,0) 0%, rgba(42,36,32,0.12) 70%, rgba(42,36,32,0.22) 100%)",
+        opacity: bgOp,
+      }} />
+
+      {/* Header */}
+      {config.header && (
+        <div style={{
+          position: "absolute",
+          top: 96,
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
+          fontStyle: "italic",
+          fontSize: 34,
+          letterSpacing: "0.22em",
+          color: INK_SOFT,
+          opacity: headerOp,
+        }}>
+          <span style={{ padding: "0 18px" }}>— {config.header} —</span>
+        </div>
+      )}
+
+      {/* Message column */}
+      <div style={{
+        position: "absolute",
+        top: 200,
+        left: 260,
+        right: 260,
+        bottom: 140,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: 44,
+      }}>
+        {msgs.map((msg, i) => {
+          const mStart = bandStart + perMsg * i;
+          const mEnd = mStart + perMsg;
+          // Local progress inside this message's slot (0 → 1).
+          const localT = interpolate(t, [mStart, mEnd], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+          // Bubble rise-in at the very start of the slot.
+          const appear = interpolate(t, [mStart, mStart + 0.02], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+          const chars = Array.from(msg.text ?? "");
+          // Typing occupies first 80% of the slot; rest is hold.
+          const typeFraction = 0.80;
+          const typeProgress = interpolate(localT, [0, typeFraction], [0, chars.length], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+          const visibleCount = Math.floor(typeProgress);
+          const isTyping = localT > 0 && localT < typeFraction && chars.length > 0;
+          const isEmpty = chars.length === 0;
+          const isRight = msg.side === "right";
+
+          return (
+            <div key={i} style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: isRight ? "flex-end" : "flex-start",
+              opacity: appear,
+              transform: `translateY(${(1 - appear) * 14}px)`,
+            }}>
+              {/* Speaker label */}
+              <div style={{
+                fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
+                fontSize: 22,
+                color: INK_SOFT,
+                marginBottom: 8,
+                padding: isRight ? "0 14px 0 0" : "0 0 0 14px",
+                letterSpacing: "0.08em",
+              }}>
+                {msg.speaker}
+              </div>
+              {/* Bubble */}
+              <div style={{
+                maxWidth: "74%",
+                padding: "22px 32px",
+                background: isRight
+                  ? "linear-gradient(135deg, #efd78a 0%, #dcb85c 100%)"   // 오른쪽 — 금빛
+                  : "rgba(255, 252, 240, 0.96)",                           // 왼쪽 — 크림
+                color: INK,
+                border: isRight
+                  ? "1px solid rgba(168,136,72,0.55)"
+                  : "1px solid rgba(58,42,24,0.18)",
+                borderRadius: 28,
+                borderTopRightRadius: isRight ? 8 : 28,
+                borderTopLeftRadius: isRight ? 28 : 8,
+                boxShadow: "0 6px 20px rgba(58,42,24,0.18), 0 1px 3px rgba(58,42,24,0.10)",
+                fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif",
+                fontSize: 38,
+                lineHeight: 1.48,
+                fontWeight: 500,
+                letterSpacing: "-0.005em",
+                wordBreak: "keep-all",
+              }}>
+                {isEmpty ? (
+                  // Typing indicator — three bouncing dots
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 6px" }}>
+                    {[0, 1, 2].map((di) => {
+                      const phase = (frame / 8 + di * 0.55) % 2;
+                      const dotY = phase < 1 ? -Math.sin(phase * Math.PI) * 10 : 0;
+                      const dotOp = phase < 1 ? 0.45 + Math.sin(phase * Math.PI) * 0.55 : 0.45;
+                      return (
+                        <div key={di} style={{
+                          width: 16, height: 16, borderRadius: "50%",
+                          background: INK,
+                          transform: `translateY(${dotY}px)`,
+                          opacity: dotOp,
+                        }} />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <>
+                    {chars.slice(0, visibleCount).join("")}
+                    {isTyping && cursorOn && (
+                      <span style={{
+                        display: "inline-block",
+                        width: 3,
+                        height: 36,
+                        background: INK,
+                        marginLeft: 6,
+                        verticalAlign: "text-bottom",
+                        opacity: 0.8,
+                      }} />
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Polaroid Collage Scene (Claude Design P2-5)
 // ─────────────────────────────────────────────
 
@@ -1718,13 +1900,13 @@ const EndingScene: React.FC<{
   // Calligraphy-style ending (Claude Design P1-1).
   // Per-character wipe reveal with staggered delays.
   // Timing (seconds, at 30fps):
-  //   0.50s → 1st bride char
-  //   1.10s → 2nd bride char
-  //   1.70s → 3rd bride char
+  //   0.50s → 1st groom char
+  //   1.10s → 2nd groom char
+  //   1.70s → 3rd groom char
   //   2.60s → heart
-  //   3.20s → 1st groom char
-  //   3.80s → 2nd groom char
-  //   4.40s → 3rd groom char
+  //   3.20s → 1st bride char
+  //   3.80s → 2nd bride char
+  //   4.40s → 3rd bride char
   //   4.70s → date caption
   //   6.00s → message (new addition)
 
@@ -1768,7 +1950,7 @@ const EndingScene: React.FC<{
 
       {/* Centered names row with heart between — nudged up to leave breathing room below */}
       <AbsoluteFill style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 120, paddingBottom: 160 }}>
-        {/* Bride name */}
+        {/* Groom name */}
         <div style={{
           fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
           fontSize: 240,
@@ -1777,7 +1959,7 @@ const EndingScene: React.FC<{
           display: "flex",
           textShadow: "0 0 0.5px rgba(26, 21, 16, 0.3)",
         }}>
-          {brideChars.map((c, i) => {
+          {groomChars.map((c, i) => {
             const startFrame = Math.round((0.50 + i * 0.60) * 30);
             const clipRight = charReveal(startFrame);
             return (
@@ -1799,7 +1981,7 @@ const EndingScene: React.FC<{
           transform: `scale(${heartScale})`,
         }}>♥</div>
 
-        {/* Groom name */}
+        {/* Bride name */}
         <div style={{
           fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
           fontSize: 240,
@@ -1808,7 +1990,7 @@ const EndingScene: React.FC<{
           display: "flex",
           textShadow: "0 0 0.5px rgba(26, 21, 16, 0.3)",
         }}>
-          {groomChars.map((c, i) => {
+          {brideChars.map((c, i) => {
             const startFrame = Math.round((3.20 + i * 0.60) * 30);
             const clipRight = charReveal(startFrame);
             return (
@@ -1902,8 +2084,9 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
       config.journeyMaps ?? [],
       config.letterInterludes ?? [],
       config.collages ?? [],
+      config.chatInterludes ?? [],
     ),
-    [photos, tcf, ef, fps, config.moments, config.yearMarkers, config.journeyMaps, config.letterInterludes, config.collages]
+    [photos, tcf, ef, fps, config.moments, config.yearMarkers, config.journeyMaps, config.letterInterludes, config.collages, config.chatInterludes]
   );
 
   let cursor = 0;
@@ -1985,6 +2168,14 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
             {item.kind === "letter" && (
               <LetterInterludeScene
                 config={item.letter}
+                dur={item.durationInFrames}
+                overlayType={config.overlay}
+                particlesType={config.particles}
+              />
+            )}
+            {item.kind === "chat" && (
+              <ChatInterludeScene
+                config={item.chat}
                 dur={item.durationInFrames}
                 overlayType={config.overlay}
                 particlesType={config.particles}

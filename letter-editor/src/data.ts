@@ -226,6 +226,22 @@ export type LetterInterlude = {
   durationSec?: number;    // default 8.0
 };
 
+// Chat interlude — messenger-style conversation with typing animation.
+// Empty message text renders as a "…" typing indicator (useful for "one side is still typing").
+export type ChatMessage = {
+  speaker: string;              // "예찬" | "슬기" | etc (display name above bubble)
+  side?: "left" | "right";      // default: "left"
+  text: string;                 // empty string → typing indicator
+};
+
+export type ChatInterlude = {
+  id: string;
+  afterPhotoIndex: number;
+  header?: string;              // small italic header at top (e.g., "성모병원 · 1988")
+  messages: ChatMessage[];
+  durationSec?: number;         // default 12.0
+};
+
 // P2-5 Polaroid Collage (7 photo slots on kraft paper)
 export type CollageSlot = {
   file: string;            // photo URL
@@ -260,6 +276,7 @@ export type VideoConfig = {
   yearMarkers?: YearMarker[]; // year / location title interstitials
   journeyMaps?: JourneyMap[]; // animated journey map scenes
   letterInterludes?: LetterInterlude[]; // handwritten letter scenes
+  chatInterludes?: ChatInterlude[]; // messenger-style conversation scenes
   collages?: Collage[]; // 7-polaroid scrapbook scenes
 };
 
@@ -277,6 +294,7 @@ export type TimelineItem =
   | { kind: "yearMarker"; marker: YearMarker; durationInFrames: number; name: string }
   | { kind: "journeyMap"; map: JourneyMap; durationInFrames: number; name: string }
   | { kind: "letter"; letter: LetterInterlude; durationInFrames: number; name: string }
+  | { kind: "chat"; chat: ChatInterlude; durationInFrames: number; name: string }
   | { kind: "collage"; collage: Collage; durationInFrames: number; name: string }
   | { kind: "ending"; durationInFrames: number; name: string };
 
@@ -289,7 +307,8 @@ export function buildTimeline(
   yearMarkers: YearMarker[] = [],
   journeyMaps: JourneyMap[] = [],
   letterInterludes: LetterInterlude[] = [],
-  collages: Collage[] = []
+  collages: Collage[] = [],
+  chatInterludes: ChatInterlude[] = []
 ): TimelineItem[] {
   const items: TimelineItem[] = [];
   const seenActs = new Set<number>();
@@ -329,6 +348,13 @@ export function buildTimeline(
     const key = c.afterPhotoIndex + 1;
     if (!collagesBefore.has(key)) collagesBefore.set(key, []);
     collagesBefore.get(key)!.push(c);
+  }
+
+  const chatsBefore = new Map<number, ChatInterlude[]>();
+  for (const c of chatInterludes) {
+    const key = c.afterPhotoIndex + 1;
+    if (!chatsBefore.has(key)) chatsBefore.set(key, []);
+    chatsBefore.get(key)!.push(c);
   }
 
   let i = 0;
@@ -406,6 +432,19 @@ export function buildTimeline(
           letter: l,
           durationInFrames: Math.round((l.durationSec ?? 8.0) * fps),
           name: `Letter — ${l.l1}`,
+        });
+      }
+    }
+    // Chat interludes (after letters, before collages — conversation framing)
+    const chatsHere = chatsBefore.get(i);
+    if (chatsHere) {
+      for (const c of chatsHere) {
+        const preview = c.header ?? c.messages.find((m) => m.text)?.text?.slice(0, 20) ?? "대화";
+        items.push({
+          kind: "chat",
+          chat: c,
+          durationInFrames: Math.round((c.durationSec ?? 12.0) * fps),
+          name: `Chat — ${preview}`,
         });
       }
     }
@@ -491,6 +530,7 @@ export function getPhotoIndexAtFrame(frame: number, config: VideoConfig): number
     config.journeyMaps ?? [],
     config.letterInterludes ?? [],
     config.collages ?? [],
+    config.chatInterludes ?? [],
   );
 
   let cursor = 0;
@@ -520,6 +560,7 @@ export function getPhotoStartFrame(photoIdx: number, config: VideoConfig): numbe
     config.journeyMaps ?? [],
     config.letterInterludes ?? [],
     config.collages ?? [],
+    config.chatInterludes ?? [],
   );
 
   let cursor = 0;
@@ -547,6 +588,7 @@ export function computeTotalFrames(config: VideoConfig): number {
     config.journeyMaps ?? [],
     config.letterInterludes ?? [],
     config.collages ?? [],
+    config.chatInterludes ?? [],
   );
   const sum = tl.reduce((s, it) => s + it.durationInFrames, 0);
   return sum - cf * (tl.length - 1);
@@ -736,6 +778,26 @@ export const defaultConfig: VideoConfig = {
     { id: "jm-5", afterPhotoIndex: 49, title: "Here, Today",      visibleCount: 5, durationSec: 7.5 },
   ],
   letterInterludes: [],      // 의도적으로 비움 — 편지 인터루드는 스토리에 맞지 않음
+  chatInterludes: [
+    {
+      id: "chat-1",
+      afterPhotoIndex: -1,   // jm-1 여정 지도 직후, 성모병원 폴라로이드 페어 직전
+      header: "성모병원 · 1988",
+      messages: [
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "우리가 시간만 달랐지, 아예 같은 병원에서 태어난줄은 크고나서 알았지. 정말 인연이었나봐:)",
+        },
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",  // 아직 공백 — "typing..." 인디케이터로 렌더
+        },
+      ],
+      durationSec: 12.0,
+    },
+  ],
   collages: [
     // Act I 엔딩 북엔드 — Act 1 마지막 페어(예찬 그림, idx 11) 뒤, Act II 타이틀 앞에 삽입.
     // 2개 연속: 슬기 단독 모음 → 예찬 단독 모음.

@@ -29,6 +29,8 @@ import {
   ARROW_COLOR_MAP,
   ARROW_COLOR_LABELS,
   JourneyMap,
+  ChatInterlude,
+  ChatMessage,
   defaultConfig,
   computeTotalFrames,
   getPhotoIndexAtFrame,
@@ -2003,6 +2005,59 @@ export const App: React.FC = () => {
     setConfig((c) => ({ ...c, letterInterludes: (c.letterInterludes ?? []).filter((l) => l.id !== id) }));
   };
 
+  // ── Chat interlude ───────────────────────────
+  const addChatAfter = (photoIdx: number) => {
+    const newChat: ChatInterlude = {
+      id: `ci${Date.now()}`,
+      afterPhotoIndex: photoIdx,
+      header: "",
+      messages: [
+        { speaker: "예찬", side: "left", text: "" },
+        { speaker: "슬기", side: "right", text: "" },
+      ],
+      durationSec: 12.0,
+    };
+    setConfig((c) => ({ ...c, chatInterludes: [...(c.chatInterludes ?? []), newChat] }));
+  };
+  const updateChat = (id: string, patch: Partial<Pick<ChatInterlude, "header" | "durationSec" | "afterPhotoIndex">>) => {
+    setConfig((c) => ({
+      ...c,
+      chatInterludes: (c.chatInterludes ?? []).map((ch) => ch.id === id ? { ...ch, ...patch } : ch),
+    }));
+  };
+  const deleteChat = (id: string) => {
+    setConfig((c) => ({ ...c, chatInterludes: (c.chatInterludes ?? []).filter((ch) => ch.id !== id) }));
+  };
+  const addChatMessage = (id: string) => {
+    setConfig((c) => ({
+      ...c,
+      chatInterludes: (c.chatInterludes ?? []).map((ch) => ch.id === id
+        ? { ...ch, messages: [...ch.messages, { speaker: "", side: "left", text: "" }] }
+        : ch),
+    }));
+  };
+  const updateChatMessage = (id: string, msgIdx: number, patch: Partial<ChatMessage>) => {
+    setConfig((c) => ({
+      ...c,
+      chatInterludes: (c.chatInterludes ?? []).map((ch) => {
+        if (ch.id !== id) return ch;
+        return {
+          ...ch,
+          messages: ch.messages.map((m, i) => i === msgIdx ? { ...m, ...patch } : m),
+        };
+      }),
+    }));
+  };
+  const removeChatMessage = (id: string, msgIdx: number) => {
+    setConfig((c) => ({
+      ...c,
+      chatInterludes: (c.chatInterludes ?? []).map((ch) => {
+        if (ch.id !== id) return ch;
+        return { ...ch, messages: ch.messages.filter((_, i) => i !== msgIdx) };
+      }),
+    }));
+  };
+
   // ── Collage ──────────────────────────────────
 
   const addCollageAfter = (photoIdx: number) => {
@@ -2612,6 +2667,46 @@ export const App: React.FC = () => {
                                 onChange={(e) => updateLetter(l.id, { l2: e.target.value })} />
                             </div>
                           ))}
+                          {/* Chat interlude editor */}
+                          {(config.chatInterludes ?? []).filter((ch) => ch.afterPhotoIndex === idx).map((ch) => (
+                            <div key={ch.id} className="moment-editor" style={{ borderColor: "#3a7a8a" }}>
+                              <div className="moment-editor-header">
+                                <span className="moment-editor-label" style={{ color: "#5aa0b0" }}>대화 씬 ({ch.messages.length}개 메시지)</span>
+                                <button className="btn-icon btn-icon--danger" onClick={() => deleteChat(ch.id)}>&#10005;</button>
+                              </div>
+                              <input className="input input-sm" placeholder="상단 헤더 (예: 성모병원 · 1988)" value={ch.header ?? ""}
+                                onChange={(e) => updateChat(ch.id, { header: e.target.value })} />
+                              {ch.messages.map((m, mi) => (
+                                <div key={mi} style={{ display: "flex", flexDirection: "column", gap: 4, padding: 6, background: "var(--bg-surface)", borderRadius: 4 }}>
+                                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                    <input className="input input-sm" placeholder="화자" value={m.speaker}
+                                      onChange={(e) => updateChatMessage(ch.id, mi, { speaker: e.target.value })}
+                                      style={{ flex: 1 }} />
+                                    <select className="select select-sm" value={m.side ?? "left"}
+                                      onChange={(e) => updateChatMessage(ch.id, mi, { side: e.target.value as "left" | "right" })}
+                                      style={{ flex: 1 }} title="버블 방향">
+                                      <option value="left">← 왼쪽</option>
+                                      <option value="right">오른쪽 →</option>
+                                    </select>
+                                    <button className="btn-icon btn-icon--danger" onClick={() => removeChatMessage(ch.id, mi)}
+                                      disabled={ch.messages.length <= 1} title="메시지 삭제">&#10005;</button>
+                                  </div>
+                                  <textarea className="input input-sm" placeholder="메시지 (비우면 ... 타이핑 인디케이터)"
+                                    value={m.text} rows={2}
+                                    onChange={(e) => updateChatMessage(ch.id, mi, { text: e.target.value })} />
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <button className="btn btn-xs btn-moment-add" onClick={() => addChatMessage(ch.id)} style={{ flex: 2 }}>
+                                  + 메시지 추가
+                                </button>
+                                <input className="input input-sm" type="number" step="0.5" min="4" max="30"
+                                  value={ch.durationSec ?? 12.0}
+                                  onChange={(e) => updateChat(ch.id, { durationSec: parseFloat(e.target.value) })}
+                                  style={{ flex: 1 }} title="지속(초)" />
+                              </div>
+                            </div>
+                          ))}
                           {/* Collage editor */}
                           {(config.collages ?? []).filter((c) => c.afterPhotoIndex === idx).map((col) => (
                             <div key={col.id} className="moment-editor" style={{ borderColor: "#7a3a5a" }}>
@@ -2663,6 +2758,7 @@ export const App: React.FC = () => {
                             <button className="btn btn-xs btn-moment-add" onClick={() => addYearMarkerAfter(idx)} title="연도 마커 삽입" style={{ flex: 1, minWidth: 80 }}>+ 연도</button>
                             <button className="btn btn-xs btn-moment-add" onClick={() => addJourneyMapAfter(idx)} title="여정 지도 삽입" style={{ flex: 1, minWidth: 80 }}>+ 지도</button>
                             <button className="btn btn-xs btn-moment-add" onClick={() => addLetterAfter(idx)} title="편지 인터루드 삽입" style={{ flex: 1, minWidth: 80 }}>+ 편지</button>
+                            <button className="btn btn-xs btn-moment-add" onClick={() => addChatAfter(idx)} title="대화 씬 삽입 (타이핑 연출)" style={{ flex: 1, minWidth: 80 }}>+ 대화</button>
                             <button className="btn btn-xs btn-moment-add" onClick={() => addCollageAfter(idx)} title="폴라로이드 콜라주 삽입" style={{ flex: 1, minWidth: 80 }}>+ 콜라주</button>
                           </div>
                         </div>
