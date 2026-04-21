@@ -860,6 +860,25 @@ export const defaultConfig: VideoConfig = {
       ],
       durationSec: 12.0,
     },
+    {
+      id: "chat-5",
+      afterPhotoIndex: 49,   // Act V 타이틀 + m-5 모먼트 + jm-5 (Here, Today) 직후, 두 사람 1 직전
+      header: "그리고, 오늘 · 2026",
+      // 서사 미정 — 다섯 Act 모두 슬기 답변은 추후 채움.
+      messages: [
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "",
+        },
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",
+        },
+      ],
+      durationSec: 12.0,
+    },
   ],
   collages: [
     // Act I 엔딩 북엔드 — Act 1 마지막 페어(예찬 그림, idx 11) 뒤, Act II 타이틀 앞에 삽입.
