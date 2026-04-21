@@ -1,5 +1,0 @@
-{
-  "installCommand": "cd letter-editor && npm install",
-  "buildCommand": "cd letter-editor && npm run build",
-  "outputDirectory": "letter-editor/dist"
-}
