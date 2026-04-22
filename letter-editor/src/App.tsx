@@ -2738,6 +2738,15 @@ export const App: React.FC = () => {
                               )}
                             </div>
                           )}
+                          {photo.splitPair && photo.splitStyle === "polaroid" && (
+                            <div style={{
+                              fontSize: 11, color: "#c79a52", marginTop: 8,
+                              padding: "4px 8px", borderLeft: "2px solid rgba(199,154,82,0.5)",
+                              background: "rgba(199,154,82,0.08)",
+                            }}>
+                              폴라로이드 씬: 첫 번째 캡션 텍스트가 흰 띠 라벨을 대체합니다. 위치/배경은 이 씬에선 무시됨.
+                            </div>
+                          )}
                           <CaptionsEditor
                             photoIdx={idx}
                             captions={materializeCaptions(photo)}
