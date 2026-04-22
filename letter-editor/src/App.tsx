@@ -2209,7 +2209,7 @@ export const App: React.FC = () => {
       ),
     }));
   };
-  const updateCollage = (id: string, patch: Partial<{ durationSec: number }>) => {
+  const updateCollage = (id: string, patch: Partial<{ durationSec: number; caption: string }>) => {
     setConfig((c) => ({
       ...c,
       collages: (c.collages ?? []).map((col) => col.id === id ? { ...col, ...patch } : col),
@@ -2902,6 +2902,11 @@ export const App: React.FC = () => {
                                     style={{ flex: 2 }} />
                                 </div>
                               ))}
+                              <textarea className="input input-sm" placeholder="하단 씬 캡션 (선택) — 박스 아래에 손글씨체로 표시"
+                                rows={2}
+                                value={col.caption ?? ""}
+                                onChange={(e) => updateCollage(col.id, { caption: e.target.value })}
+                                style={{ resize: "vertical", marginTop: 4 }} />
                               <div style={{ display: "flex", gap: 4 }}>
                                 <input className="input input-sm" type="number" step="0.5" min="3" max="12"
                                   value={col.durationSec ?? 6.0}

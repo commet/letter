@@ -283,6 +283,7 @@ export type Collage = {
   durationSec?: number;    // default 6.0
   beforeTitle?: boolean;   // if true, insert BEFORE the act title card at the transition point
                            //   (use case: "end of prev act" bookend before the new act starts)
+  caption?: string;        // scene-level bottom caption (handwritten script on scrim)
 };
 
 export type VideoConfig = {

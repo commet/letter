@@ -1483,6 +1483,40 @@ const CollageScene: React.FC<{
         );
       })}
 
+      {/* Scene-level bottom caption — scrim + handwritten text that fades with the scene */}
+      {config.caption?.trim() && (() => {
+        const capOpacity = Math.min(
+          interpolate(frame, [8, 30], [0, 1], { extrapolateRight: "clamp" }),
+          interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" }),
+        );
+        return (
+          <>
+            <div style={{
+              position: "absolute", left: 0, right: 0, bottom: 0, height: "30%",
+              background: "linear-gradient(to top, rgba(20,14,4,0.78) 0%, rgba(20,14,4,0.45) 45%, transparent 100%)",
+              pointerEvents: "none",
+              opacity: capOpacity,
+            }} />
+            <div style={{
+              position: "absolute", left: 0, right: 0, bottom: 60,
+              textAlign: "center",
+              fontFamily: SCRIPT_KR,
+              fontSize: 46, fontWeight: 700,
+              color: "#fbf4dc",
+              textShadow: "0 2px 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.7), 0 0 18px rgba(0,0,0,0.4)",
+              letterSpacing: 1.5,
+              lineHeight: 1.3,
+              padding: "0 160px",
+              whiteSpace: "pre-wrap",
+              wordBreak: "keep-all",
+              opacity: capOpacity,
+            }}>
+              {config.caption}
+            </div>
+          </>
+        );
+      })()}
+
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
     </AbsoluteFill>
