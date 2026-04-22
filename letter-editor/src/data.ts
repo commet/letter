@@ -684,7 +684,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
   P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn"),
 
-  // ── Act II — 분당 (1994~ 분당교회) ──────
+  // ── Act II — 분당 (1997~ 분당교회) ──────
   // 순서: 경복궁 → 바다 여행 → 분당선교원 2 → 단체사진들 → ... (사용자 지정 순서)
   P("경복궁",                    2, `${S}/013b.jpg`,   D.reveal, "zoomIn"),
   P("바다 여행 1",               2, `${S}/sea-1.jpeg`, D.reveal, "zoomIn"),
@@ -764,7 +764,7 @@ const defaultPhotos: PhotoEntry[] = [
 
 const defaultActTitles: Record<number, ActTitle> = {
   1: { chapter: "Act I",   kr: "그때의 우리",          year: "1988 · 1993" },
-  2: { chapter: "Act II",  kr: "분당",                 year: "1994 — " },
+  2: { chapter: "Act II",  kr: "분당",                 year: "1997 — " },
   3: { chapter: "Act III", kr: "청춘",                 year: "2008 — 2015" },
   4: { chapter: "Act IV",  kr: "바다를 사이에 두고",   year: "2016 — 2025" },
   5: { chapter: "Act V",   kr: "그리고, 오늘",         year: "2026" },
@@ -831,7 +831,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-2",
       afterPhotoIndex: 11,   // Act II 타이틀 + jm-2 여정 지도 직후, 경복궁 직전
-      header: "분당 · 1994",
+      header: "분당 · 1997",
       messages: [
         {
           speaker: "예찬",
