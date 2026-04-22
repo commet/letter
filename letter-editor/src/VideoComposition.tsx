@@ -840,7 +840,7 @@ const YearMarkerScene: React.FC<{
 // Coordinates tuned for balanced layout on 1920×1080 with smooth catmull-rom curves.
 const JOURNEY_LOCATIONS = [
   { cx: 260,  cy: 490, label: "성모병원",    year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
-  { cx: 540,  cy: 660, label: "분당",        year: "1994 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 540,  cy: 660, label: "분당",        year: "1997 —",      anchor: "middle", lx:  0,  ly:  58 },
   { cx: 880,  cy: 380, label: "청춘",        year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
   { cx: 1300, cy: 590, label: "뉴욕 · 서울", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
   { cx: 1650, cy: 380, label: "여기, 오늘",  year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
