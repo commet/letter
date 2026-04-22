@@ -130,7 +130,7 @@ export type ArrowStyle =
   | "bold-curve"     // bold ink curve
   | "bold-straight"  // bold ink straight
   | "marker";        // extra-thick marker (heaviest body)
-export type ArrowColor = "ink" | "gold" | "burgundy" | "navy" | "sage" | "cream" | "white";
+export type ArrowColor = "ink" | "gold" | "burgundy" | "navy" | "sage" | "cream" | "white" | "lilac" | "lemon";
 
 export const ARROW_COLOR_MAP: Record<ArrowColor, string> = {
   ink:      "#1a1510",           // classic black ink (default)
@@ -140,6 +140,8 @@ export const ARROW_COLOR_MAP: Record<ArrowColor, string> = {
   sage:     "#5a6e4f",           // muted green
   cream:    "#d9c89f",           // paper-tone ink (subtle)
   white:    "rgba(255,255,255,0.95)",
+  lilac:    "#c896ff",           // bright lavender — high-vis on most photo subjects
+  lemon:    "#ffe34a",           // highlighter yellow — high-vis on dark/mid photos
 };
 
 export const ARROW_COLOR_LABELS: Record<ArrowColor, string> = {
@@ -150,6 +152,8 @@ export const ARROW_COLOR_LABELS: Record<ArrowColor, string> = {
   sage:     "세이지",
   cream:    "크림",
   white:    "화이트",
+  lilac:    "라일락",
+  lemon:    "레몬",
 };
 
 export type AnnotationArrow = {
