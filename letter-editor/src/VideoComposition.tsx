@@ -1735,47 +1735,20 @@ const SplitScene: React.FC<{
       pointerEvents: "none",
       zIndex: 5,
     };
-    // Polaroid strip rendering: if the photo has a caption, the caption TEXT replaces
-    // the auto-derived short label. This lands each comment inside the polaroid's
-    // handwritten white strip where it's always readable — no scrim needed.
-    // Skip `speaker:` prefix in polaroid mode (the photo already identifies the subject).
-    const leftCaps = resolveCaptions(left);
-    const rightCaps = resolveCaptions(right);
-    const leftFirstCap = leftCaps[0];
-    const rightFirstCap = rightCaps[0];
-    const leftFallback = left.splitLabel ?? left.tag.split(" ")[0];
-    const rightFallback = right.splitLabel ?? right.tag.split(" ")[0];
-    const leftLabel = leftFirstCap?.text?.trim() || leftFallback;
-    const rightLabel = rightFirstCap?.text?.trim() || rightFallback;
-
-    // Auto-shrink so longer comments still fit in the ~30px strip area.
-    const polaroidNoteSize = (text: string): number =>
-      text.length <= 6 ? 34 : text.length <= 12 ? 28 : text.length <= 20 ? 22 : 18;
-
-    const pickFont = (cap: CaptionEntry | undefined): string =>
-      cap?.fontFamily ? CAPTION_FONT_STACK[cap.fontFamily].fontFamily : SCRIPT_KR;
-
-    const baseCaptionStyle: React.CSSProperties = {
+    // Polaroid strip label stays separate (splitLabel / tag's first word). Captions
+    // render as scene-level canvas overlays (scrim/card/shadow) just like standard
+    // photos — so comments can live with a proper bottom scrim instead of squeezing
+    // into the tiny white strip area.
+    const leftLabel = left.splitLabel ?? left.tag.split(" ")[0];
+    const rightLabel = right.splitLabel ?? right.tag.split(" ")[0];
+    const captionStyle: React.CSSProperties = {
       position: "absolute", bottom: 18, left: 0, right: 0,
       textAlign: "center",
+      fontFamily: SCRIPT_KR,
+      fontSize: 34,
       fontWeight: 700,
+      color: "rgba(40,25,10,0.92)",
       letterSpacing: 2,
-      padding: "0 20px",
-      lineHeight: 1.15,
-      whiteSpace: "pre-wrap",
-      wordBreak: "keep-all",
-    };
-    const leftCaptionStyle: React.CSSProperties = {
-      ...baseCaptionStyle,
-      fontFamily: pickFont(leftFirstCap),
-      fontSize: polaroidNoteSize(leftLabel),
-      color: leftFirstCap?.color ?? "rgba(40,25,10,0.92)",
-    };
-    const rightCaptionStyle: React.CSSProperties = {
-      ...baseCaptionStyle,
-      fontFamily: pickFont(rightFirstCap),
-      fontSize: polaroidNoteSize(rightLabel),
-      color: rightFirstCap?.color ?? "rgba(40,25,10,0.92)",
     };
     return (
       <AbsoluteFill style={{ opacity }}>
@@ -1797,7 +1770,7 @@ const SplitScene: React.FC<{
                   <AnnotationLayer annotations={left.annotations} dur={dur} />
                 ) : null}
               </div>
-              <div style={leftCaptionStyle}>{leftLabel}</div>
+              <div style={captionStyle}>{leftLabel}</div>
             </div>
             <div style={{ ...polaroidBase, right: "3%", top: "8%", transform: `rotate(2.5deg) scale(${scale})`, transformOrigin: "center" }}>
               <Img src={`/assets/polaroid/${rightTape}.png`} style={tapeR} />
@@ -1814,13 +1787,19 @@ const SplitScene: React.FC<{
                   <AnnotationLayer annotations={right.annotations} dur={dur} />
                 ) : null}
               </div>
-              <div style={rightCaptionStyle}>{rightLabel}</div>
+              <div style={captionStyle}>{rightLabel}</div>
             </div>
           </div>
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
-        {/* No canvas-level CaptionsLayer in polaroid mode — captions land inside the white strip above */}
+        {/* Canvas-level captions from both photos (merged so scrim renders once). */}
+        {(() => {
+          const leftCaps = resolveCaptions(left);
+          const rightCaps = resolveCaptions(right);
+          const all = [...leftCaps, ...rightCaps];
+          return all.length > 0 ? <CaptionsLayer captions={all} dur={dur} /> : null;
+        })()}
       </AbsoluteFill>
     );
   }
