@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="smileFill" cx="35%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#fff8e4"/>
+      <stop offset="60%" stop-color="#f5dd9a"/>
+      <stop offset="100%" stop-color="#c89a3e"/>
+    </radialGradient>
+    <filter id="smShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" in="SourceAlpha"/>
+      <feOffset dx="0" dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle filter="url(#smShadow)" cx="100" cy="100" r="88" fill="url(#smileFill)" stroke="#6a4a1a" stroke-width="3"/>
+  <ellipse cx="70" cy="80" rx="7" ry="10" fill="#3a2a18"/>
+  <ellipse cx="130" cy="80" rx="7" ry="10" fill="#3a2a18"/>
+  <path d="M 60 115 Q 100 155 140 115" fill="none" stroke="#3a2a18" stroke-width="7" stroke-linecap="round"/>
+  <ellipse cx="75" cy="55" rx="10" ry="6" fill="rgba(255,255,255,0.5)" transform="rotate(-20 75 55)"/>
+</svg>
