@@ -3,4 +3,10 @@ out/
 .DS_Store
 *.log
 .remotion/
+
+# 사진 원본은 Supabase(letter-photos 버킷)가 source of truth.
+# 로컬은 Remotion 렌더링/업로드 스크립트 용도로만 유지 — git 트래킹 X.
 public/photos/
+public/photos_final/
+public/photos_previous/
+public/KakaoTalk_*
