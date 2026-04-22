@@ -416,7 +416,21 @@ const resolveCaptions = (photo: { captions?: CaptionEntry[]; caption?: { text: s
 // Heavy text shadow used by shadow/scrim kinds for AA-safe readability at wedding-venue distance.
 const CAPTION_TEXT_SHADOW = "0 2px 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.7), 0 0 18px rgba(0,0,0,0.4)";
 
-const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
+// Character-by-character typed reveal. Length-proportional so short captions type fast
+// and long ones still finish within ~55% of the scene (leaves time to sit and read).
+// Returns the sliced prefix of `text` visible at `frame`.
+const typedTextSlice = (text: string, frame: number, dur: number): string => {
+  if (!text) return "";
+  const startFrame = 6;                        // small head delay after fade-in kicks off at 8
+  const targetFrames = Math.min(text.length * 3, Math.max(15, Math.round(dur * 0.55)));
+  const elapsed = Math.max(0, frame - startFrame);
+  const ratio = Math.min(1, elapsed / Math.max(1, targetFrames));
+  const count = Math.min(text.length, Math.round(ratio * text.length));
+  return text.slice(0, count);
+};
+
+const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number }> = ({ cap, dur }) => {
+  const frame = useCurrentFrame();
   const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
   const align: "left" | "center" | "right" = cap.align ?? "center";
   const xPct = Math.max(0, Math.min(1, cap.x)) * 100;
@@ -459,7 +473,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
       {cap.speaker ? (
         <span style={{ fontWeight: 600, marginRight: 10, opacity: 0.95 }}>{cap.speaker}:</span>
       ) : null}
-      <span>{cap.text}</span>
+      <span>{typedTextSlice(cap.text, frame, dur)}</span>
     </div>
   );
 };
@@ -498,7 +512,7 @@ const CaptionsLayer: React.FC<{
       {needsBottomScrim && <div style={SCRIM_BOTTOM_STYLE} />}
       {needsTopScrim && <div style={SCRIM_TOP_STYLE} />}
       {captions.map((c) => (
-        <CaptionItem key={c.id} cap={c} />
+        <CaptionItem key={c.id} cap={c} dur={dur} />
       ))}
     </AbsoluteFill>
   );
@@ -1511,7 +1525,7 @@ const CollageScene: React.FC<{
               wordBreak: "keep-all",
               opacity: capOpacity,
             }}>
-              {config.caption}
+              {typedTextSlice(config.caption, frame, dur)}
             </div>
           </>
         );
