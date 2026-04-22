@@ -1793,6 +1793,9 @@ const SplitScene: React.FC<{
                 {left.spotlights?.length > 0 && (
                   <SpotlightOverlay spotlights={left.spotlights} />
                 )}
+                {left.annotations?.length ? (
+                  <AnnotationLayer annotations={left.annotations} dur={dur} />
+                ) : null}
               </div>
               <div style={leftCaptionStyle}>{leftLabel}</div>
             </div>
@@ -1807,6 +1810,9 @@ const SplitScene: React.FC<{
                 {right.spotlights?.length > 0 && (
                   <SpotlightOverlay spotlights={right.spotlights} />
                 )}
+                {right.annotations?.length ? (
+                  <AnnotationLayer annotations={right.annotations} dur={dur} />
+                ) : null}
               </div>
               <div style={rightCaptionStyle}>{rightLabel}</div>
             </div>
@@ -1861,6 +1867,9 @@ const SplitScene: React.FC<{
               {left.spotlights?.length > 0 && (
                 <SpotlightOverlay spotlights={left.spotlights} />
               )}
+              {left.annotations?.length ? (
+                <AnnotationLayer annotations={left.annotations} dur={dur} />
+              ) : null}
             </div>
             <div style={nameStyle}>{leftLabel}</div>
           </div>
@@ -1873,6 +1882,9 @@ const SplitScene: React.FC<{
               {right.spotlights?.length > 0 && (
                 <SpotlightOverlay spotlights={right.spotlights} />
               )}
+              {right.annotations?.length ? (
+                <AnnotationLayer annotations={right.annotations} dur={dur} />
+              ) : null}
             </div>
             <div style={nameStyle}>{rightLabel}</div>
           </div>
@@ -1901,6 +1913,9 @@ const SplitScene: React.FC<{
         {left.spotlights?.length > 0 && (
           <SpotlightOverlay spotlights={left.spotlights} />
         )}
+        {left.annotations?.length ? (
+          <AnnotationLayer annotations={left.annotations} dur={dur} />
+        ) : null}
       </div>
       <div style={{ width: gap, background: "#000" }} />
       <div style={half}>
@@ -1908,6 +1923,9 @@ const SplitScene: React.FC<{
         {right.spotlights?.length > 0 && (
           <SpotlightOverlay spotlights={right.spotlights} />
         )}
+        {right.annotations?.length ? (
+          <AnnotationLayer annotations={right.annotations} dur={dur} />
+        ) : null}
       </div>
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
