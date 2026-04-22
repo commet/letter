@@ -499,7 +499,8 @@ export function buildTimeline(
         kind: "split",
         left: p,
         right,
-        durationInFrames: Math.round(4.0 * fps),
+        // Respect the left photo's configured duration (was hardcoded 4.0).
+        durationInFrames: Math.round(p.durationSec * fps),
         mergeOut: isLastSplit,
         name: `Split — ${p.tag} / ${right.tag}`,
       });
