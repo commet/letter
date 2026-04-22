@@ -21,6 +21,7 @@ import {
   CaptionAlign,
   CaptionBackground,
   CAPTION_FONT_STACK,
+  resolveCaptionBgKind,
   SpotlightConfig,
   CropRect,
   AnnotationArrow,
@@ -734,6 +735,21 @@ const ImageEditorModal: React.FC<{
                   onPointerCancel={endCaptionDrag}
                   style={{ position: "absolute", inset: 0, touchAction: "none" }}
                 >
+                  {/* Scrim preview — matches CaptionsLayer in VideoComposition so the editor is WYSIWYG */}
+                  {captions.some((c) => resolveCaptionBgKind(c) === "scrim-bottom") && (
+                    <div style={{
+                      position: "absolute", left: 0, right: 0, bottom: 0, height: "38%",
+                      background: "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)",
+                      pointerEvents: "none",
+                    }} />
+                  )}
+                  {captions.some((c) => resolveCaptionBgKind(c) === "scrim-top") && (
+                    <div style={{
+                      position: "absolute", left: 0, right: 0, top: 0, height: "38%",
+                      background: "linear-gradient(to bottom, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)",
+                      pointerEvents: "none",
+                    }} />
+                  )}
                   {captions.map((cap) => {
                     const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
                     const align = cap.align ?? "center";
@@ -742,8 +758,19 @@ const ImageEditorModal: React.FC<{
                       align === "right" ? "translate(-100%, -50%)" :
                                            "translate(-50%, -50%)";
                     const isSelected = selectedCaption === cap.id;
-                    const hasBg = !!cap.bg;
+                    const kind = resolveCaptionBgKind(cap);
                     const preview = `${cap.speaker ? cap.speaker + ": " : ""}${cap.text || "텍스트"}`;
+                    const boxStyle: React.CSSProperties =
+                      kind === "card" ? {
+                        padding: `${(cap.bg?.paddingY ?? 10) * captionPreviewScale}px ${(cap.bg?.paddingX ?? 22) * captionPreviewScale}px`,
+                        background: cap.bg?.color ?? "rgba(15,12,8,0.55)",
+                        borderRadius: cap.bg?.radius ?? 4,
+                      } :
+                      kind === "none" ? { padding: "4px 8px" } :
+                      { // shadow / scrim-bottom / scrim-top
+                        padding: "4px 8px",
+                        textShadow: "0 2px 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.7), 0 0 18px rgba(0,0,0,0.4)",
+                      };
                     return (
                       <div
                         key={cap.id}
@@ -760,18 +787,13 @@ const ImageEditorModal: React.FC<{
                           color: cap.color ?? "#f5ecd7",
                           textAlign: align,
                           maxWidth: `${cap.maxWidthPct ?? 80}%`,
-                          padding: hasBg
-                            ? `${(cap.bg!.paddingY ?? 10) * captionPreviewScale}px ${(cap.bg!.paddingX ?? 22) * captionPreviewScale}px`
-                            : "4px 8px",
-                          background: hasBg ? cap.bg!.color : "rgba(15,12,8,0.45)",
-                          borderRadius: hasBg ? (cap.bg!.radius ?? 4) : 3,
                           border: isSelected ? "2px solid var(--gold, #a88848)" : "1px dashed rgba(255,255,255,0.35)",
-                          textShadow: hasBg ? undefined : "0 2px 10px rgba(0,0,0,0.75)",
                           whiteSpace: "pre-wrap",
                           cursor: "grab",
                           touchAction: "none",
                           userSelect: "none",
                           lineHeight: 1.35,
+                          ...boxStyle,
                         }}
                         title="드래그해서 위치 이동"
                       >
@@ -1207,14 +1229,18 @@ const materializeCaptions = (p: PhotoEntry): CaptionEntry[] => {
   if (p.caption) {
     const cached = _legacyMaterializeCache.get(p.caption);
     if (cached) return cached;
+    const pos = p.caption.position;
     const fresh: CaptionEntry[] = [{
       id: "cap-legacy",
       text: p.caption.text,
       x: 0.5,
-      y: p.caption.position === "top" ? 0.08 : p.caption.position === "center" ? 0.5 : 0.92,
+      y: pos === "top" ? 0.08 : pos === "center" ? 0.5 : 0.92,
       align: "center",
       fontFamily: "serif",
       fontSize: 32,
+      // Pick a scrim that matches where the caption sits so the legacy row is readable.
+      // "center" has no edge to darken, so fall back to a shadow.
+      bg: { kind: pos === "top" ? "scrim-top" : pos === "center" ? "shadow" : "scrim-bottom" },
     }];
     _legacyMaterializeCache.set(p.caption, fresh);
     return fresh;
@@ -1243,11 +1269,16 @@ const CAPTION_POSITION_PRESETS: { label: string; x: number; y: number; align: Ca
   { label: "↘", x: 0.94, y: 0.92, align: "right"  },
 ];
 
-const CAPTION_BG_PRESETS: { label: string; bg?: CaptionBackground }[] = [
-  { label: "없음" },
-  { label: "어두움",  bg: { color: "rgba(15,12,8,0.55)", paddingX: 22, paddingY: 10, radius: 4, blur: true } },
-  { label: "크림",    bg: { color: "rgba(245,236,215,0.92)", paddingX: 22, paddingY: 10, radius: 4 } },
-  { label: "투명 블러", bg: { color: "rgba(255,255,255,0.18)", paddingX: 22, paddingY: 10, radius: 4, blur: true } },
+// Ordered most-readable-first. First two (scrim-bottom / scrim-top) are the new defaults —
+// a gradient darkens the edge of the photo so captions stay legible on any background.
+const CAPTION_BG_PRESETS: { label: string; bg: CaptionBackground }[] = [
+  { label: "스크림 하단 (기본)", bg: { kind: "scrim-bottom" } },
+  { label: "스크림 상단",        bg: { kind: "scrim-top" } },
+  { label: "어두운 카드",        bg: { kind: "card", color: "rgba(15,12,8,0.55)", paddingX: 22, paddingY: 10, radius: 4, blur: true } },
+  { label: "크림 카드",          bg: { kind: "card", color: "rgba(245,236,215,0.92)", paddingX: 22, paddingY: 10, radius: 4 } },
+  { label: "투명 블러 카드",     bg: { kind: "card", color: "rgba(255,255,255,0.18)", paddingX: 22, paddingY: 10, radius: 4, blur: true } },
+  { label: "그림자만",           bg: { kind: "shadow" } },
+  { label: "없음",               bg: { kind: "none" } },
 ];
 
 const CAPTION_SPEAKER_PRESETS = ["예찬", "슬기"];
@@ -1267,9 +1298,13 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
       {captions.map((cap) => {
-        const bgIdx = CAPTION_BG_PRESETS.findIndex(
-          (p) => (p.bg?.color ?? "none") === (cap.bg?.color ?? "none")
-        );
+        const effectiveKind = resolveCaptionBgKind(cap);
+        const bgIdx = CAPTION_BG_PRESETS.findIndex((p) => {
+          if ((p.bg.kind ?? "card") !== effectiveKind) return false;
+          // For card preset, also match by color so the dropdown picks the right variant.
+          if (effectiveKind === "card") return (p.bg.color ?? "") === (cap.bg?.color ?? "");
+          return true;
+        });
         const bgIsCustom = bgIdx < 0;
         return (
           <div key={cap.id} style={{

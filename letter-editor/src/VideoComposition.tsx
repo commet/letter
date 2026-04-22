@@ -28,6 +28,7 @@ import {
   Collage as CollageConfig,
   CaptionEntry,
   CAPTION_FONT_STACK,
+  resolveCaptionBgKind,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
@@ -381,6 +382,7 @@ const SpotlightOverlay: React.FC<{ spotlights: SpotlightConfig[] }> = ({ spotlig
 };
 
 // Convert legacy photo.caption → CaptionEntry (render-time safety net).
+// Keep parity with materializeCaptions in App.tsx — same bg kind based on position.
 const legacyCaptionToEntry = (c: { text: string; position: "top" | "bottom" | "center" }): CaptionEntry => ({
   id: "legacy",
   text: c.text,
@@ -389,6 +391,7 @@ const legacyCaptionToEntry = (c: { text: string; position: "top" | "bottom" | "c
   align: "center",
   fontFamily: "serif",
   fontSize: 32,
+  bg: { kind: c.position === "top" ? "scrim-top" : c.position === "center" ? "shadow" : "scrim-bottom" },
 });
 
 const EMPTY_CAPTIONS: readonly CaptionEntry[] = Object.freeze([]);
@@ -410,6 +413,9 @@ const resolveCaptions = (photo: { captions?: CaptionEntry[]; caption?: { text: s
   return EMPTY_CAPTIONS;
 };
 
+// Heavy text shadow used by shadow/scrim kinds for AA-safe readability at wedding-venue distance.
+const CAPTION_TEXT_SHADOW = "0 2px 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.7), 0 0 18px rgba(0,0,0,0.4)";
+
 const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
   const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
   const align: "left" | "center" | "right" = cap.align ?? "center";
@@ -421,16 +427,17 @@ const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
                         "translate(-50%, -50%)";
   const maxWidthPct = cap.maxWidthPct ?? 80;
 
-  const hasBg = !!cap.bg;
-  const bgStyle: React.CSSProperties = hasBg ? {
-    background: cap.bg!.color,
-    padding: `${cap.bg!.paddingY ?? 10}px ${cap.bg!.paddingX ?? 22}px`,
-    borderRadius: cap.bg!.radius ?? 4,
-    backdropFilter: cap.bg!.blur ? "blur(3px)" : undefined,
-    WebkitBackdropFilter: cap.bg!.blur ? "blur(3px)" : undefined,
-  } : {
-    textShadow: "0 2px 10px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.55)",
-  };
+  const kind = resolveCaptionBgKind(cap);
+  const boxStyle: React.CSSProperties =
+    kind === "card" ? {
+      background: cap.bg?.color ?? "rgba(15,12,8,0.55)",
+      padding: `${cap.bg?.paddingY ?? 10}px ${cap.bg?.paddingX ?? 22}px`,
+      borderRadius: cap.bg?.radius ?? 4,
+      backdropFilter: cap.bg?.blur ? "blur(3px)" : undefined,
+      WebkitBackdropFilter: cap.bg?.blur ? "blur(3px)" : undefined,
+    } :
+    kind === "none" ? {} :
+    { textShadow: CAPTION_TEXT_SHADOW };  // shadow / scrim-bottom / scrim-top
 
   return (
     <div style={{
@@ -447,7 +454,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
       color: cap.color ?? "#f5ecd7",
       whiteSpace: "pre-wrap",
       lineHeight: 1.35,
-      ...bgStyle,
+      ...boxStyle,
     }}>
       {cap.speaker ? (
         <span style={{ fontWeight: 600, marginRight: 10, opacity: 0.95 }}>{cap.speaker}:</span>
@@ -455,6 +462,17 @@ const CaptionItem: React.FC<{ cap: CaptionEntry }> = ({ cap }) => {
       <span>{cap.text}</span>
     </div>
   );
+};
+
+// Bottom/top gradient overlay for scrim kinds. Rendered once per direction,
+// regardless of how many captions share the same scrim.
+const SCRIM_BOTTOM_STYLE: React.CSSProperties = {
+  position: "absolute", left: 0, right: 0, bottom: 0, height: "38%",
+  background: "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)",
+};
+const SCRIM_TOP_STYLE: React.CSSProperties = {
+  position: "absolute", left: 0, right: 0, top: 0, height: "38%",
+  background: "linear-gradient(to bottom, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)",
 };
 
 const CaptionsLayer: React.FC<{
@@ -466,8 +484,19 @@ const CaptionsLayer: React.FC<{
   const fadeOut = interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" });
   const opacity = Math.min(fadeIn, fadeOut);
   if (!captions.length) return null;
+
+  let needsBottomScrim = false;
+  let needsTopScrim = false;
+  for (const c of captions) {
+    const k = resolveCaptionBgKind(c);
+    if (k === "scrim-bottom") needsBottomScrim = true;
+    else if (k === "scrim-top") needsTopScrim = true;
+  }
+
   return (
     <AbsoluteFill style={{ opacity, pointerEvents: "none" }}>
+      {needsBottomScrim && <div style={SCRIM_BOTTOM_STYLE} />}
+      {needsTopScrim && <div style={SCRIM_TOP_STYLE} />}
       {captions.map((c) => (
         <CaptionItem key={c.id} cap={c} />
       ))}

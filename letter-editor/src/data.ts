@@ -50,12 +50,30 @@ export type CaptionFont =
 
 export type CaptionAlign = "left" | "center" | "right";
 
+// Visual treatment behind caption text.
+//   none          — plain text, no shadow, no bg. Only if caption is on an already-safe area.
+//   shadow        — heavy text shadow only. Good on mid-contrast photos.
+//   scrim-bottom  — gradient darken across bottom ~38% of frame. Default for captions at y ≥ 0.5.
+//   scrim-top     — gradient darken across top ~38% of frame. For captions at y < 0.5.
+//   card          — solid/translucent box behind text (uses color/padding/radius/blur).
+export type CaptionBgKind = "none" | "shadow" | "scrim-bottom" | "scrim-top" | "card";
+
 export type CaptionBackground = {
-  color: string;         // rgba or hex — e.g., "rgba(15,12,8,0.45)"
-  paddingX?: number;     // default 20
-  paddingY?: number;     // default 8
-  radius?: number;       // default 4
-  blur?: boolean;        // backdrop blur behind box
+  kind?: CaptionBgKind;  // default resolves to "scrim-bottom" at render. Legacy rows with just { color } are treated as "card".
+  color?: string;        // used only by kind="card" — e.g., "rgba(15,12,8,0.55)"
+  paddingX?: number;     // card: default 22
+  paddingY?: number;     // card: default 10
+  radius?: number;       // card: default 4
+  blur?: boolean;        // card: backdrop blur behind box
+};
+
+// Shared between renderer and editor so the preview stays WYSIWYG.
+export const resolveCaptionBgKind = (
+  cap: { bg?: CaptionBackground }
+): CaptionBgKind => {
+  if (cap.bg?.kind) return cap.bg.kind;
+  if (cap.bg?.color) return "card";  // legacy rows with only { color }
+  return "scrim-bottom";
 };
 
 export const CAPTION_FONT_STACK: Record<CaptionFont, { fontFamily: string; fontStyle: "normal" | "italic"; letterSpacing: string }> = {
