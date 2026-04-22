@@ -1867,30 +1867,49 @@ export const App: React.FC = () => {
   const makeCaptionId = () => `cap-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
   const addCaptionEntry = useCallback((idx: number, preset?: Partial<CaptionEntry>) => {
-    setConfig((c) => ({
-      ...c,
-      photos: c.photos.map((p, i) => {
-        if (i !== idx) return p;
-        const existing = materializeCaptions(p);
-        // Auto-stack: each subsequent caption lands ~0.075 higher (≈80px at 1080 canvas),
-        // so two default-placed captions don't land on the same y and overlap. User can
-        // still drag to reposition afterward.
-        const yBase = 0.88;
-        const yStep = 0.075;
-        const stackedY = Math.max(0.08, yBase - existing.length * yStep);
-        const newCap: CaptionEntry = {
-          id: makeCaptionId(),
-          text: "",
-          x: 0.5,
-          y: stackedY,
-          align: "center",
-          fontFamily: "serif",
-          fontSize: 32,
-          ...preset,
-        };
-        return { ...p, captions: [...existing, newCap], caption: undefined };
-      }),
-    }));
+    setConfig((c) => {
+      const target = c.photos[idx];
+      if (!target) return c;
+      // Polaroid/split pair: left & right captions merge onto one canvas in render.
+      // Count BOTH sides so a cap added to one side doesn't collide with the other.
+      // Also bias x to the side the photo is on, so pair captions don't pile in one column.
+      const isLeftOfPair  = !!target.splitPair;
+      const isRightOfPair = idx > 0 && !!c.photos[idx - 1]?.splitPair;
+      const partner =
+        isLeftOfPair  ? c.photos[idx + 1] :
+        isRightOfPair ? c.photos[idx - 1] : null;
+      const ownCount     = materializeCaptions(target).length;
+      const partnerCount = partner ? materializeCaptions(partner).length : 0;
+      const totalCount   = ownCount + partnerCount;
+
+      // Auto-stack y: each extra caption (across the pair) sits ~0.075 higher.
+      const yBase = 0.88;
+      const yStep = 0.075;
+      const stackedY = Math.max(0.08, yBase - totalCount * yStep);
+      // Bias x column so left-side captions visually live on the left half, right on right.
+      const defaultX =
+        isLeftOfPair  ? 0.30 :
+        isRightOfPair ? 0.70 : 0.50;
+
+      const newCap: CaptionEntry = {
+        id: makeCaptionId(),
+        text: "",
+        x: defaultX,
+        y: stackedY,
+        align: "center",
+        fontFamily: "serif",
+        fontSize: 32,
+        ...preset,
+      };
+      return {
+        ...c,
+        photos: c.photos.map((p, i) => {
+          if (i !== idx) return p;
+          const existing = materializeCaptions(p);
+          return { ...p, captions: [...existing, newCap], caption: undefined };
+        }),
+      };
+    });
   }, []);
 
   const updateCaptionEntry = useCallback((idx: number, capId: string, patch: Partial<CaptionEntry>) => {
