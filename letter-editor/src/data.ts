@@ -187,6 +187,10 @@ export type AnnotationArrow = {
   label?: string;          // optional text; arrow-only if omitted/empty
   style?: ArrowStyle;      // default 'curve'
   color?: ArrowColor;      // default 'ink' (or 'gold' for brush style)
+  // Optional time window (normalized 0-1 of scene duration). If set, the arrow
+  // draws/fades within this window instead of using the scene-wide envelope.
+  fromT?: number;
+  toT?: number;
 };
 
 export type PhotoEntry = {

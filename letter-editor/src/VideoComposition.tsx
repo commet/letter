@@ -283,6 +283,28 @@ const getFrameStyle = (type: FrameType): React.CSSProperties => {
 // Arrows point to people/objects in group photos. Normalized coords (0-1)
 // relative to the photo area (so they live INSIDE the photo wrapper, next to Img).
 
+// Per-arrow timing — respects optional fromT/toT window, otherwise uses scene-wide envelope.
+const arrowTiming = (a: AnnotationArrowConfig, tN: number) => {
+  const hasWindow = a.fromT !== undefined || a.toT !== undefined;
+  if (!hasWindow) {
+    return {
+      drawT:  interpolate(tN, [0.20, 0.48], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+      labelT: interpolate(tN, [0.45, 0.65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+      opacity: interpolate(tN, [0.90, 1.0],  [1, 0], { extrapolateLeft: "clamp" }),
+    };
+  }
+  const fromT = a.fromT ?? 0;
+  const toT   = a.toT   ?? 1;
+  const span  = Math.max(0.001, toT - fromT);
+  const localT = (tN - fromT) / span;   // 0 at window start, 1 at window end (can go outside)
+  const drawT  = interpolate(localT, [0.05, 0.55], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const labelT = interpolate(localT, [0.40, 0.70], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fadeIn  = interpolate(localT, [0, 0.08], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fadeOut = interpolate(localT, [0.92, 1], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const opacity = Math.max(0, Math.min(fadeIn, fadeOut));
+  return { drawT, labelT, opacity };
+};
+
 const AnnotationLayer: React.FC<{
   annotations: AnnotationArrowConfig[];
   dur: number;
@@ -290,9 +312,6 @@ const AnnotationLayer: React.FC<{
   const frame = useCurrentFrame();
   if (!annotations || annotations.length === 0) return null;
   const tN = Math.min(1, Math.max(0, frame / dur));
-  const drawT  = interpolate(tN, [0.20, 0.48], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const labelT = interpolate(tN, [0.45, 0.65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const fadeO  = interpolate(tN, [0.90, 1.0],  [1, 0], { extrapolateLeft: "clamp" });
   return (
     <>
       <svg
@@ -303,6 +322,7 @@ const AnnotationLayer: React.FC<{
         {annotations.map((a) => {
           const info = buildArrowPath(a);
           const stroke = arrowStroke(a.style, a.color);
+          const { drawT, opacity } = arrowTiming(a, tN);
           // Approx path length via bbox — good enough for dash reveal
           const dx = (a.tipX - a.labelX) * 100;
           const dy = (a.tipY - a.labelY) * 100;
@@ -310,7 +330,7 @@ const AnnotationLayer: React.FC<{
           const dashLen = Math.max(approxLen, 1);
           const isDashed = a.style === "dashed";
           return (
-            <g key={a.id} opacity={stroke.opacity * fadeO}>
+            <g key={a.id} opacity={stroke.opacity * opacity}>
               <path
                 d={info.d}
                 fill="none"
@@ -336,30 +356,34 @@ const AnnotationLayer: React.FC<{
           );
         })}
       </svg>
-      {annotations.map((a) => a.label && (
-        <div
-          key={`lbl-${a.id}`}
-          style={{
-            position: "absolute",
-            left: `${a.labelX * 100}%`,
-            top: `${a.labelY * 100}%`,
-            transform: "translate(-50%, -50%)",
-            fontFamily: "'Nanum Pen Script', 'Nanum Myeongjo', cursive",
-            fontSize: 26,
-            color: "#1a1510",
-            background: "rgba(251, 244, 220, 0.92)",
-            padding: "3px 11px",
-            borderRadius: 2,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
-            whiteSpace: "nowrap",
-            opacity: labelT * fadeO,
-            pointerEvents: "none",
-            lineHeight: 1.1,
-          }}
-        >
-          {a.label}
-        </div>
-      ))}
+      {annotations.map((a) => {
+        if (!a.label) return null;
+        const { labelT, opacity } = arrowTiming(a, tN);
+        return (
+          <div
+            key={`lbl-${a.id}`}
+            style={{
+              position: "absolute",
+              left: `${a.labelX * 100}%`,
+              top: `${a.labelY * 100}%`,
+              transform: "translate(-50%, -50%)",
+              fontFamily: "'Nanum Pen Script', 'Nanum Myeongjo', cursive",
+              fontSize: 26,
+              color: "#1a1510",
+              background: "rgba(251, 244, 220, 0.92)",
+              padding: "3px 11px",
+              borderRadius: 2,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+              whiteSpace: "nowrap",
+              opacity: labelT * opacity,
+              pointerEvents: "none",
+              lineHeight: 1.1,
+            }}
+          >
+            {a.label}
+          </div>
+        );
+      })}
     </>
   );
 };
