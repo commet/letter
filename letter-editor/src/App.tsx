@@ -2093,23 +2093,64 @@ export const App: React.FC = () => {
 
   // ── updaters ────────────────────────────────
 
-  const updatePhoto = useCallback((idx: number, patch: Partial<PhotoEntry>) => {
-    setConfig((c) => ({
-      ...c,
-      photos: c.photos.map((p, i) => (i === idx ? { ...p, ...patch } : p)),
-    }));
+  // Auto-fit photo durationSec to caption length so typing animation has enough room.
+  // Target ~6 Korean chars/sec typing (matches typedTextSlice's 5 fpc @ 30fps).
+  // Formula (informed by the bulk SQL that initially seeded these values):
+  //   pair-left : dur ≥ 0.22 × max(L,R)자 + 3       (each caption gets ~43% of scene)
+  //   single    : dur ≥ 0.18 × max_cap_len자 + 3    (caption uses most of scene)
+  // Only BUMPS upward — if user has already set a longer dur we respect it, and we
+  // never shrink after caption is shortened/deleted (they can manually dial down).
+  const maxCaptionLen = (photo: PhotoEntry | undefined): number => {
+    if (!photo) return 0;
+    let m = 0;
+    for (const c of photo.captions ?? []) m = Math.max(m, (c.text ?? "").length);
+    if (photo.caption?.text) m = Math.max(m, photo.caption.text.length);
+    return m;
+  };
+
+  const withEnforcedDurs = useCallback((photos: PhotoEntry[]): PhotoEntry[] => {
+    return photos.map((p, i) => {
+      const isLeft  = !!p.splitPair && i + 1 < photos.length;
+      const isRight = i > 0 && !!photos[i - 1]?.splitPair;
+      if (isRight) return p; // right-of-pair dur is ignored by renderer
+      const ownMax = maxCaptionLen(p);
+      let requiredDur = 0;
+      if (isLeft) {
+        const partnerMax = maxCaptionLen(photos[i + 1]);
+        const len = Math.max(ownMax, partnerMax);
+        if (len > 0) requiredDur = 0.22 * len + 3;
+      } else if (ownMax > 0) {
+        requiredDur = 0.18 * ownMax + 3;
+      }
+      if (requiredDur > 0 && p.durationSec < requiredDur) {
+        return { ...p, durationSec: Math.round(requiredDur * 10) / 10 };
+      }
+      return p;
+    });
   }, []);
 
+  const updatePhoto = useCallback((idx: number, patch: Partial<PhotoEntry>) => {
+    setConfig((c) => {
+      let photos = c.photos.map((p, i) => (i === idx ? { ...p, ...patch } : p));
+      // Re-fit durs whenever anything that affects the formula changes.
+      if ("captions" in patch || "caption" in patch || "splitPair" in patch) {
+        photos = withEnforcedDurs(photos);
+      }
+      return { ...c, photos };
+    });
+  }, [withEnforcedDurs]);
+
   const updateCaption = useCallback((idx: number, patch: Partial<CaptionConfig> | null) => {
-    setConfig((c) => ({
-      ...c,
-      photos: c.photos.map((p, i) => {
+    setConfig((c) => {
+      const photos: PhotoEntry[] = c.photos.map((p, i) => {
         if (i !== idx) return p;
         if (patch === null) return { ...p, caption: undefined };
-        return { ...p, caption: { text: "", position: "bottom", ...p.caption, ...patch } };
-      }),
-    }));
-  }, []);
+        const merged: CaptionConfig = { text: "", position: "bottom", ...p.caption, ...patch };
+        return { ...p, caption: merged };
+      });
+      return { ...c, photos: withEnforcedDurs(photos) };
+    });
+  }, [withEnforcedDurs]);
 
   // ── Multi-caption (CaptionEntry[]) ───────────
   const makeCaptionId = () => `cap-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -2149,21 +2190,18 @@ export const App: React.FC = () => {
         fontSize: 32,
         ...preset,
       };
-      return {
-        ...c,
-        photos: c.photos.map((p, i) => {
-          if (i !== idx) return p;
-          const existing = materializeCaptions(p);
-          return { ...p, captions: [...existing, newCap], caption: undefined };
-        }),
-      };
+      const photos = c.photos.map((p, i) => {
+        if (i !== idx) return p;
+        const existing = materializeCaptions(p);
+        return { ...p, captions: [...existing, newCap], caption: undefined };
+      });
+      return { ...c, photos: withEnforcedDurs(photos) };
     });
-  }, []);
+  }, [withEnforcedDurs]);
 
   const updateCaptionEntry = useCallback((idx: number, capId: string, patch: Partial<CaptionEntry>) => {
-    setConfig((c) => ({
-      ...c,
-      photos: c.photos.map((p, i) => {
+    setConfig((c) => {
+      const photos = c.photos.map((p, i) => {
         if (i !== idx) return p;
         // Materialize first so edits to a legacy-derived caption actually persist.
         const current = materializeCaptions(p);
@@ -2175,23 +2213,25 @@ export const App: React.FC = () => {
           : current.length ? [{ ...current[0], ...patch }, ...current.slice(1)]
           : current;
         return { ...p, captions: finalList, caption: undefined };
-      }),
-    }));
-  }, []);
+      });
+      return { ...c, photos: withEnforcedDurs(photos) };
+    });
+  }, [withEnforcedDurs]);
 
   const deleteCaptionEntry = useCallback((idx: number, capId: string) => {
-    setConfig((c) => ({
-      ...c,
-      photos: c.photos.map((p, i) => {
+    setConfig((c) => {
+      const photos = c.photos.map((p, i) => {
         if (i !== idx) return p;
         const current = materializeCaptions(p);
         const remaining = current.filter((cap) => cap.id !== capId);
         // If capId didn't match (stale view id), fall back to removing the first entry.
         const finalList = remaining.length !== current.length ? remaining : current.slice(1);
         return { ...p, captions: finalList.length ? finalList : undefined, caption: undefined };
-      }),
-    }));
-  }, []);
+      });
+      // Note: deletion never shrinks dur — enforce only bumps upward.
+      return { ...c, photos: withEnforcedDurs(photos) };
+    });
+  }, [withEnforcedDurs]);
 
   const updateTitle = useCallback((act: number, patch: Partial<ActTitle>) => {
     setConfig((c) => ({
