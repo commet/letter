@@ -453,7 +453,12 @@ const typedTextSlice = (
 ): string => {
   if (!text) return "";
   const headDelay = 6;
-  const targetFrames = Math.min(text.length * 3, Math.max(15, Math.round(windowDur * 0.55)));
+  // Target 5 frames/char (~6 Korean chars/sec at 30fps) — matches comfortable reading pace
+  // and harmonizes with chat scene's 6 fpc. Cap at 80% of window so there's always a brief
+  // hold before fade-out. If window is too short for natural rate, typing compresses to fit.
+  const preferred = text.length * 5;
+  const cap = Math.max(15, Math.round(windowDur * 0.80));
+  const targetFrames = Math.min(preferred, cap);
   const elapsed = Math.max(0, frame - startFrame - headDelay);
   const ratio = Math.min(1, elapsed / Math.max(1, targetFrames));
   const count = Math.min(text.length, Math.round(ratio * text.length));
