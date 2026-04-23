@@ -1384,9 +1384,16 @@ const ChatInterludeScene: React.FC<{
             extrapolateRight: "clamp",
           });
           const chars = Array.from(msg.text ?? "");
-          // Typing occupies first 80% of the slot; rest is hold.
-          const typeFraction = 0.80;
-          const typeProgress = interpolate(localT, [0, typeFraction], [0, chars.length], {
+          // Character-speed-based typing: target ~5 chars/sec (6 frames/char @ 30fps).
+          // If message is too long to fit at target rate in the slot, cap typing to
+          // 90% of slot so there's always a brief hold before the next message. Keeps
+          // short messages at a natural reading pace instead of stretching them over
+          // the full slot (was the case with fixed 80%).
+          const framesPerChar = 6;
+          const slotFrames = Math.max(1, (mEnd - mStart) * dur);
+          const naturalTypeFraction = (chars.length * framesPerChar) / slotFrames;
+          const typeFraction = Math.min(0.90, naturalTypeFraction);
+          const typeProgress = interpolate(localT, [0, Math.max(0.001, typeFraction)], [0, chars.length], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
