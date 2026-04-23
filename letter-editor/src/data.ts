@@ -102,6 +102,10 @@ export type CaptionEntry = {
   color?: string;
   bg?: CaptionBackground;
   maxWidthPct?: number;      // 0-100, max horizontal width as % of canvas (default 80)
+  // Optional time window (normalized 0-1 of scene duration).
+  // Only visible (faded in/out + typing) inside [fromT, toT]. Defaults: [0, 1] = whole scene.
+  fromT?: number;
+  toT?: number;
 };
 
 export type SpotlightConfig = {
@@ -118,6 +122,24 @@ export type CropRect = {
   y: number;
   w: number;
   h: number;
+};
+
+// "Popout" — a rectangular region of the photo that lifts forward (scale + shadow)
+// during a time window. The base photo stays still; a clipped duplicate animates above.
+// Used for highlighting badges, signs, faces inside a still composition.
+//
+// Coords are normalized 0-1 to the photo's image area (same basis as spotlights).
+// Time window is normalized 0-1 to the scene duration.
+export type PopoutRegion = {
+  id: string;
+  x: number;          // top-left of region inside the image
+  y: number;
+  w: number;          // size as fraction of image
+  h: number;
+  scale?: number;     // peak scale, default 1.5 (1.0 = no lift)
+  fromT?: number;     // window start, default 0
+  toT?: number;       // window end, default 1
+  shadow?: "soft" | "strong";  // default "strong"
 };
 
 // Annotation arrow — points to a person/object in a group photo, with optional label.
@@ -182,6 +204,7 @@ export type PhotoEntry = {
   crop?: CropRect; // if set, only this rect of the image is shown (normalized 0-1)
   kenBurnsAmount?: number; // per-photo override for zoom/pan intensity (0-1). undefined = use global.
   annotations?: AnnotationArrow[]; // hand-drawn arrows pointing to people/objects in group photos
+  popouts?: PopoutRegion[];        // regions that lift forward (scale + shadow) on a time window
   splitPair?: boolean; // true = this photo + next photo form a split screen
   splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
   splitLabel?: string; // custom label under polaroid/cameo (fallback: tag first word)

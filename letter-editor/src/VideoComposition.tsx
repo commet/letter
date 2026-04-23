@@ -27,6 +27,7 @@ import {
   ChatInterlude as ChatInterludeConfig,
   Collage as CollageConfig,
   CaptionEntry,
+  PopoutRegion,
   CAPTION_FONT_STACK,
   resolveCaptionBgKind,
   FILTER_CSS,
@@ -416,20 +417,42 @@ const resolveCaptions = (photo: { captions?: CaptionEntry[]; caption?: { text: s
 // Heavy text shadow used by shadow/scrim kinds for AA-safe readability at wedding-venue distance.
 const CAPTION_TEXT_SHADOW = "0 2px 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.7), 0 0 18px rgba(0,0,0,0.4)";
 
-// Character-by-character typed reveal. Length-proportional so short captions type fast
-// and long ones still finish within ~55% of the scene (leaves time to sit and read).
-// Returns the sliced prefix of `text` visible at `frame`.
-const typedTextSlice = (text: string, frame: number, dur: number): string => {
+// Character-by-character typed reveal. Length-proportional within its visible window.
+// `windowDur` = duration of the visible window (ms in scene frames at fps); `startFrame` =
+// when typing should begin (absolute scene frame). For non-windowed captions this is the
+// scene duration starting at frame 0.
+const typedTextSlice = (
+  text: string,
+  frame: number,
+  windowDur: number,
+  startFrame: number = 0,
+): string => {
   if (!text) return "";
-  const startFrame = 6;                        // small head delay after fade-in kicks off at 8
-  const targetFrames = Math.min(text.length * 3, Math.max(15, Math.round(dur * 0.55)));
-  const elapsed = Math.max(0, frame - startFrame);
+  const headDelay = 6;
+  const targetFrames = Math.min(text.length * 3, Math.max(15, Math.round(windowDur * 0.55)));
+  const elapsed = Math.max(0, frame - startFrame - headDelay);
   const ratio = Math.min(1, elapsed / Math.max(1, targetFrames));
   const count = Math.min(text.length, Math.round(ratio * text.length));
   return text.slice(0, count);
 };
 
-const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number }> = ({ cap, dur }) => {
+// Per-caption opacity. If the caption has fromT/toT, fade in/out within that window.
+// Otherwise fall back to the scene-wide fade (matches old global behavior).
+const computeCaptionOpacity = (cap: CaptionEntry, frame: number, dur: number): number => {
+  const hasWindow = cap.fromT !== undefined || cap.toT !== undefined;
+  if (hasWindow) {
+    const fromFrame = (cap.fromT ?? 0) * dur;
+    const toFrame   = (cap.toT   ?? 1) * dur;
+    const inP  = interpolate(frame, [fromFrame, fromFrame + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+    const outP = interpolate(frame, [toFrame - 12, toFrame],    [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+    return Math.max(0, Math.min(inP, outP));
+  }
+  const fadeIn  = interpolate(frame, [8, 30],         [0, 1], { extrapolateRight: "clamp" });
+  const fadeOut = interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" });
+  return Math.max(0, Math.min(fadeIn, fadeOut));
+};
+
+const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }> = ({ cap, dur, opacity }) => {
   const frame = useCurrentFrame();
   const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
   const align: "left" | "center" | "right" = cap.align ?? "center";
@@ -453,6 +476,13 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number }> = ({ cap, dur })
     kind === "none" ? {} :
     { textShadow: CAPTION_TEXT_SHADOW };  // shadow / scrim-bottom / scrim-top
 
+  // Typing window matches the caption's visible window (or the whole scene if not windowed).
+  const fromFrame = (cap.fromT ?? 0) * dur;
+  const toFrame   = (cap.toT   ?? 1) * dur;
+  const windowDur = Math.max(1, toFrame - fromFrame);
+  const typed = typedTextSlice(cap.text, frame, windowDur, fromFrame);
+
+  if (opacity <= 0) return null;
   return (
     <div style={{
       position: "absolute",
@@ -468,12 +498,13 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number }> = ({ cap, dur })
       color: cap.color ?? "#f5ecd7",
       whiteSpace: "pre-wrap",
       lineHeight: 1.35,
+      opacity,
       ...boxStyle,
     }}>
       {cap.speaker ? (
         <span style={{ fontWeight: 600, marginRight: 10, opacity: 0.95 }}>{cap.speaker}:</span>
       ) : null}
-      <span>{typedTextSlice(cap.text, frame, dur)}</span>
+      <span>{typed}</span>
     </div>
   );
 };
@@ -494,27 +525,121 @@ const CaptionsLayer: React.FC<{
   dur: number;
 }> = ({ captions, dur }) => {
   const frame = useCurrentFrame();
-  const fadeIn = interpolate(frame, [8, 30], [0, 1], { extrapolateRight: "clamp" });
-  const fadeOut = interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" });
-  const opacity = Math.min(fadeIn, fadeOut);
   if (!captions.length) return null;
 
-  let needsBottomScrim = false;
-  let needsTopScrim = false;
-  for (const c of captions) {
-    const k = resolveCaptionBgKind(c);
-    if (k === "scrim-bottom") needsBottomScrim = true;
-    else if (k === "scrim-top") needsTopScrim = true;
-  }
+  // Compute opacity per caption (windowed or scene-wide). Then derive scrim opacities
+  // as the max of the captions that use them, so a windowed caption's scrim only
+  // shows while that caption is visible.
+  const items = captions.map((c) => ({
+    cap: c,
+    opacity: computeCaptionOpacity(c, frame, dur),
+    kind: resolveCaptionBgKind(c),
+  }));
+
+  const bottomCaps = items.filter(({ kind }) => kind === "scrim-bottom");
+  const topCaps    = items.filter(({ kind }) => kind === "scrim-top");
+  const bottomScrimOpacity = bottomCaps.length ? Math.max(...bottomCaps.map((i) => i.opacity)) : 0;
+  const topScrimOpacity    = topCaps.length    ? Math.max(...topCaps.map((i) => i.opacity))    : 0;
 
   return (
-    <AbsoluteFill style={{ opacity, pointerEvents: "none" }}>
-      {needsBottomScrim && <div style={SCRIM_BOTTOM_STYLE} />}
-      {needsTopScrim && <div style={SCRIM_TOP_STYLE} />}
-      {captions.map((c) => (
-        <CaptionItem key={c.id} cap={c} dur={dur} />
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {bottomScrimOpacity > 0 && <div style={{ ...SCRIM_BOTTOM_STYLE, opacity: bottomScrimOpacity }} />}
+      {topScrimOpacity > 0    && <div style={{ ...SCRIM_TOP_STYLE,    opacity: topScrimOpacity }}    />}
+      {items.map(({ cap, opacity }) => (
+        <CaptionItem key={cap.id} cap={cap} dur={dur} opacity={opacity} />
       ))}
     </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
+// Popout — region of a photo lifts forward (clipped duplicate scales + drops shadow)
+// ─────────────────────────────────────────────
+
+// Smooth in/out for the "lift" envelope.
+const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+const PopoutItem: React.FC<{
+  region: PopoutRegion;
+  src: string;
+  dur: number;
+}> = ({ region, src, dur }) => {
+  const frame = useCurrentFrame();
+
+  const fromFrame = (region.fromT ?? 0) * dur;
+  const toFrame   = (region.toT   ?? 1) * dur;
+  const inFrames  = Math.max(4, Math.min(14, (toFrame - fromFrame) * 0.18));
+  const outFrames = inFrames;
+
+  const inLin  = interpolate(frame, [fromFrame, fromFrame + inFrames], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const outLin = interpolate(frame, [toFrame - outFrames, toFrame], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const t = Math.min(easeInOutCubic(inLin), easeInOutCubic(outLin));
+  if (t <= 0.001) return null;
+
+  // Clamp region to keep clip-path math sane.
+  const x = Math.max(0, Math.min(1, region.x));
+  const y = Math.max(0, Math.min(1, region.y));
+  const w = Math.max(0.01, Math.min(1 - x, region.w));
+  const h = Math.max(0.01, Math.min(1 - y, region.h));
+
+  const targetScale = region.scale ?? 1.5;
+  const activeScale = 1 + (targetScale - 1) * t;
+
+  // transform-origin at the center of the region — scaling lifts from that point.
+  const cxPct = (x + w / 2) * 100;
+  const cyPct = (y + h / 2) * 100;
+
+  // clip-path inset(top right bottom left) — show only the popout rectangle.
+  const insetTop    = y * 100;
+  const insetRight  = (1 - x - w) * 100;
+  const insetBottom = (1 - y - h) * 100;
+  const insetLeft   = x * 100;
+
+  const isStrong = (region.shadow ?? "strong") === "strong";
+  const shadowMaxAlpha = isStrong ? 0.6 : 0.35;
+  const shadowMaxBlur  = isStrong ? 28  : 16;
+  const shadowMaxY     = isStrong ? 14  : 8;
+  const dropShadow = `drop-shadow(0 ${shadowMaxY * t}px ${shadowMaxBlur * t}px rgba(0,0,0,${shadowMaxAlpha * t}))`;
+
+  return (
+    <div style={{
+      position: "absolute", inset: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      pointerEvents: "none",
+      // The drop-shadow filter on the wrapper applies after clipping — keeps shadow tight to the clip shape.
+      filter: dropShadow,
+    }}>
+      <Img src={src} style={{
+        maxWidth: "100%", maxHeight: "100%",
+        width: "auto", height: "auto",
+        objectFit: "contain", display: "block",
+        clipPath: `inset(${insetTop}% ${insetRight}% ${insetBottom}% ${insetLeft}%)`,
+        WebkitClipPath: `inset(${insetTop}% ${insetRight}% ${insetBottom}% ${insetLeft}%)`,
+        transformOrigin: `${cxPct}% ${cyPct}%`,
+        transform: `scale(${activeScale})`,
+        willChange: "transform",
+      }} />
+    </div>
+  );
+};
+
+const PopoutLayer: React.FC<{
+  popouts: readonly PopoutRegion[] | undefined;
+  src: string;
+  dur: number;
+}> = ({ popouts, src, dur }) => {
+  if (!popouts?.length) return null;
+  return (
+    <>
+      {popouts.map((r) => (
+        <PopoutItem key={r.id} region={r} src={src} dur={dur} />
+      ))}
+    </>
   );
 };
 
@@ -1636,6 +1761,7 @@ const PhotoScene: React.FC<{
               {photo.annotations?.length && (
                 <AnnotationLayer annotations={photo.annotations} dur={dur} />
               )}
+              <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
             </div>
           </AbsoluteFill>
         )
@@ -1659,6 +1785,7 @@ const PhotoScene: React.FC<{
             {photo.annotations?.length && (
               <AnnotationLayer annotations={photo.annotations} dur={dur} />
             )}
+            <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
           </div>
         </AbsoluteFill>
       )}
@@ -1817,6 +1944,7 @@ const SplitScene: React.FC<{
                 {left.annotations?.length ? (
                   <AnnotationLayer annotations={left.annotations} dur={dur} />
                 ) : null}
+                <PopoutLayer popouts={left.popouts} src={srcOf(left)} dur={dur} />
               </div>
               <div style={captionStyle}>{leftLabel}</div>
             </div>
@@ -1834,6 +1962,7 @@ const SplitScene: React.FC<{
                 {right.annotations?.length ? (
                   <AnnotationLayer annotations={right.annotations} dur={dur} />
                 ) : null}
+                <PopoutLayer popouts={right.popouts} src={srcOf(right)} dur={dur} />
               </div>
               <div style={captionStyle}>{rightLabel}</div>
             </div>
