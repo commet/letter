@@ -34,7 +34,7 @@ import {
   buildTimeline,
 } from "./data";
 import { ERA_ICONS } from "./eraIcons";
-import { buildArrowPath, arrowStroke, arrowHeadPath } from "./arrow";
+import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OUTLINE_COLOR } from "./arrow";
 
 // ─────────────────────────────────────────────
 // Shared
@@ -329,8 +329,25 @@ const AnnotationLayer: React.FC<{
           const approxLen = Math.hypot(dx, dy) * 1.15;
           const dashLen = Math.max(approxLen, 1);
           const isDashed = a.style === "dashed";
+          // Bright/light colors (라일락/레몬/화이트/크림) get a dark underlay so they
+          // stay readable on light photo backgrounds without extra user config.
+          const outline = arrowNeedsOutline(a.color);
+          const outlineWidth = stroke.width + 2.2;
           return (
             <g key={a.id} opacity={stroke.opacity * opacity}>
+              {outline && (
+                <path
+                  d={info.d}
+                  fill="none"
+                  stroke={ARROW_OUTLINE_COLOR}
+                  strokeWidth={outlineWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                  strokeDasharray={isDashed ? "3 4" : `${dashLen}`}
+                  strokeDashoffset={isDashed ? 0 : (1 - drawT) * dashLen}
+                />
+              )}
               <path
                 d={info.d}
                 fill="none"
@@ -345,6 +362,16 @@ const AnnotationLayer: React.FC<{
               {drawT > 0.6 && (
                 <g transform={`translate(${a.tipX * 100} ${a.tipY * 100}) rotate(${info.tipAngleDeg})`}
                    opacity={interpolate(drawT, [0.6, 1.0], [0, 1], { extrapolateRight: "clamp" })}>
+                  {outline && (
+                    <path
+                      d={arrowHeadPath(a.style)}
+                      fill={ARROW_OUTLINE_COLOR}
+                      stroke={ARROW_OUTLINE_COLOR}
+                      strokeWidth={2.4}
+                      strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  )}
                   <path
                     d={arrowHeadPath(a.style)}
                     fill={stroke.color}

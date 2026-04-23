@@ -75,13 +75,22 @@ export type ArrowPreset = {
 };
 
 // Preset palette — pick one and drop it on the image.
-// Order: thin classics first, bold bodies second (what the user asked for).
+// Order: thin classics first, then per-person high-vis (라일락/레몬 곡선), then bold bodies.
 export const ARROW_PRESETS: ArrowPreset[] = [
-  { style: "curve",         color: "ink",  label: "곡선" },
-  { style: "straight",      color: "ink",  label: "직선" },
-  { style: "dashed",        color: "ink",  label: "점선" },
-  { style: "brush",         color: "gold", label: "붓질" },
-  { style: "bold-curve",    color: "ink",  label: "굵은 곡선" },
-  { style: "bold-straight", color: "ink",  label: "굵은 직선" },
-  { style: "marker",        color: "ink",  label: "마커" },
+  { style: "curve",         color: "ink",   label: "곡선" },
+  { style: "straight",      color: "ink",   label: "직선" },
+  { style: "dashed",        color: "ink",   label: "점선" },
+  { style: "bold-curve",    color: "lilac", label: "라일락 굵은곡선" },
+  { style: "bold-curve",    color: "lemon", label: "레몬 굵은곡선" },
+  { style: "brush",         color: "gold",  label: "붓질" },
+  { style: "bold-curve",    color: "ink",   label: "굵은 곡선" },
+  { style: "bold-straight", color: "ink",   label: "굵은 직선" },
+  { style: "marker",        color: "ink",   label: "마커" },
 ];
+
+// Colors that need a dark underlay outline for readability on light backgrounds.
+// Rendered as a wider dark stroke behind the main color — no extra UI knobs.
+const HIGH_VIS_OUTLINE: ReadonlySet<ArrowColor> = new Set<ArrowColor>(["lilac", "lemon", "white", "cream"]);
+export const arrowNeedsOutline = (color?: ArrowColor): boolean =>
+  !!color && HIGH_VIS_OUTLINE.has(color);
+export const ARROW_OUTLINE_COLOR = "rgba(15, 10, 5, 0.92)";

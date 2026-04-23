@@ -38,7 +38,7 @@ import {
   getPhotoIndexAtFrame,
   getPhotoStartFrame,
 } from "./data";
-import { buildArrowPath, arrowStroke, arrowHeadPath, ARROW_PRESETS, type ArrowPreset } from "./arrow";
+import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OUTLINE_COLOR, ARROW_PRESETS, type ArrowPreset } from "./arrow";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
 import type { Comment, NewCommentInput } from "./supabase";
 import { useDisplayIdentity, useEditorChannel, useComments, type PresenceUser } from "./realtime";
@@ -265,6 +265,7 @@ const ImageEditorModal: React.FC<{
   // ── Annotation arrow state ──────────────────
   const annotations: AnnotationArrow[] = photo.annotations ?? [];
   const [selectedArrow, setSelectedArrow] = useState<string | null>(null);
+  const [showMoreArrowColors, setShowMoreArrowColors] = useState(false);
   const arrowDragRef = useRef<
     | null
     | {
@@ -779,15 +780,30 @@ const ImageEditorModal: React.FC<{
                       const stroke = arrowStroke(a.style, a.color);
                       const selected = selectedArrow === a.id;
                       const dash = a.style === "dashed" ? "3 4" : undefined;
+                      const curW = selected ? stroke.width + 1 : stroke.width;
+                      const outline = arrowNeedsOutline(a.color);
                       return (
                         <g key={a.id} opacity={stroke.opacity}>
+                          {outline && (
+                            <path d={info.d} fill="none" stroke={ARROW_OUTLINE_COLOR}
+                              strokeWidth={curW + 2.2}
+                              strokeDasharray={dash}
+                              strokeLinecap="round" strokeLinejoin="round"
+                              vectorEffect="non-scaling-stroke" />
+                          )}
                           <path d={info.d} fill="none" stroke={stroke.color}
-                            strokeWidth={selected ? stroke.width + 1 : stroke.width}
+                            strokeWidth={curW}
                             strokeDasharray={dash}
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             vectorEffect="non-scaling-stroke" />
                           <g transform={`translate(${a.tipX * 100} ${a.tipY * 100}) rotate(${info.tipAngleDeg})`}>
+                            {outline && (
+                              <path d={arrowHeadPath(a.style)}
+                                fill={ARROW_OUTLINE_COLOR} stroke={ARROW_OUTLINE_COLOR}
+                                strokeWidth={2.4} strokeLinejoin="round"
+                                vectorEffect="non-scaling-stroke" />
+                            )}
                             <path d={arrowHeadPath(a.style)} fill={stroke.color}
                               vectorEffect="non-scaling-stroke" />
                           </g>
@@ -1300,8 +1316,9 @@ const ImageEditorModal: React.FC<{
                     const dash = preset.style === "dashed" ? "3 4" : undefined;
                     const sample = { labelX: 0.08, labelY: 0.55, tipX: 0.82, tipY: 0.40, style: preset.style };
                     const info = buildArrowPath(sample);
+                    const outline = arrowNeedsOutline(preset.color);
                     return (
-                      <button key={preset.style} className="btn btn-xs"
+                      <button key={`${preset.style}-${preset.color}`} className="btn btn-xs"
                         onClick={() => insertArrowPreset(preset)}
                         title={`${preset.label} — 클릭해서 추가`}
                         style={{
@@ -1310,6 +1327,13 @@ const ImageEditorModal: React.FC<{
                         }}>
                         <svg viewBox="0 0 100 100" width="70" height="22" preserveAspectRatio="none"
                              style={{ opacity: stroke.opacity }}>
+                          {outline && (
+                            <path d={info.d} fill="none" stroke={ARROW_OUTLINE_COLOR}
+                              strokeWidth={stroke.width + 2.2}
+                              strokeDasharray={dash}
+                              strokeLinecap="round" strokeLinejoin="round"
+                              vectorEffect="non-scaling-stroke" />
+                          )}
                           <path d={info.d} fill="none" stroke={stroke.color}
                             strokeWidth={stroke.width}
                             strokeDasharray={dash}
@@ -1317,6 +1341,12 @@ const ImageEditorModal: React.FC<{
                             strokeLinejoin="round"
                             vectorEffect="non-scaling-stroke" />
                           <g transform={`translate(${sample.tipX * 100} ${sample.tipY * 100}) rotate(${info.tipAngleDeg})`}>
+                            {outline && (
+                              <path d={arrowHeadPath(preset.style)}
+                                fill={ARROW_OUTLINE_COLOR} stroke={ARROW_OUTLINE_COLOR}
+                                strokeWidth={2.4} strokeLinejoin="round"
+                                vectorEffect="non-scaling-stroke" />
+                            )}
                             <path d={arrowHeadPath(preset.style)} fill={stroke.color}
                               vectorEffect="non-scaling-stroke" />
                           </g>
@@ -1360,14 +1390,12 @@ const ImageEditorModal: React.FC<{
                           );
                         })}
                       </div>
-                      {/* Color swatches */}
+                      {/* Color swatches — primary (기본으로 쓰는 사람별 색) + 더보기 (기타) */}
                       <div style={{ display: "flex", gap: 4, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
                         <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 40 }}>색</span>
-                        {(Object.keys(ARROW_COLOR_MAP) as ArrowColor[]).map((c) => {
-                          // 'default' is implicit: if user hasn't set color, brush→gold, others→ink
+                        {(["ink", "white", "lilac", "lemon"] as ArrowColor[]).map((c) => {
                           const implicitDefault: ArrowColor = (a.style ?? "curve") === "brush" ? "gold" : "ink";
                           const active = (a.color ?? implicitDefault) === c;
-                          const swatchBg = ARROW_COLOR_MAP[c];
                           return (
                             <button
                               key={c}
@@ -1376,13 +1404,37 @@ const ImageEditorModal: React.FC<{
                               style={{
                                 width: 22, height: 22,
                                 borderRadius: "50%",
-                                background: swatchBg,
+                                background: ARROW_COLOR_MAP[c],
                                 border: active ? "2px solid var(--gold)" : "1px solid rgba(0,0,0,0.2)",
-                                boxShadow: active
-                                  ? "0 0 0 2px rgba(232,208,155,0.25)"
-                                  : "0 1px 2px rgba(0,0,0,0.15)",
-                                cursor: "pointer",
-                                padding: 0,
+                                boxShadow: active ? "0 0 0 2px rgba(232,208,155,0.25)" : "0 1px 2px rgba(0,0,0,0.15)",
+                                cursor: "pointer", padding: 0,
+                              }}
+                            />
+                          );
+                        })}
+                        <button
+                          className="btn btn-xs"
+                          style={{ fontSize: 10, padding: "2px 6px", marginLeft: 4 }}
+                          onClick={(e) => { e.stopPropagation(); setShowMoreArrowColors((v) => !v); }}
+                        >
+                          {showMoreArrowColors ? "접기 ▲" : "더보기 ▼"}
+                        </button>
+                        {showMoreArrowColors && (["gold", "burgundy", "navy", "sage", "cream"] as ArrowColor[]).map((c) => {
+                          const implicitDefault: ArrowColor = (a.style ?? "curve") === "brush" ? "gold" : "ink";
+                          const active = (a.color ?? implicitDefault) === c;
+                          return (
+                            <button
+                              key={c}
+                              title={ARROW_COLOR_LABELS[c]}
+                              onClick={(e) => { e.stopPropagation(); updateArrow(a.id, { color: c }); }}
+                              style={{
+                                width: 20, height: 20,
+                                borderRadius: "50%",
+                                background: ARROW_COLOR_MAP[c],
+                                border: active ? "2px solid var(--gold)" : "1px solid rgba(0,0,0,0.2)",
+                                boxShadow: active ? "0 0 0 2px rgba(232,208,155,0.25)" : "0 1px 2px rgba(0,0,0,0.15)",
+                                cursor: "pointer", padding: 0,
+                                opacity: 0.85,
                               }}
                             />
                           );
