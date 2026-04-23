@@ -24,6 +24,7 @@ import {
   resolveCaptionBgKind,
   SpotlightConfig,
   CropRect,
+  PopoutRegion,
   AnnotationArrow,
   ArrowStyle,
   ArrowColor,
@@ -112,7 +113,7 @@ const BACKGROUND_STYLES: { value: BackgroundStyle; label: string }[] = [
 
 // ─── Image Editor Modal ──────────────────────
 
-type EditorMode = "focal" | "spotlight" | "crop" | "arrow" | "caption";
+type EditorMode = "focal" | "spotlight" | "crop" | "arrow" | "caption" | "popout";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const MIN_CROP = 0.1; // minimum width/height of crop rect
@@ -409,7 +410,7 @@ const ImageEditorModal: React.FC<{
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (mode === "crop" || mode === "arrow" || mode === "caption") return; // these have their own drag handlers
+    if (mode === "crop" || mode === "arrow" || mode === "caption" || mode === "popout") return; // these have their own drag handlers
     const pos = getClickPos(e);
     if (!pos) return;
 
@@ -420,6 +421,122 @@ const ImageEditorModal: React.FC<{
       onUpdatePhoto({ spotlights: [...(photo.spotlights ?? []), newSpot] });
       setSelectedSpot((photo.spotlights ?? []).length);
     }
+  };
+
+  // ── Popout state ────────────────────────────
+  const popouts: PopoutRegion[] = photo.popouts ?? [];
+  const [selectedPopout, setSelectedPopout] = useState<string | null>(null);
+  const popoutDragRef = useRef<
+    | null
+    | {
+        id: string;
+        handle: "tl" | "tr" | "bl" | "br" | "body";
+        startRect: { x: number; y: number; w: number; h: number };
+        startClientX: number;
+        startClientY: number;
+        containerW: number;
+        containerH: number;
+      }
+  >(null);
+
+  const makePopoutId = () => `po-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const updatePopout = (id: string, patch: Partial<PopoutRegion>) => {
+    const next = popouts.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    onUpdatePhoto({ popouts: next });
+  };
+  const deletePopout = (id: string) => {
+    onUpdatePhoto({ popouts: popouts.filter((p) => p.id !== id) });
+    if (selectedPopout === id) setSelectedPopout(null);
+  };
+  const addPopoutAt = (cx: number, cy: number) => {
+    const w = 0.22, h = 0.22;
+    const x = clamp(cx - w / 2, 0, 1 - w);
+    const y = clamp(cy - h / 2, 0, 1 - h);
+    const newPop: PopoutRegion = {
+      id: makePopoutId(),
+      x, y, w, h,
+      scale: 1.5,
+      fromT: 0.3,
+      toT: 0.7,
+      shadow: "strong",
+    };
+    onUpdatePhoto({ popouts: [...popouts, newPop] });
+    setSelectedPopout(newPop.id);
+  };
+
+  const beginPopoutDrag = (
+    id: string,
+    handle: "tl" | "tr" | "bl" | "br" | "body",
+    e: React.PointerEvent,
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const img = imgRef.current;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const p = popouts.find((x) => x.id === id);
+    if (!p) return;
+    popoutDragRef.current = {
+      id, handle,
+      startRect: { x: p.x, y: p.y, w: p.w, h: p.h },
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      containerW: rect.width,
+      containerH: rect.height,
+    };
+    setSelectedPopout(id);
+    try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch {}
+  };
+
+  const onPopoutPointerMove = (e: React.PointerEvent) => {
+    const d = popoutDragRef.current;
+    if (!d) return;
+    const dx = (e.clientX - d.startClientX) / d.containerW;
+    const dy = (e.clientY - d.startClientY) / d.containerH;
+    let { x, y, w, h } = d.startRect;
+    const MIN = 0.05;
+    if (d.handle === "body") {
+      x = clamp(d.startRect.x + dx, 0, 1 - w);
+      y = clamp(d.startRect.y + dy, 0, 1 - h);
+    } else {
+      let nx = x, ny = y, nw = w, nh = h;
+      if (d.handle === "tl" || d.handle === "bl") {
+        nx = clamp(x + dx, 0, x + w - MIN);
+        nw = w + (x - nx);
+      }
+      if (d.handle === "tr" || d.handle === "br") {
+        nw = clamp(w + dx, MIN, 1 - x);
+      }
+      if (d.handle === "tl" || d.handle === "tr") {
+        ny = clamp(y + dy, 0, y + h - MIN);
+        nh = h + (y - ny);
+      }
+      if (d.handle === "bl" || d.handle === "br") {
+        nh = clamp(h + dy, MIN, 1 - y);
+      }
+      x = nx; y = ny; w = nw; h = nh;
+    }
+    updatePopout(d.id, { x, y, w, h });
+  };
+  const endPopoutDrag = (e: React.PointerEvent) => {
+    if (popoutDragRef.current) {
+      popoutDragRef.current = null;
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    }
+  };
+
+  const handlePopoutContainerClick = (e: React.MouseEvent) => {
+    // Click on empty area of photo in popout mode → create new popout at click.
+    // (Clicks on existing popout rectangles stopPropagate.)
+    if (mode !== "popout") return;
+    const img = imgRef.current;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) / rect.width;
+    const cy = (e.clientY - rect.top) / rect.height;
+    if (cx < 0 || cx > 1 || cy < 0 || cy > 1) return;
+    addPopoutAt(cx, cy);
   };
 
   // ── Caption drag state ─────────────────────
@@ -536,6 +653,9 @@ const ImageEditorModal: React.FC<{
               </button>
               <button className={`tab ${mode === "arrow" ? "tab-active" : ""}`} onClick={() => setMode("arrow")}>
                 화살표
+              </button>
+              <button className={`tab ${mode === "popout" ? "tab-active" : ""}`} onClick={() => setMode("popout")}>
+                들뜸
               </button>
               <button className={`tab ${mode === "caption" ? "tab-active" : ""}`} onClick={() => setMode("caption")}>
                 텍스트 위치
@@ -804,6 +924,56 @@ const ImageEditorModal: React.FC<{
                 </div>
               )}
 
+              {/* Popout rectangles */}
+              {mode === "popout" && (
+                <div
+                  onClick={handlePopoutContainerClick}
+                  onPointerMove={onPopoutPointerMove}
+                  onPointerUp={endPopoutDrag}
+                  onPointerCancel={endPopoutDrag}
+                  style={{ position: "absolute", inset: 0, touchAction: "none", cursor: popoutDragRef.current ? "grabbing" : "crosshair" }}
+                >
+                  {popouts.map((p) => {
+                    const isSel = selectedPopout === p.id;
+                    return (
+                      <div
+                        key={p.id}
+                        onPointerDown={(e) => beginPopoutDrag(p.id, "body", e)}
+                        onClick={(e) => { e.stopPropagation(); setSelectedPopout(p.id); }}
+                        style={{
+                          position: "absolute",
+                          left: `${p.x * 100}%`, top: `${p.y * 100}%`,
+                          width: `${p.w * 100}%`, height: `${p.h * 100}%`,
+                          border: isSel ? "2px solid var(--gold, #a88848)" : "1.5px dashed rgba(255,255,255,0.75)",
+                          background: isSel ? "rgba(168,136,72,0.14)" : "rgba(255,255,255,0.06)",
+                          boxShadow: "0 0 0 1px rgba(0,0,0,0.35)",
+                          cursor: "grab", touchAction: "none",
+                        }}
+                        title="드래그해서 이동, 모서리 핸들로 리사이즈"
+                      >
+                        {/* corner handles */}
+                        {(["tl","tr","bl","br"] as const).map((h) => (
+                          <div key={h}
+                            onPointerDown={(e) => beginPopoutDrag(p.id, h, e)}
+                            style={{
+                              position: "absolute", width: 12, height: 12,
+                              background: "#fff", border: "2px solid var(--gold, #a88848)",
+                              borderRadius: 2,
+                              top: h.startsWith("t") ? -6 : undefined,
+                              bottom: h.startsWith("b") ? -6 : undefined,
+                              left: h.endsWith("l") ? -6 : undefined,
+                              right: h.endsWith("r") ? -6 : undefined,
+                              cursor: (h === "tl" || h === "br") ? "nwse-resize" : "nesw-resize",
+                              touchAction: "none",
+                            }}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Spotlight markers */}
               {mode === "spotlight" && spots.map((s, i) => (
                 <div
@@ -970,6 +1140,83 @@ const ImageEditorModal: React.FC<{
                     </label>
                   </div>
                 ))}
+              </>
+            )}
+
+            {mode === "popout" && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <p className="hint" style={{ margin: 0 }}>
+                    이미지를 클릭 = 들뜸 영역 추가 · 드래그로 이동 · 모서리로 리사이즈<br />
+                    시간 창에 따라 그 부분이 앞으로 솟아올라 강조됩니다.
+                  </p>
+                  {popouts.length > 0 && (
+                    <button
+                      className="btn btn-xs"
+                      style={{ flexShrink: 0, marginLeft: 10 }}
+                      onClick={() => { onUpdatePhoto({ popouts: [] }); setSelectedPopout(null); }}
+                    >
+                      전체 리셋
+                    </button>
+                  )}
+                </div>
+                {popouts.length === 0 && (
+                  <p className="hint hint-dim">아직 들뜸 영역이 없습니다. 이미지를 클릭해 추가하세요.</p>
+                )}
+                {popouts.map((p, i) => {
+                  const isSel = selectedPopout === p.id;
+                  return (
+                    <div key={p.id} className={`spot-control ${isSel ? "spot-control--active" : ""}`}
+                      onClick={() => setSelectedPopout(p.id)}>
+                      <div className="spot-control-header">
+                        <span>들뜸 #{i + 1}</span>
+                        <button className="btn-icon btn-icon--danger" onClick={(e) => { e.stopPropagation(); deletePopout(p.id); }}>&#10005;</button>
+                      </div>
+                      <div className="coord-display" style={{ marginBottom: 4 }}>
+                        x {(p.x * 100).toFixed(0)}% · y {(p.y * 100).toFixed(0)}% · w {(p.w * 100).toFixed(0)}% · h {(p.h * 100).toFixed(0)}%
+                      </div>
+                      <label className="slider-label">
+                        <span>확대</span>
+                        <input type="range" className="slider" min={1.1} max={2.5} step={0.05}
+                          value={p.scale ?? 1.5}
+                          onChange={(e) => updatePopout(p.id, { scale: parseFloat(e.target.value) })} />
+                        <span>{(p.scale ?? 1.5).toFixed(2)}×</span>
+                      </label>
+                      <label className="slider-label">
+                        <span>시작</span>
+                        <input type="range" className="slider" min={0} max={1} step={0.01}
+                          value={p.fromT ?? 0}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            const to = p.toT ?? 1;
+                            updatePopout(p.id, { fromT: Math.min(v, to - 0.05) });
+                          }} />
+                        <span>{((p.fromT ?? 0) * 100).toFixed(0)}%</span>
+                      </label>
+                      <label className="slider-label">
+                        <span>끝</span>
+                        <input type="range" className="slider" min={0} max={1} step={0.01}
+                          value={p.toT ?? 1}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            const from = p.fromT ?? 0;
+                            updatePopout(p.id, { toT: Math.max(v, from + 0.05) });
+                          }} />
+                        <span>{((p.toT ?? 1) * 100).toFixed(0)}%</span>
+                      </label>
+                      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                        <button className="btn btn-xs" style={{ flex: 1, background: (p.shadow ?? "strong") === "soft" ? "var(--gold)" : undefined }}
+                          onClick={() => updatePopout(p.id, { shadow: "soft" })}>
+                          그림자 약
+                        </button>
+                        <button className="btn btn-xs" style={{ flex: 1, background: (p.shadow ?? "strong") === "strong" ? "var(--gold)" : undefined }}
+                          onClick={() => updatePopout(p.id, { shadow: "strong" })}>
+                          그림자 강
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </>
             )}
 
@@ -1196,6 +1443,7 @@ const ImageEditorModal: React.FC<{
               : mode === "spotlight" ? "클릭 = 강조 추가 · 변경사항은 실시간 반영됨"
               : mode === "crop" ? "드래그 = 자르기 영역 조절 · 변경사항은 실시간 반영됨"
               : mode === "caption" ? "텍스트 박스 드래그 = 위치 이동 · 변경사항은 실시간 반영됨"
+              : mode === "popout" ? "클릭 = 들뜸 영역 추가 · 드래그 = 이동 · 모서리 = 리사이즈"
               : "드래그 = 화살표 그리기 · 끝점/라벨 드래그로 조정"}
           </span>
           <button
