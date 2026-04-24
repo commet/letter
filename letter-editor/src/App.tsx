@@ -2301,7 +2301,10 @@ export const App: React.FC = () => {
       const arr = [...c.photos];
       const target = idx + dir;
       if (target < 0 || target >= arr.length) return c;
-      if (arr[target].act !== arr[idx].act) return c;
+      // Allow cross-act moves — the act field is a label, not a structural boundary.
+      // If dragging into another act makes sense for the narrative, let the user do it.
+      // (They can also change the photo's `act` via its dropdown if they want it
+      // associated with the destination act's title card.)
       [arr[idx], arr[target]] = [arr[target], arr[idx]];
       return { ...c, photos: arr };
     });
