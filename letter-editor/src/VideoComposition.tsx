@@ -480,11 +480,11 @@ const typedTextSlice = (
 ): string => {
   if (!text) return "";
   const headDelay = 6;
-  // Target 5 frames/char (~6 Korean chars/sec at 30fps) — matches comfortable reading pace
-  // and harmonizes with chat scene's 6 fpc. Cap at 80% of window so there's always a brief
-  // hold before fade-out. If window is too short for natural rate, typing compresses to fit.
-  const preferred = text.length * 5;
-  const cap = Math.max(15, Math.round(windowDur * 0.80));
+  // Target 8 frames/char (~3.75 Korean chars/sec at 30fps) — slowed for older relatives
+  // following along live. Cap at 70% of window so ~30% remains as comfortable read-hold
+  // after typing finishes. Falls back to fitting in window if the scene is too short.
+  const preferred = text.length * 8;
+  const cap = Math.max(15, Math.round(windowDur * 0.70));
   const targetFrames = Math.min(preferred, cap);
   const elapsed = Math.max(0, frame - startFrame - headDelay);
   const ratio = Math.min(1, elapsed / Math.max(1, targetFrames));
@@ -1440,12 +1440,10 @@ const ChatInterludeScene: React.FC<{
             extrapolateRight: "clamp",
           });
           const chars = Array.from(msg.text ?? "");
-          // Character-speed-based typing: target ~5 chars/sec (6 frames/char @ 30fps).
-          // If message is too long to fit at target rate in the slot, cap typing to
-          // 90% of slot so there's always a brief hold before the next message. Keeps
-          // short messages at a natural reading pace instead of stretching them over
-          // the full slot (was the case with fixed 80%).
-          const framesPerChar = 6;
+          // Character-speed-based typing: target ~3 chars/sec (10 frames/char @ 30fps).
+          // Slower than caption typing because chat scenes hold attention longer and
+          // older guests need pace to follow along. Long messages cap at 90% of slot.
+          const framesPerChar = 10;
           const slotFrames = Math.max(1, (mEnd - mStart) * dur);
           const naturalTypeFraction = (chars.length * framesPerChar) / slotFrames;
           const typeFraction = Math.min(0.90, naturalTypeFraction);

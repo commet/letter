@@ -2146,10 +2146,10 @@ export const App: React.FC = () => {
   // ── updaters ────────────────────────────────
 
   // Auto-fit photo durationSec to caption length so typing animation has enough room.
-  // Target ~6 Korean chars/sec typing (matches typedTextSlice's 5 fpc @ 30fps).
-  // Formula (informed by the bulk SQL that initially seeded these values):
-  //   pair-left : dur ≥ 0.22 × max(L,R)자 + 3       (each caption gets ~43% of scene)
-  //   single    : dur ≥ 0.18 × max_cap_len자 + 3    (caption uses most of scene)
+  // Target ~3.75 Korean chars/sec typing (matches typedTextSlice's 8 fpc @ 30fps) so
+  // guests of all ages can follow live. Formula tuned to give comfortable hold + fade.
+  //   pair-left : dur ≥ 0.35 × max(L,R)자 + 4       (each caption gets ~43% of scene)
+  //   single    : dur ≥ 0.28 × max_cap_len자 + 4    (caption uses most of scene)
   // Only BUMPS upward — if user has already set a longer dur we respect it, and we
   // never shrink after caption is shortened/deleted (they can manually dial down).
   const maxCaptionLen = (photo: PhotoEntry | undefined): number => {
@@ -2170,9 +2170,9 @@ export const App: React.FC = () => {
       if (isLeft) {
         const partnerMax = maxCaptionLen(photos[i + 1]);
         const len = Math.max(ownMax, partnerMax);
-        if (len > 0) requiredDur = 0.22 * len + 3;
+        if (len > 0) requiredDur = 0.35 * len + 4;
       } else if (ownMax > 0) {
-        requiredDur = 0.18 * ownMax + 3;
+        requiredDur = 0.28 * ownMax + 4;
       }
       if (requiredDur > 0 && p.durationSec < requiredDur) {
         return { ...p, durationSec: Math.round(requiredDur * 10) / 10 };
