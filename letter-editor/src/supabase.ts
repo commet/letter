@@ -65,7 +65,7 @@ export async function loadConfig(): Promise<VideoConfig | null> {
             y: base.caption.position === "top" ? 0.08 : base.caption.position === "center" ? 0.5 : 0.92,
             align: "center",
             fontFamily: "serif",
-            fontSize: 32,
+            fontSize: 40,
           };
           base.captions = [legacy];
         }

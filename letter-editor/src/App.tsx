@@ -919,7 +919,7 @@ const ImageEditorModal: React.FC<{
                           fontFamily: font.fontFamily,
                           fontStyle: font.fontStyle,
                           letterSpacing: font.letterSpacing,
-                          fontSize: Math.max(10, (cap.fontSize ?? 32) * captionPreviewScale),
+                          fontSize: Math.max(10, (cap.fontSize ?? 40) * captionPreviewScale),
                           color: cap.color ?? "#f5ecd7",
                           textAlign: align,
                           maxWidth: `${cap.maxWidthPct ?? 80}%`,
@@ -1537,7 +1537,7 @@ const materializeCaptions = (p: PhotoEntry): CaptionEntry[] => {
       y: pos === "top" ? 0.08 : pos === "center" ? 0.5 : 0.92,
       align: "center",
       fontFamily: "serif",
-      fontSize: 32,
+      fontSize: 40,
       // Pick a scrim that matches where the caption sits so the legacy row is readable.
       // "center" has no edge to darken, so fall back to a shadow.
       bg: { kind: pos === "top" ? "scrim-top" : pos === "center" ? "shadow" : "scrim-bottom" },
@@ -1634,8 +1634,8 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
                 {CAPTION_FONT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               <input className="input input-sm" type="number" min={12} max={96} step={2}
-                value={cap.fontSize ?? 32}
-                onChange={(e) => onUpdate(photoIdx, cap.id, { fontSize: parseInt(e.target.value, 10) || 32 })}
+                value={cap.fontSize ?? 40}
+                onChange={(e) => onUpdate(photoIdx, cap.id, { fontSize: parseInt(e.target.value, 10) || 40 })}
                 title="크기 (px @ 1920×1080)" style={{ width: 60 }} />
               <select className="select select-sm" value={bgIsCustom ? -1 : bgIdx}
                 onChange={(e) => {
@@ -2259,7 +2259,7 @@ export const App: React.FC = () => {
         y: defaultY,
         align: "center",
         fontFamily: "serif",
-        fontSize: 32,
+        fontSize: 40,
         ...(defaultFromT !== undefined ? { fromT: defaultFromT } : {}),
         ...(defaultToT   !== undefined ? { toT:   defaultToT   } : {}),
         ...preset,

@@ -442,7 +442,7 @@ const legacyCaptionToEntry = (c: { text: string; position: "top" | "bottom" | "c
   y: c.position === "top" ? 0.08 : c.position === "center" ? 0.5 : 0.92,
   align: "center",
   fontFamily: "serif",
-  fontSize: 32,
+  fontSize: 40,
   bg: { kind: c.position === "top" ? "scrim-top" : c.position === "center" ? "shadow" : "scrim-bottom" },
 });
 
@@ -550,7 +550,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       fontFamily: font.fontFamily,
       fontStyle: font.fontStyle,
       letterSpacing: font.letterSpacing,
-      fontSize: cap.fontSize ?? 32,
+      fontSize: cap.fontSize ?? 40,
       color: cap.color ?? "#f5ecd7",
       whiteSpace: "pre-wrap",
       lineHeight: 1.35,
