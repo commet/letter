@@ -2168,11 +2168,21 @@ export const App: React.FC = () => {
       const ownMax = maxCaptionLen(p);
       let requiredDur = 0;
       if (isLeft) {
-        const partnerMax = maxCaptionLen(photos[i + 1]);
-        const len = Math.max(ownMax, partnerMax);
-        if (len > 0) requiredDur = 0.35 * len + 4;
+        // Stay-and-stack model: LEFT cap stays visible while RIGHT cap types in below.
+        // Both have to fit sequentially within the scene, so dur scales with SUM of caps.
+        const partnerSum = (photos[i + 1]?.captions ?? []).reduce(
+          (s, c) => s + (c.text ?? "").length, 0,
+        ) + ((photos[i + 1]?.caption?.text ?? "").length);
+        const ownSum = (p.captions ?? []).reduce(
+          (s, c) => s + (c.text ?? "").length, 0,
+        ) + ((p.caption?.text ?? "").length);
+        const totalLen = ownSum + partnerSum;
+        if (totalLen > 0) requiredDur = 0.22 * totalLen + 4;
       } else if (ownMax > 0) {
-        requiredDur = 0.28 * ownMax + 4;
+        const ownSum = (p.captions ?? []).reduce(
+          (s, c) => s + (c.text ?? "").length, 0,
+        ) + ((p.caption?.text ?? "").length);
+        requiredDur = 0.20 * ownSum + 4;
       }
       if (requiredDur > 0 && p.durationSec < requiredDur) {
         return { ...p, durationSec: Math.round(requiredDur * 10) / 10 };
@@ -2211,35 +2221,47 @@ export const App: React.FC = () => {
     setConfig((c) => {
       const target = c.photos[idx];
       if (!target) return c;
-      // Polaroid/split pair: left & right captions merge onto one canvas in render.
-      // Count BOTH sides so a cap added to one side doesn't collide with the other.
-      // Also bias x to the side the photo is on, so pair captions don't pile in one column.
+      // Stay-and-stack model: pair captions render as 2 lines that BOTH stay visible.
+      // LEFT typing in upper line first; once done, RIGHT types in lower line below.
+      // Both remain on screen until the scene fades.
       const isLeftOfPair  = !!target.splitPair;
       const isRightOfPair = idx > 0 && !!c.photos[idx - 1]?.splitPair;
-      const partner =
-        isLeftOfPair  ? c.photos[idx + 1] :
-        isRightOfPair ? c.photos[idx - 1] : null;
-      const ownCount     = materializeCaptions(target).length;
-      const partnerCount = partner ? materializeCaptions(partner).length : 0;
-      const totalCount   = ownCount + partnerCount;
+      const ownCount      = materializeCaptions(target).length;
 
-      // Auto-stack y: each extra caption (across the pair) sits ~0.075 higher.
-      const yBase = 0.88;
-      const yStep = 0.075;
-      const stackedY = Math.max(0.08, yBase - totalCount * yStep);
-      // Bias x column so left-side captions visually live on the left half, right on right.
-      const defaultX =
-        isLeftOfPair  ? 0.30 :
-        isRightOfPair ? 0.70 : 0.50;
+      // Defaults differ by role:
+      //   pair LEFT  → upper line, fromT=0.05, stays till end
+      //   pair RIGHT → lower line(s), staggered fromT, stays till end
+      //   single     → centered, no time window (full scene)
+      const defaultX = 0.50;
+      let defaultY = 0.88;
+      let defaultFromT: number | undefined;
+      let defaultToT: number | undefined;
+
+      if (isLeftOfPair) {
+        defaultY = 0.82 - ownCount * 0.06;
+        defaultFromT = 0.05;
+        defaultToT = 0.95;
+      } else if (isRightOfPair) {
+        // Stack subsequent right-side caps below the first
+        defaultY = 0.92 + ownCount * 0.04;
+        // Each additional right cap starts a bit later so they type sequentially
+        defaultFromT = 0.52 + ownCount * 0.18;
+        defaultToT = 0.95;
+      } else {
+        // single: stack subsequent caps upward like before
+        defaultY = Math.max(0.08, 0.88 - ownCount * 0.075);
+      }
 
       const newCap: CaptionEntry = {
         id: makeCaptionId(),
         text: "",
         x: defaultX,
-        y: stackedY,
+        y: defaultY,
         align: "center",
         fontFamily: "serif",
         fontSize: 32,
+        ...(defaultFromT !== undefined ? { fromT: defaultFromT } : {}),
+        ...(defaultToT   !== undefined ? { toT:   defaultToT   } : {}),
         ...preset,
       };
       const photos = c.photos.map((p, i) => {
