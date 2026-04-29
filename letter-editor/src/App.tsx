@@ -2268,8 +2268,8 @@ export const App: React.FC = () => {
         defaultFromT = computeNextFromT(prev, 0.05, D);
         defaultToT = 0.97;
       } else {
-        // single: stack subsequent caps upward like before
-        defaultY = Math.max(0.08, 0.88 - ownCount * 0.075);
+        // single: 추가 순서 = 위→아래. 첫 캡션이 위, 다음 캡션이 그 아래로 쌓임.
+        defaultY = Math.min(0.95, 0.86 + ownCount * 0.06);
       }
 
       const newCap: CaptionEntry = {
