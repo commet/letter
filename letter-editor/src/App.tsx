@@ -1629,10 +1629,10 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
               </datalist>
               <button className="btn-icon btn-icon--danger" onClick={() => onDelete(photoIdx, cap.id)}>&#10005;</button>
             </div>
-            <textarea className="input input-sm" placeholder="텍스트"
-              value={cap.text} rows={2}
+            <textarea className="input input-sm" placeholder="텍스트 (Enter / Shift+Enter 로 줄바꿈)"
+              value={cap.text} rows={3}
               onChange={(e) => onUpdate(photoIdx, cap.id, { text: e.target.value })}
-              style={{ resize: "vertical" }} />
+              style={{ resize: "vertical", whiteSpace: "pre-wrap", fontFamily: "inherit" }} />
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               <select className="select select-sm" value={cap.fontFamily ?? "serif"}
                 onChange={(e) => onUpdate(photoIdx, cap.id, { fontFamily: e.target.value as CaptionFont })}
