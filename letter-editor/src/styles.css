@@ -719,17 +719,16 @@ body {
   padding: 16px;
   cursor: crosshair;
 }
+/* Wrapper sized via JS (ResizeObserver on the image) to exactly match the
+   image's displayed rect. Overlays inside (inset:0) then cover ONLY the image. */
 .focal-img-wrap {
   position: relative;
-  display: inline-block;
   line-height: 0;
-  max-width: 100%;
-  max-height: 60vh;
 }
 .focal-img {
   display: block;
   max-width: 100%;
-  max-height: 100%;
+  max-height: 60vh;
   width: auto;
   height: auto;
   object-fit: contain;

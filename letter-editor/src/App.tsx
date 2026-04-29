@@ -130,6 +130,29 @@ const ImageEditorModal: React.FC<{
   const [mode, setMode] = useState<EditorMode>(initialMode ?? "focal");
   const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  // Track image's actual rendered size (after CSS max-width / max-height kick in)
+  // so .focal-img-wrap can size to match exactly. Overlays inside the wrapper
+  // (inset:0) then cover ONLY the image rect — not letterbox or container area.
+  // Without this, a portrait image with circular percentage sizing on the wrapper
+  // can render at intrinsic pixels (huge) in some browsers.
+  const [imgBox, setImgBox] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    setImgBox(null);
+    const img = imgRef.current;
+    if (!img) return;
+    const update = () => {
+      const w = img.clientWidth, h = img.clientHeight;
+      if (w > 0 && h > 0) setImgBox({ w, h });
+    };
+    if (img.complete) update();
+    img.addEventListener("load", update);
+    const ro = new ResizeObserver(update);
+    ro.observe(img);
+    return () => {
+      img.removeEventListener("load", update);
+      ro.disconnect();
+    };
+  }, [photo.file]);
 
   // Crop state
   const crop: CropRect = photo.crop ?? { x: 0, y: 0, w: 1, h: 1 };
@@ -669,10 +692,12 @@ const ImageEditorModal: React.FC<{
         <div className="editor-body">
           <div className="editor-canvas">
             <div className="focal-container">
-              {/* Image-hugging wrapper: shrink-to-fit so overlays (inset:0)
-                  cover ONLY the image rect, not letterbox area. Without this,
-                  arrows/crop/spotlight handles drift when image aspect ≠ container. */}
-              <div className="focal-img-wrap">
+              {/* Image-hugging wrapper: explicit aspect-ratio (set from image's
+                  natural dims after load) lets max-width / max-height combine
+                  predictably across browsers. Overlays inside cover ONLY the
+                  image rect, so arrows/crop/spotlight handles match what the
+                  user sees. */}
+              <div className="focal-img-wrap" style={imgBox ? { width: imgBox.w, height: imgBox.h } : undefined}>
               <img
                 ref={imgRef}
                 src={photoSrc(photo.file)}
