@@ -2260,7 +2260,7 @@ export const App: React.FC = () => {
         defaultFromT = computeNextFromT(ownExisting[ownCount - 1], 0.05, D);
         defaultToT = 0.97;
       } else if (isRightOfPair) {
-        defaultY = Math.min(0.95, 0.88 + ownCount * 0.04);
+        defaultY = Math.min(0.95, 0.86 + ownCount * 0.04);
         const partnerLeft = c.photos[idx - 1]!;
         const leftCaps = materializeCaptions(partnerLeft);
         const D = partnerLeft.durationSec * fps; // pair scene uses LEFT dur
