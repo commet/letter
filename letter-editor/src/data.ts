@@ -826,7 +826,7 @@ export const defaultConfig: VideoConfig = {
     trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26)
     trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49)
     trackBStartSec: 250,                 // 4:10 — 트랙 A 끝(4:26) 직전, 자연스러운 크로스페이드
-    crossfadeSec: 4,
+    crossfadeSec: 6,
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 2.5,

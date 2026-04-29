@@ -2393,13 +2393,19 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     const masterVol = audio?.volume ?? 0.30;
     const fadeInF  = Math.max(1, Math.round((audio?.fadeInSec  ?? 1.5) * fps));
     const fadeOutF = Math.max(1, Math.round((audio?.fadeOutSec ?? 2.5) * fps));
-    const xfF      = Math.max(1, Math.round((audio?.crossfadeSec ?? 4) * fps));
+    const xfF      = Math.max(1, Math.round((audio?.crossfadeSec ?? 6) * fps));
     const xfHalf   = Math.round(xfF / 2);
     const transitionF = audio?.trackBStartSec != null
       ? Math.round(audio.trackBStartSec * fps)
       : Math.round(totalF * 0.65);
     const trackBSeqStart = Math.max(0, transitionF - xfHalf);
     const trackBLocalDur = Math.max(1, totalF - trackBSeqStart);
+    // Equal-power crossfade curves keep perceived combined loudness ~constant
+    // through the transition (linear crossfade dips ~30% at midpoint, sounds odd).
+    // cosCurve: 1 → 0  (track A fading out)
+    // sinCurve: 0 → 1  (track B fading in)
+    const cosCurve = (t: number) => Math.cos(Math.max(0, Math.min(1, t)) * Math.PI / 2);
+    const sinCurve = (t: number) => Math.sin(Math.max(0, Math.min(1, t)) * Math.PI / 2);
 
     if (audio?.trackA) {
       const xfStart = transitionF - xfHalf;
@@ -2410,7 +2416,7 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
         let fadeOut = 1;
         if (audio.trackB) {
           if (f >= xfEnd) fadeOut = 0;
-          else if (f >= xfStart) fadeOut = 1 - (f - xfStart) / Math.max(1, xfEnd - xfStart);
+          else if (f >= xfStart) fadeOut = cosCurve((f - xfStart) / Math.max(1, xfEnd - xfStart));
         } else {
           // No track B → fade out at video end
           const remain = totalF - f;
@@ -2430,7 +2436,8 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     }
     if (audio?.trackB) {
       const volB = (f: number) => {
-        const fadeIn = Math.min(1, f / xfF);
+        // Equal-power fade in over the crossfade window starting at sequence frame 0.
+        const fadeIn = sinCurve(f / xfF);
         const remain = trackBLocalDur - f;
         const fadeOut = Math.min(1, remain / fadeOutF);
         return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
