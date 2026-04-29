@@ -894,10 +894,12 @@ const ImageEditorModal: React.FC<{
                   {captions.map((cap) => {
                     const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
                     const align = cap.align ?? "center";
-                    const translate =
-                      align === "left"  ? "translate(0, -50%)" :
-                      align === "right" ? "translate(-100%, -50%)" :
-                                           "translate(-50%, -50%)";
+                    // Match renderer: bottom-anchor for low y (text grows up), top-anchor
+                    // for high y (text grows down), center for middle. Prevents multi-line
+                    // wrapping from colliding with the next caption stacked below.
+                    const xT = align === "left" ? "0" : align === "right" ? "-100%" : "-50%";
+                    const yT = cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%";
+                    const translate = `translate(${xT}, ${yT})`;
                     const isSelected = selectedCaption === cap.id;
                     const kind = resolveCaptionBgKind(cap);
                     const preview = `${cap.speaker ? cap.speaker + ": " : ""}${cap.text || "텍스트"}`;

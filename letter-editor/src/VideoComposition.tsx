@@ -516,10 +516,12 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
   const align: "left" | "center" | "right" = cap.align ?? "center";
   const xPct = Math.max(0, Math.min(1, cap.x)) * 100;
   const yPct = Math.max(0, Math.min(1, cap.y)) * 100;
-  const translate =
-    align === "left"  ? "translate(0, -50%)" :
-    align === "right" ? "translate(-100%, -50%)" :
-                        "translate(-50%, -50%)";
+  // Vertical anchor depends on y position so multi-line text doesn't collide
+  // with stacked captions below: bottom-anchor in lower band (text grows up),
+  // top-anchor in upper band (text grows down), center otherwise.
+  const xT = align === "left" ? "0" : align === "right" ? "-100%" : "-50%";
+  const yT = cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%";
+  const translate = `translate(${xT}, ${yT})`;
   const maxWidthPct = cap.maxWidthPct ?? 95;
 
   const kind = resolveCaptionBgKind(cap);
