@@ -1685,12 +1685,16 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
         + 텍스트 추가
       </button>
       {captions.length === 0 && CAPTION_SPEAKER_PRESETS.length > 0 && (
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>빠른 시작:</span>
           <button className="btn btn-xs" onClick={() => {
-            onAdd(photoIdx, { speaker: "예찬", y: 0.82, align: "center" });
-            onAdd(photoIdx, { speaker: "슬기", y: 0.90, align: "center" });
-          }}>대화 (예찬 / 슬기)</button>
+            onAdd(photoIdx, { speaker: "예찬", y: 0.86, align: "center" });
+            onAdd(photoIdx, { speaker: "슬기", y: 0.92, align: "center" });
+          }}>예찬 / 슬기</button>
+          <button className="btn btn-xs" onClick={() => {
+            onAdd(photoIdx, { speaker: "슬기", y: 0.86, align: "center" });
+            onAdd(photoIdx, { speaker: "예찬", y: 0.92, align: "center" });
+          }}>슬기 / 예찬</button>
         </div>
       )}
     </div>
