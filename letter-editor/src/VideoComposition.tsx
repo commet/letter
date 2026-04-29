@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
 import {
   AbsoluteFill,
+  Audio,
   Img,
   Sequence,
   interpolate,
+  staticFile,
   useCurrentFrame,
 } from "remotion";
 import {
@@ -518,7 +520,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
     align === "left"  ? "translate(0, -50%)" :
     align === "right" ? "translate(-100%, -50%)" :
                         "translate(-50%, -50%)";
-  const maxWidthPct = cap.maxWidthPct ?? 80;
+  const maxWidthPct = cap.maxWidthPct ?? 90;
 
   const kind = resolveCaptionBgKind(cap);
   const boxStyle: React.CSSProperties =
@@ -1770,27 +1772,38 @@ const PhotoScene: React.FC<{
       <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} seed={hashSeed(photo.tag)} />
       {frameType === "none" ? (
         photo.crop ? (
-          // Crop mode: wrapper clips to viewport, image is sized so crop rect fills wrapper
+          // Crop mode: outer wrapper clips to viewport. Inner box is positioned/sized so
+          // the crop rect maps to the canvas, and carries the Ken Burns transform so the
+          // image AND its overlays (spotlight, annotations, popouts) stay in lock-step.
+          // Putting overlays in this same coordinate space means arrows drawn on the full
+          // image stay anchored to the same image pixels under crop offset + ken burns.
+          // objectFit: cover preserves natural aspect — better than "fill" which stretches
+          // when crop aspect ≠ canvas aspect (image squashes/elongates).
           <AbsoluteFill style={{ overflow: "hidden" }}>
-            <Img src={src} style={{
+            <div style={{
               position: "absolute",
               left: `${-photo.crop.x / photo.crop.w * 100}%`,
               top: `${-photo.crop.y / photo.crop.h * 100}%`,
               width: `${100 / photo.crop.w}%`,
               height: `${100 / photo.crop.h}%`,
-              objectFit: "fill",
               transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
               transformOrigin: "center center",
-              filter: filterCSS !== "none" ? filterCSS : undefined,
-              display: "block",
-            }} />
-            {/* Spotlight inside wrapper — crop fills canvas so this covers crop only */}
-            {photo.spotlights?.length > 0 && (
-              <SpotlightOverlay spotlights={photo.spotlights} />
-            )}
-            {photo.annotations?.length && (
-              <AnnotationLayer annotations={photo.annotations} dur={dur} />
-            )}
+            }}>
+              <Img src={src} style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: filterCSS !== "none" ? filterCSS : undefined,
+                display: "block",
+              }} />
+              {photo.spotlights?.length > 0 && (
+                <SpotlightOverlay spotlights={photo.spotlights} />
+              )}
+              {photo.annotations?.length ? (
+                <AnnotationLayer annotations={photo.annotations} dur={dur} />
+              ) : null}
+              <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
+            </div>
           </AbsoluteFill>
         ) : (
           <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
@@ -2361,8 +2374,76 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
 
   let cursor = 0;
 
+  // ── BGM: two-track auto crossfade with master fade in/out ──
+  // Track A plays from start; at trackBStartSec we crossfade into Track B which
+  // plays until video end. Volumes are envelopes that combine fade-in (start),
+  // crossfade (mid), and fade-out (end). Each Audio is wrapped in a Sequence so
+  // its volume callback receives a LOCAL frame, simplifying the math.
+  const audio = config.audio;
+  const totalF = timeline.reduce((s, it) => s + it.durationInFrames, 0)
+    - cf * Math.max(0, timeline.length - 1);
+  const audioElems: React.ReactNode[] = [];
+  if (audio?.trackA || audio?.trackB) {
+    const masterVol = audio?.volume ?? 0.30;
+    const fadeInF  = Math.max(1, Math.round((audio?.fadeInSec  ?? 1.5) * fps));
+    const fadeOutF = Math.max(1, Math.round((audio?.fadeOutSec ?? 2.5) * fps));
+    const xfF      = Math.max(1, Math.round((audio?.crossfadeSec ?? 4) * fps));
+    const xfHalf   = Math.round(xfF / 2);
+    const transitionF = audio?.trackBStartSec != null
+      ? Math.round(audio.trackBStartSec * fps)
+      : Math.round(totalF * 0.65);
+    const trackBSeqStart = Math.max(0, transitionF - xfHalf);
+    const trackBLocalDur = Math.max(1, totalF - trackBSeqStart);
+
+    if (audio?.trackA) {
+      const xfStart = transitionF - xfHalf;
+      const xfEnd   = transitionF + xfHalf;
+      const aSeqDur = audio.trackB ? Math.min(totalF, xfEnd) : totalF;
+      const volA = (f: number) => {
+        const fadeIn = Math.min(1, f / fadeInF);
+        let fadeOut = 1;
+        if (audio.trackB) {
+          if (f >= xfEnd) fadeOut = 0;
+          else if (f >= xfStart) fadeOut = 1 - (f - xfStart) / Math.max(1, xfEnd - xfStart);
+        } else {
+          // No track B → fade out at video end
+          const remain = totalF - f;
+          fadeOut = Math.min(1, remain / fadeOutF);
+        }
+        return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
+      };
+      audioElems.push(
+        <Sequence key="bgm-a" from={0} durationInFrames={Math.max(1, aSeqDur)}>
+          <Audio
+            src={staticFile(audio.trackA)}
+            volume={volA}
+            startFrom={Math.round((audio.trackAOffsetSec ?? 0) * fps)}
+          />
+        </Sequence>
+      );
+    }
+    if (audio?.trackB) {
+      const volB = (f: number) => {
+        const fadeIn = Math.min(1, f / xfF);
+        const remain = trackBLocalDur - f;
+        const fadeOut = Math.min(1, remain / fadeOutF);
+        return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
+      };
+      audioElems.push(
+        <Sequence key="bgm-b" from={trackBSeqStart} durationInFrames={trackBLocalDur}>
+          <Audio
+            src={staticFile(audio.trackB)}
+            volume={volB}
+            startFrom={Math.round((audio.trackBOffsetSec ?? 0) * fps)}
+          />
+        </Sequence>
+      );
+    }
+  }
+
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
+      {audioElems}
       {timeline.map((item, i) => {
         const from = cursor;
         const isFirst = i === 0;

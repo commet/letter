@@ -101,7 +101,7 @@ export type CaptionEntry = {
   fontSize?: number;         // px at 1920×1080
   color?: string;
   bg?: CaptionBackground;
-  maxWidthPct?: number;      // 0-100, max horizontal width as % of canvas (default 80)
+  maxWidthPct?: number;      // 0-100, max horizontal width as % of canvas (default 90)
   // Optional time window (normalized 0-1 of scene duration).
   // Only visible (faded in/out + typing) inside [fromT, toT]. Defaults: [0, 1] = whole scene.
   fromT?: number;
@@ -313,6 +313,21 @@ export type Collage = {
   caption?: string;        // scene-level bottom caption (handwritten script on scrim)
 };
 
+// Two-track BGM with auto crossfade + master fade in/out at scene boundaries.
+// Tracks live in `public/<src>` and are referenced via Remotion's staticFile.
+// Track A plays from the start, then crossfades into Track B at trackBStartSec.
+export type AudioConfig = {
+  trackA?: string;          // path under public/, e.g. "audio/bgm-1.mp3"
+  trackB?: string;
+  trackBStartSec?: number;  // composition seconds — center of crossfade
+  crossfadeSec?: number;    // crossfade duration (default 4)
+  volume?: number;          // master volume 0-1 (default 0.30)
+  fadeInSec?: number;       // fade in at video start (default 1.5)
+  fadeOutSec?: number;      // fade out at video end  (default 2.5)
+  trackAOffsetSec?: number; // optional: skip into track A (default 0)
+  trackBOffsetSec?: number; // optional: skip into track B (default 0)
+};
+
 export type VideoConfig = {
   photos: PhotoEntry[];
   actTitles: Record<number, ActTitle>;
@@ -325,6 +340,7 @@ export type VideoConfig = {
   particles: ParticleType;
   frame: FrameType;
   bgmUrl?: string;
+  audio?: AudioConfig;
   // NEW
   backgroundStyle: BackgroundStyle;
   kenBurnsAmount: number;
@@ -805,6 +821,15 @@ export const defaultConfig: VideoConfig = {
     groomName: "이예찬",
     brideName: "송슬기",
     message: "함께 해 주셔서 감사드립니다",
+  },
+  audio: {
+    trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26)
+    trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49)
+    trackBStartSec: 250,                 // 4:10 — 트랙 A 끝(4:26) 직전, 자연스러운 크로스페이드
+    crossfadeSec: 4,
+    volume: 0.30,
+    fadeInSec: 1.5,
+    fadeOutSec: 2.5,
   },
   titleCardSec: 4.0,   // slightly longer for breathing
   endingSec: 13.0,     // extended for held silence + botanical sprig + message breath

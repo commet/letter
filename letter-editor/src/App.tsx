@@ -668,6 +668,10 @@ const ImageEditorModal: React.FC<{
         <div className="editor-body">
           <div className="editor-canvas">
             <div className="focal-container">
+              {/* Image-hugging wrapper: shrink-to-fit so overlays (inset:0)
+                  cover ONLY the image rect, not letterbox area. Without this,
+                  arrows/crop/spotlight handles drift when image aspect ≠ container. */}
+              <div className="focal-img-wrap">
               <img
                 ref={imgRef}
                 src={photoSrc(photo.file)}
@@ -922,7 +926,7 @@ const ImageEditorModal: React.FC<{
                           fontSize: Math.max(10, (cap.fontSize ?? 40) * captionPreviewScale),
                           color: cap.color ?? "#f5ecd7",
                           textAlign: align,
-                          maxWidth: `${cap.maxWidthPct ?? 80}%`,
+                          maxWidth: `${cap.maxWidthPct ?? 90}%`,
                           border: isSelected ? "2px solid var(--gold, #a88848)" : "1px dashed rgba(255,255,255,0.35)",
                           whiteSpace: "pre-wrap",
                           cursor: "grab",
@@ -1005,6 +1009,7 @@ const ImageEditorModal: React.FC<{
                   <span className="spot-num">{i + 1}</span>
                 </div>
               ))}
+              </div>
             </div>
           </div>
 
@@ -2226,11 +2231,22 @@ export const App: React.FC = () => {
       // Both remain on screen until the scene fades.
       const isLeftOfPair  = !!target.splitPair;
       const isRightOfPair = idx > 0 && !!c.photos[idx - 1]?.splitPair;
-      const ownCount      = materializeCaptions(target).length;
+      const ownExisting   = materializeCaptions(target);
+      const ownCount      = ownExisting.length;
+
+      // Sequential typing: each new cap starts AFTER the previous cap's typing ends.
+      // typing_end_frame = fromT * D + HEAD_DELAY(6) + RATE(8) * len
+      const HEAD = 6, RATE = 8, BUFFER = 18;
+      const fps = 30;
+      const computeNextFromT = (prev: CaptionEntry | undefined, fallback: number, D: number): number => {
+        if (!prev) return fallback;
+        const endFrame = (prev.fromT ?? fallback) * D + HEAD + RATE * (prev.text?.length ?? 0);
+        return Math.min(0.9, (endFrame + BUFFER) / D);
+      };
 
       // Defaults differ by role:
-      //   pair LEFT  → upper line, fromT=0.05, stays till end
-      //   pair RIGHT → lower line(s), staggered fromT, stays till end
+      //   pair LEFT  → upper line, fromT after previous own cap, stays till end
+      //   pair RIGHT → lower line(s), fromT after partner LEFT (or own previous), stays till end
       //   single     → centered, no time window (full scene)
       const defaultX = 0.50;
       let defaultY = 0.88;
@@ -2239,14 +2255,17 @@ export const App: React.FC = () => {
 
       if (isLeftOfPair) {
         defaultY = 0.82 - ownCount * 0.06;
-        defaultFromT = 0.05;
-        defaultToT = 0.95;
+        const D = target.durationSec * fps;
+        defaultFromT = computeNextFromT(ownExisting[ownCount - 1], 0.05, D);
+        defaultToT = 0.97;
       } else if (isRightOfPair) {
-        // Stack subsequent right-side caps below the first
-        defaultY = 0.92 + ownCount * 0.04;
-        // Each additional right cap starts a bit later so they type sequentially
-        defaultFromT = 0.52 + ownCount * 0.18;
-        defaultToT = 0.95;
+        defaultY = Math.min(0.95, 0.88 + ownCount * 0.04);
+        const partnerLeft = c.photos[idx - 1]!;
+        const leftCaps = materializeCaptions(partnerLeft);
+        const D = partnerLeft.durationSec * fps; // pair scene uses LEFT dur
+        const prev = ownCount > 0 ? ownExisting[ownCount - 1] : leftCaps[leftCaps.length - 1];
+        defaultFromT = computeNextFromT(prev, 0.05, D);
+        defaultToT = 0.97;
       } else {
         // single: stack subsequent caps upward like before
         defaultY = Math.max(0.08, 0.88 - ownCount * 0.075);
@@ -2260,6 +2279,7 @@ export const App: React.FC = () => {
         align: "center",
         fontFamily: "serif",
         fontSize: 40,
+        bg: { kind: "card", color: "rgba(15,12,8,0.55)", paddingX: 22, paddingY: 10, radius: 4, blur: true },
         ...(defaultFromT !== undefined ? { fromT: defaultFromT } : {}),
         ...(defaultToT   !== undefined ? { toT:   defaultToT   } : {}),
         ...preset,
