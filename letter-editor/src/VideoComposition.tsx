@@ -628,7 +628,7 @@ const PopoutItem: React.FC<{
   const fromFrame = (region.fromT ?? 0) * dur;
   const toFrame   = (region.toT   ?? 1) * dur;
   // Slower in/out so the popout doesn't feel like a sharp snap — feels deliberate.
-  const inFrames  = Math.max(8, Math.min(28, (toFrame - fromFrame) * 0.30));
+  const inFrames  = Math.max(10, Math.min(36, (toFrame - fromFrame) * 0.32));
   const outFrames = inFrames;
 
   const inLin  = interpolate(frame, [fromFrame, fromFrame + inFrames], [0, 1], {
