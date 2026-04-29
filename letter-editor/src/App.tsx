@@ -33,6 +33,7 @@ import {
   JourneyMap,
   ChatInterlude,
   ChatMessage,
+  AudioConfig,
   defaultConfig,
   computeTotalFrames,
   getPhotoIndexAtFrame,
@@ -2767,6 +2768,87 @@ export const App: React.FC = () => {
                       onChange={(e) => setConfig((c) => ({ ...c, kenBurnsAmount: parseFloat(e.target.value) }))} />
                   </label>
                 </div>
+              </div>
+
+              {/* BGM (background music) — two tracks with auto crossfade */}
+              <div className="asset-group">
+                <h4 className="asset-group-title">배경 음악 (BGM)</h4>
+                {(() => {
+                  const a = config.audio ?? {};
+                  const updateAudio = (patch: Partial<AudioConfig>) =>
+                    setConfig((c) => ({ ...c, audio: { ...(c.audio ?? {}), ...patch } }));
+                  const totalSec = Math.max(1, Math.round(totalFrames / config.fps));
+                  const fmt = (sec: number) => {
+                    const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+                    return `${m}:${s.toString().padStart(2, "0")}`;
+                  };
+                  return (
+                    <div className="field-row" style={{ flexDirection: "column", gap: 10 }}>
+                      <label className="field">
+                        <span className="field-label">트랙 A (시작)</span>
+                        <input className="input input-sm" placeholder="audio/bgm-1.mp3"
+                          value={a.trackA ?? ""}
+                          onChange={(e) => updateAudio({ trackA: e.target.value || undefined })} />
+                      </label>
+                      <label className="field">
+                        <span className="field-label">트랙 B (전환 후)</span>
+                        <input className="input input-sm" placeholder="audio/bgm-2.mp3"
+                          value={a.trackB ?? ""}
+                          onChange={(e) => updateAudio({ trackB: e.target.value || undefined })} />
+                      </label>
+                      <label className="slider-label" style={{ width: "100%" }}>
+                        <span>마스터 볼륨: {Math.round((a.volume ?? 0.30) * 100)}%</span>
+                        <input type="range" className="slider" min={0} max={1.0} step={0.01}
+                          value={a.volume ?? 0.30}
+                          onChange={(e) => updateAudio({ volume: parseFloat(e.target.value) })} />
+                      </label>
+                      <label className="slider-label" style={{ width: "100%" }}>
+                        <span>전환 시점: {fmt(a.trackBStartSec ?? 250)} ({(a.trackBStartSec ?? 250).toFixed(0)}s / {fmt(totalSec)})</span>
+                        <input type="range" className="slider" min={0} max={totalSec} step={1}
+                          value={a.trackBStartSec ?? 250}
+                          onChange={(e) => updateAudio({ trackBStartSec: parseFloat(e.target.value) })} />
+                      </label>
+                      <label className="slider-label" style={{ width: "100%" }}>
+                        <span>크로스페이드: {(a.crossfadeSec ?? 4).toFixed(1)}s</span>
+                        <input type="range" className="slider" min={0.5} max={10} step={0.1}
+                          value={a.crossfadeSec ?? 4}
+                          onChange={(e) => updateAudio({ crossfadeSec: parseFloat(e.target.value) })} />
+                      </label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <label className="slider-label" style={{ flex: 1 }}>
+                          <span>페이드 인: {(a.fadeInSec ?? 1.5).toFixed(1)}s</span>
+                          <input type="range" className="slider" min={0} max={6} step={0.1}
+                            value={a.fadeInSec ?? 1.5}
+                            onChange={(e) => updateAudio({ fadeInSec: parseFloat(e.target.value) })} />
+                        </label>
+                        <label className="slider-label" style={{ flex: 1 }}>
+                          <span>페이드 아웃: {(a.fadeOutSec ?? 2.5).toFixed(1)}s</span>
+                          <input type="range" className="slider" min={0} max={6} step={0.1}
+                            value={a.fadeOutSec ?? 2.5}
+                            onChange={(e) => updateAudio({ fadeOutSec: parseFloat(e.target.value) })} />
+                        </label>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <label className="field" style={{ flex: 1 }}>
+                          <span className="field-label">A 인트로 스킵 (s)</span>
+                          <input className="input input-sm" type="number" min={0} step={0.5}
+                            value={a.trackAOffsetSec ?? 0}
+                            onChange={(e) => updateAudio({ trackAOffsetSec: parseFloat(e.target.value) || 0 })} />
+                        </label>
+                        <label className="field" style={{ flex: 1 }}>
+                          <span className="field-label">B 인트로 스킵 (s)</span>
+                          <input className="input input-sm" type="number" min={0} step={0.5}
+                            value={a.trackBOffsetSec ?? 0}
+                            onChange={(e) => updateAudio({ trackBOffsetSec: parseFloat(e.target.value) || 0 })} />
+                        </label>
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--muted, #888)", lineHeight: 1.4 }}>
+                        파일은 <code>letter-editor/public/audio/</code> 에 두고 경로 입력.
+                        트랙 A를 비우면 BGM 없이 진행. 한 트랙만 쓰려면 B 비우세요.
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="asset-group asset-target-group">
