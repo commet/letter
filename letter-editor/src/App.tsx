@@ -927,7 +927,7 @@ const ImageEditorModal: React.FC<{
                           fontSize: Math.max(10, (cap.fontSize ?? 40) * captionPreviewScale),
                           color: cap.color ?? "#f5ecd7",
                           textAlign: align,
-                          maxWidth: `${cap.maxWidthPct ?? 90}%`,
+                          maxWidth: `${cap.maxWidthPct ?? 95}%`,
                           border: isSelected ? "2px solid var(--gold, #a88848)" : "1px dashed rgba(255,255,255,0.35)",
                           whiteSpace: "pre-wrap",
                           cursor: "grab",

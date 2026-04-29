@@ -520,7 +520,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
     align === "left"  ? "translate(0, -50%)" :
     align === "right" ? "translate(-100%, -50%)" :
                         "translate(-50%, -50%)";
-  const maxWidthPct = cap.maxWidthPct ?? 90;
+  const maxWidthPct = cap.maxWidthPct ?? 95;
 
   const kind = resolveCaptionBgKind(cap);
   const boxStyle: React.CSSProperties =
@@ -627,7 +627,8 @@ const PopoutItem: React.FC<{
 
   const fromFrame = (region.fromT ?? 0) * dur;
   const toFrame   = (region.toT   ?? 1) * dur;
-  const inFrames  = Math.max(4, Math.min(14, (toFrame - fromFrame) * 0.18));
+  // Slower in/out so the popout doesn't feel like a sharp snap — feels deliberate.
+  const inFrames  = Math.max(8, Math.min(28, (toFrame - fromFrame) * 0.30));
   const outFrames = inFrames;
 
   const inLin  = interpolate(frame, [fromFrame, fromFrame + inFrames], [0, 1], {

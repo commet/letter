@@ -101,7 +101,7 @@ export type CaptionEntry = {
   fontSize?: number;         // px at 1920×1080
   color?: string;
   bg?: CaptionBackground;
-  maxWidthPct?: number;      // 0-100, max horizontal width as % of canvas (default 90)
+  maxWidthPct?: number;      // 0-100, max horizontal width as % of canvas (default 95)
   // Optional time window (normalized 0-1 of scene duration).
   // Only visible (faded in/out + typing) inside [fromT, toT]. Defaults: [0, 1] = whole scene.
   fromT?: number;
