@@ -784,7 +784,7 @@ const ImageEditorModal: React.FC<{
                       const info = buildArrowPath(a);
                       const stroke = arrowStroke(a.style, a.color);
                       const selected = selectedArrow === a.id;
-                      const dash = a.style === "dashed" ? "3 4" : undefined;
+                      const dash = a.style === "dashed" ? "3 2" : undefined;
                       const curW = selected ? stroke.width + 1 : stroke.width;
                       const outline = arrowNeedsOutline(a.color);
                       return (
@@ -1319,7 +1319,7 @@ const ImageEditorModal: React.FC<{
                 }}>
                   {ARROW_PRESETS.map((preset) => {
                     const stroke = arrowStroke(preset.style, preset.color);
-                    const dash = preset.style === "dashed" ? "3 4" : undefined;
+                    const dash = preset.style === "dashed" ? "3 2" : undefined;
                     const sample = { labelX: 0.08, labelY: 0.55, tipX: 0.82, tipY: 0.40, style: preset.style };
                     const info = buildArrowPath(sample);
                     const outline = arrowNeedsOutline(preset.color);

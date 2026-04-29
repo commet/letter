@@ -346,7 +346,7 @@ const AnnotationLayer: React.FC<{
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   vectorEffect="non-scaling-stroke"
-                  strokeDasharray={isDashed ? "3 4" : `${dashLen}`}
+                  strokeDasharray={isDashed ? "3 2" : `${dashLen}`}
                   strokeDashoffset={isDashed ? 0 : (1 - drawT) * dashLen}
                 />
               )}
@@ -358,7 +358,7 @@ const AnnotationLayer: React.FC<{
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
-                strokeDasharray={isDashed ? "3 4" : `${dashLen}`}
+                strokeDasharray={isDashed ? "3 2" : `${dashLen}`}
                 strokeDashoffset={isDashed ? 0 : (1 - drawT) * dashLen}
               />
               {drawT > 0.6 && (
