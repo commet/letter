@@ -1686,7 +1686,7 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
         style={{ alignSelf: "flex-start" }}>
         + 텍스트 추가
       </button>
-      {captions.length === 0 && CAPTION_SPEAKER_PRESETS.length > 0 && (
+      {CAPTION_SPEAKER_PRESETS.length > 0 && (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>빠른 시작:</span>
           <button className="btn btn-xs" onClick={() => {
