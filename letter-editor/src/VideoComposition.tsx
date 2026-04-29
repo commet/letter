@@ -1775,38 +1775,41 @@ const PhotoScene: React.FC<{
       <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} seed={hashSeed(photo.tag)} />
       {frameType === "none" ? (
         photo.crop ? (
-          // Crop mode: outer wrapper clips to viewport. Inner box is positioned/sized so
-          // the crop rect maps to the canvas, and carries the Ken Burns transform so the
-          // image AND its overlays (spotlight, annotations, popouts) stay in lock-step.
-          // Putting overlays in this same coordinate space means arrows drawn on the full
-          // image stay anchored to the same image pixels under crop offset + ken burns.
-          // objectFit: cover preserves natural aspect — better than "fill" which stretches
-          // when crop aspect ≠ canvas aspect (image squashes/elongates).
+          // Crop mode: outer clips to canvas. Mid wrapper is canvas-sized and carries
+          // the Ken Burns transform (scale/translate pivots from CANVAS center → zoom
+          // feels natural, not off-axis like before). Inner positioned box maps the
+          // crop rect onto canvas. Overlays (spotlight, annotation, popout) sit inside
+          // the inner box so they stay locked to image pixels under both crop offset +
+          // ken burns. objectFit: cover preserves natural aspect (no stretching like
+          // "fill"), at the cost of slight over-crop when crop aspect ≠ canvas aspect.
           <AbsoluteFill style={{ overflow: "hidden" }}>
-            <div style={{
-              position: "absolute",
-              left: `${-photo.crop.x / photo.crop.w * 100}%`,
-              top: `${-photo.crop.y / photo.crop.h * 100}%`,
-              width: `${100 / photo.crop.w}%`,
-              height: `${100 / photo.crop.h}%`,
+            <AbsoluteFill style={{
               transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
               transformOrigin: "center center",
             }}>
-              <Img src={src} style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                filter: filterCSS !== "none" ? filterCSS : undefined,
-                display: "block",
-              }} />
-              {photo.spotlights?.length > 0 && (
-                <SpotlightOverlay spotlights={photo.spotlights} />
-              )}
-              {photo.annotations?.length ? (
-                <AnnotationLayer annotations={photo.annotations} dur={dur} />
-              ) : null}
-              <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
-            </div>
+              <div style={{
+                position: "absolute",
+                left: `${-photo.crop.x / photo.crop.w * 100}%`,
+                top: `${-photo.crop.y / photo.crop.h * 100}%`,
+                width: `${100 / photo.crop.w}%`,
+                height: `${100 / photo.crop.h}%`,
+              }}>
+                <Img src={src} style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  filter: filterCSS !== "none" ? filterCSS : undefined,
+                  display: "block",
+                }} />
+                {photo.spotlights?.length > 0 && (
+                  <SpotlightOverlay spotlights={photo.spotlights} />
+                )}
+                {photo.annotations?.length ? (
+                  <AnnotationLayer annotations={photo.annotations} dur={dur} />
+                ) : null}
+                <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
+              </div>
+            </AbsoluteFill>
           </AbsoluteFill>
         ) : (
           <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
