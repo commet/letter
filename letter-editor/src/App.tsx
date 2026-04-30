@@ -22,6 +22,7 @@ import {
   CaptionBackground,
   CAPTION_FONT_STACK,
   resolveCaptionBgKind,
+  resolveCaptionPosition,
   SpotlightConfig,
   CropRect,
   PopoutRegion,
@@ -612,12 +613,23 @@ const ImageEditorModal: React.FC<{
     const cap = captions.find((c) => c.id === capId);
     if (!cap) return;
     const rect = img.getBoundingClientRect();
+    // Use the resolved (snapped) position as the drag start so the dx delta
+    // is measured from where the user actually clicks — otherwise an auto-snapped
+    // bubble would jump back to its raw legacy position on the first move.
+    const k = resolveCaptionBgKind(cap);
+    const isBubble = k === "bubble-yellow" || k === "bubble-purple";
+    const startPos = isBubble ? resolveCaptionPosition(cap) : { x: cap.x, y: cap.y };
+    // If the resolved position differs from the saved data (auto-snap case), commit it
+    // immediately so the next render's saved x/y matches the visual.
+    if (startPos.x !== cap.x || startPos.y !== cap.y) {
+      updateCaption(capId, { x: startPos.x, y: startPos.y });
+    }
     captionDragRef.current = {
       capId,
       startClientX: e.clientX,
       startClientY: e.clientY,
-      startX: cap.x,
-      startY: cap.y,
+      startX: startPos.x,
+      startY: startPos.y,
       containerW: rect.width,
       containerH: rect.height,
     };
@@ -921,9 +933,14 @@ const ImageEditorModal: React.FC<{
                     const align = cap.align ?? "center";
                     const kind = resolveCaptionBgKind(cap);
                     const isBubble = kind === "bubble-yellow" || kind === "bubble-purple";
+                    // Use the same position resolver the player uses, so the drag preview matches
+                    // the actual rendered output. Without this, an auto-snapped bubble (legacy
+                    // bottom y in data) would render at the bottom in the modal but at the top
+                    // in the player — drag becomes confusing.
+                    const pos = isBubble ? resolveCaptionPosition(cap) : { x: cap.x, y: cap.y };
                     // Match renderer: bubbles always center-anchor; non-bubbles use band-aware anchor.
                     const xT = align === "left" ? "0" : align === "right" ? "-100%" : "-50%";
-                    const yT = isBubble ? "-50%" : (cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%");
+                    const yT = isBubble ? "-50%" : (pos.y > 0.55 ? "-100%" : pos.y < 0.25 ? "0" : "-50%");
                     const translate = `translate(${xT}, ${yT})`;
                     const isSelected = selectedCaption === cap.id;
                     // Bubbles encode speaker via color + tail, so the prefix is omitted (matches renderer).
@@ -960,8 +977,8 @@ const ImageEditorModal: React.FC<{
                         onPointerDown={(e) => beginCaptionDrag(cap.id, e)}
                         style={{
                           position: "absolute",
-                          left: `${cap.x * 100}%`,
-                          top: `${cap.y * 100}%`,
+                          left: `${pos.x * 100}%`,
+                          top: `${pos.y * 100}%`,
                           transform: translate,
                           fontFamily: font.fontFamily,
                           fontStyle: isBubble ? "normal" : font.fontStyle,
