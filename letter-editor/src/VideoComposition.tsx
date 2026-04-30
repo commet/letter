@@ -46,6 +46,8 @@ import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OU
 const SERIF = "'Cormorant Garamond', 'Nanum Myeongjo', 'Gowun Batang', 'Noto Serif KR', serif";
 const SERIF_KR = "'Nanum Myeongjo', 'Gowun Batang', 'Noto Serif KR', serif";
 const SCRIPT_KR = "'Gaegu', 'Nanum Pen Script', cursive";
+// Bubble-only stack — rounded Korean sans (Gowun Dodum). Friendly without being childish.
+const BUBBLE_FONT = "'Gowun Dodum', 'Nanum Gothic', 'Noto Sans KR', sans-serif";
 const GOLD = "rgba(168, 136, 72, 0.92)";
 const GOLD_SOFT = "rgba(168, 136, 72, 0.5)";
 const INK = "#3a2a18";          // warm dark brown (letters on paper)
@@ -561,8 +563,8 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
     boxStyle = {
       background: pal.bg,
       border: `2px solid ${pal.border}`,
-      padding: "20px 36px",
-      borderRadius: 44,  // pillowy, comic-bubble feel
+      padding: "26px 44px",
+      borderRadius: 48,  // pillowy, comic-bubble feel
       boxShadow: BUBBLE_SHADOW,
     };
     // Pop-in: gentler, slower swell — 0.86 → 1.04 → 1.0 over 18 frames (~0.6s).
@@ -621,10 +623,11 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       maxWidth: `${maxWidthPct}%`,
       minWidth: minWidthPct !== undefined ? `${minWidthPct}%` : undefined,
       textAlign: align,
-      fontFamily: font.fontFamily,
+      fontFamily: isBubble ? BUBBLE_FONT : font.fontFamily,
       fontStyle: isBubble ? "normal" : font.fontStyle,
-      letterSpacing: isBubble ? "0.02em" : font.letterSpacing,
-      fontWeight: isBubble ? 600 : undefined,
+      letterSpacing: isBubble ? "0.01em" : font.letterSpacing,
+      // Gowun Dodum ships at single 400 weight — keep weight default for clean render.
+      fontWeight: isBubble ? 400 : undefined,
       fontSize: cap.fontSize ?? 40,
       color: textColor,
       whiteSpace: "pre-wrap",

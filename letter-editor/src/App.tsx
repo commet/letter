@@ -956,8 +956,8 @@ const ImageEditorModal: React.FC<{
                       isBubble ? {
                         background: bubbleBg!,
                         border: "2px solid rgba(0,0,0,0.10)",
-                        padding: `${20 * captionPreviewScale}px ${36 * captionPreviewScale}px`,
-                        borderRadius: 44 * captionPreviewScale,
+                        padding: `${26 * captionPreviewScale}px ${44 * captionPreviewScale}px`,
+                        borderRadius: 48 * captionPreviewScale,
                         boxShadow: "0 8px 22px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18)",
                       } :
                       kind === "card" ? {
@@ -979,10 +979,10 @@ const ImageEditorModal: React.FC<{
                           left: `${pos.x * 100}%`,
                           top: `${pos.y * 100}%`,
                           transform: translate,
-                          fontFamily: font.fontFamily,
+                          fontFamily: isBubble ? "'Gowun Dodum', 'Nanum Gothic', 'Noto Sans KR', sans-serif" : font.fontFamily,
                           fontStyle: isBubble ? "normal" : font.fontStyle,
-                          letterSpacing: isBubble ? "0.02em" : font.letterSpacing,
-                          fontWeight: isBubble ? 600 : undefined,
+                          letterSpacing: isBubble ? "0.01em" : font.letterSpacing,
+                          fontWeight: isBubble ? 400 : undefined,
                           fontSize: Math.max(10, (cap.fontSize ?? 40) * captionPreviewScale),
                           color: isBubble ? bubbleText! : (cap.color ?? "#f5ecd7"),
                           textAlign: align,
