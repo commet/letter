@@ -1511,10 +1511,11 @@ const ChatInterludeScene: React.FC<{
           left: 0,
           right: 0,
           textAlign: "center",
-          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
-          fontStyle: "italic",
+          fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif",
+          fontStyle: "normal",
+          fontWeight: 500,
           fontSize: 34,
-          letterSpacing: "0.22em",
+          letterSpacing: "0.08em",
           color: INK_SOFT,
           opacity: headerOp,
         }}>
@@ -1566,12 +1567,13 @@ const ChatInterludeScene: React.FC<{
             }}>
               {/* Speaker label */}
               <div style={{
-                fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
+                fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif",
+                fontWeight: 500,
                 fontSize: 22,
                 color: INK_SOFT,
                 marginBottom: 8,
                 padding: isRight ? "0 14px 0 0" : "0 0 0 14px",
-                letterSpacing: "0.08em",
+                letterSpacing: "0.04em",
               }}>
                 {msg.speaker}
               </div>
