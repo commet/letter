@@ -3026,7 +3026,7 @@ export const App: React.FC = () => {
                       </label>
                       <label className="slider-label" style={{ width: "100%" }}>
                         <span>크로스페이드: {(a.crossfadeSec ?? 4).toFixed(1)}s</span>
-                        <input type="range" className="slider" min={0.5} max={10} step={0.1}
+                        <input type="range" className="slider" min={0.5} max={16} step={0.1}
                           value={a.crossfadeSec ?? 4}
                           onChange={(e) => updateAudio({ crossfadeSec: parseFloat(e.target.value) })} />
                       </label>
@@ -3039,7 +3039,7 @@ export const App: React.FC = () => {
                         </label>
                         <label className="slider-label" style={{ flex: 1 }}>
                           <span>페이드 아웃: {(a.fadeOutSec ?? 2.5).toFixed(1)}s</span>
-                          <input type="range" className="slider" min={0} max={6} step={0.1}
+                          <input type="range" className="slider" min={0} max={14} step={0.1}
                             value={a.fadeOutSec ?? 2.5}
                             onChange={(e) => updateAudio({ fadeOutSec: parseFloat(e.target.value) })} />
                         </label>

@@ -7,3 +7,7 @@ Thumbs.db
 .idea/
 
 .vercel
+
+# Build output
+dist/
+node_modules/
