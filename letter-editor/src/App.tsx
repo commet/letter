@@ -987,15 +987,15 @@ const ImageEditorModal: React.FC<{
                         {isBubble && (
                           <div style={{
                             position: "absolute",
-                            bottom: -22 * captionPreviewScale,
-                            width: 38 * captionPreviewScale,
-                            height: 30 * captionPreviewScale,
+                            bottom: -50 * captionPreviewScale,
+                            width: 60 * captionPreviewScale,
+                            height: 56 * captionPreviewScale,
                             background: bubbleBg!,
-                            [bubbleSide]: 36 * captionPreviewScale,
+                            [bubbleSide]: 28 * captionPreviewScale,
                             clipPath: bubbleSide === "left"
                               ? "polygon(0% 0%, 100% 0%, 0% 100%)"
                               : "polygon(0% 0%, 100% 0%, 100% 100%)",
-                            filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.18))",
+                            filter: "drop-shadow(0 6px 8px rgba(0,0,0,0.22))",
                           } as React.CSSProperties} aria-hidden />
                         )}
                       </div>
@@ -1748,28 +1748,55 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
                 {CAPTION_BG_PRESETS.map((p, i) => <option key={i} value={i}>배경: {p.label}</option>)}
               </select>
             </div>
-            <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 2 }}>위치:</span>
-              {CAPTION_POSITION_PRESETS.map((p) => {
-                const active = Math.abs((cap.x ?? 0.5) - p.x) < 0.02 && Math.abs((cap.y ?? 0.92) - p.y) < 0.02 && (cap.align ?? "center") === p.align;
-                return (
-                  <button key={p.label} className="btn btn-xs"
-                    onClick={() => onUpdate(photoIdx, cap.id, { x: p.x, y: p.y, align: p.align })}
-                    style={{
-                      width: 22, minWidth: 22, padding: "2px 0",
-                      opacity: active ? 1 : 0.6,
-                      background: active ? "rgba(80,120,160,0.45)" : undefined,
-                    }}
-                    title={`x=${p.x}, y=${p.y}, align=${p.align}`}>
-                    {p.label}
-                  </button>
-                );
-              })}
-              <button className="btn btn-xs" onClick={() => onOpenPositionEditor(photoIdx)}
-                title="이미지에서 드래그해서 미세 조정">
-                드래그 편집
-              </button>
-            </div>
+            {/* Position controls. For bubbles we drop the 9-arrow grid (the bubble's natural
+                home is one of two preset corners and the rest of the arrows just clutter the
+                column) — instead we show two prominent snap buttons + a wide drag-edit button. */}
+            {effectiveKind === "bubble-yellow" || effectiveKind === "bubble-purple" ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-xs"
+                  onClick={() => onUpdate(photoIdx, cap.id, { x: 0.20, y: 0.20, align: "center" })}
+                  style={{ flex: "1 1 auto", minWidth: 70 }}
+                  title="슬기 위치 (왼쪽 위)">
+                  ↖ 왼쪽 위
+                </button>
+                <button className="btn btn-xs"
+                  onClick={() => onUpdate(photoIdx, cap.id, { x: 0.80, y: 0.20, align: "center" })}
+                  style={{ flex: "1 1 auto", minWidth: 70 }}
+                  title="예찬 위치 (오른쪽 위)">
+                  ↗ 오른쪽 위
+                </button>
+                <button className="btn btn-xs btn-moment-add"
+                  onClick={() => onOpenPositionEditor(photoIdx)}
+                  style={{ flex: "2 1 100%", padding: "6px 10px" }}
+                  title="이미지 위에서 드래그해서 자유 배치">
+                  📌 드래그 편집
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 2 }}>위치:</span>
+                {CAPTION_POSITION_PRESETS.map((p) => {
+                  const active = Math.abs((cap.x ?? 0.5) - p.x) < 0.02 && Math.abs((cap.y ?? 0.92) - p.y) < 0.02 && (cap.align ?? "center") === p.align;
+                  return (
+                    <button key={p.label} className="btn btn-xs"
+                      onClick={() => onUpdate(photoIdx, cap.id, { x: p.x, y: p.y, align: p.align })}
+                      style={{
+                        width: 22, minWidth: 22, padding: "2px 0",
+                        opacity: active ? 1 : 0.6,
+                        background: active ? "rgba(80,120,160,0.45)" : undefined,
+                      }}
+                      title={`x=${p.x}, y=${p.y}, align=${p.align}`}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+                <button className="btn btn-xs" onClick={() => onOpenPositionEditor(photoIdx)}
+                  title="이미지에서 드래그해서 미세 조정"
+                  style={{ marginLeft: 4 }}>
+                  드래그 편집
+                </button>
+              </div>
+            )}
           </div>
         );
       })}

@@ -567,23 +567,21 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       [0.78, 1.06, 1.0],
       { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
     );
-    // Tail: a chunky 36×30 triangle that hangs fully below the bubble, anchored toward the
-    // speaker's side (bottom-left for 슬기·yellow, bottom-right for 예찬·purple). Right-triangle
-    // shape with the 90° corner at the side closest to the bubble corner — reads unambiguously
-    // as "this bubble belongs to that side of the canvas".
+    // Tail: a long, unmistakable 60×56 triangle. Most of its length hangs BELOW the bubble
+    // body so it reads as a clear speech-bubble tail (not a tiny notch). Right-triangle
+    // shape with the 90° corner at the side closest to the bubble corner.
     const tailSide = pal.tailSide;
     const tailStyle: React.CSSProperties = {
       position: "absolute",
-      bottom: -22,
-      width: 38,
-      height: 30,
+      bottom: -50,        // tail hangs 50px below bubble body
+      width: 60,
+      height: 56,
       background: pal.bg,
-      [tailSide]: 36,
+      [tailSide]: 28,     // anchored near (but not at) the bubble corner
       clipPath: tailSide === "left"
-        ? "polygon(0% 0%, 100% 0%, 0% 100%)"   // 90° corner at top-left, point hanging off bottom-left
-        : "polygon(0% 0%, 100% 0%, 100% 100%)", // 90° corner at top-right, point hanging off bottom-right
-      // soft drop-shadow on the tail so it visually matches the bubble's body shadow
-      filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.18))",
+        ? "polygon(0% 0%, 100% 0%, 0% 100%)"   // long tail pointing down-left
+        : "polygon(0% 0%, 100% 0%, 100% 100%)", // long tail pointing down-right
+      filter: "drop-shadow(0 6px 8px rgba(0,0,0,0.22))",
     };
     tail = <div style={tailStyle} aria-hidden />;
   } else if (kind === "card") {

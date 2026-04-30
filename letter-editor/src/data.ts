@@ -833,6 +833,7 @@ const defaultPhotos: PhotoEntry[] = [
   P("두 사람 2",                  5, `${S}/053d.jpg`, D.us, "zoomOut"),
   P("두 사람 3",                  5, `${S}/054.jpg`, D.us, "panRight"),
   P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn"),
+  P("바닷가",                     5, `${S}/바닷가.jpg`, D.us, "zoomIn"),
   P("두 사람 5",                  5, `${S}/056.jpg`, D.us, "panLeft", { eraIcon: "bouquet" }),
   P("두 사람 6",                  5, `${S}/057.jpg`, D.us, "zoomOut"),
   // 크레센도 — 마지막 3장 점진적으로 길어짐 (3.8s → 4.4s → 5.0s → 8.0s)
