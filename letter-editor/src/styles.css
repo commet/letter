@@ -1413,6 +1413,18 @@ body {
   color: var(--gold);
 }
 .comment-anchor--general { background: var(--btn-bg); color: var(--text-muted); }
+button.comment-anchor--clickable {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.2;
+  transition: background 0.12s, transform 0.06s;
+}
+button.comment-anchor--clickable:hover {
+  background: var(--gold);
+  color: #fff;
+}
+button.comment-anchor--clickable:active { transform: translateY(1px); }
 .comment-body {
   font-size: 13px;
   line-height: 1.5;
