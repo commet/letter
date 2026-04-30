@@ -1588,17 +1588,19 @@ const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
 // Used by mutations so "edit the legacy caption" never silently drops the write.
 // The legacy id is deterministic so React keys stay stable across renders
 // (a random id would remount inputs and kill focus mid-typing).
-// One-time migration: legacy speaker captions ("슬기" / "예찬" with no explicit bg.kind)
-// → speech-bubble structure (yellow at top-left for 슬기, purple at top-right for 예찬).
-// Idempotent: once a caption has bg.kind set to a bubble (or anything else explicit), we leave it alone.
-// Captions with explicit non-bubble bg.kind (e.g., user manually picked "스크림 하단") are also left alone.
+// Idempotent migration: any caption whose speaker is "슬기" or "예찬" and whose bg is NOT
+// already a bubble gets converted to the speech-bubble structure (yellow top-left for 슬기,
+// purple top-right for 예찬). This covers legacy captions originally saved as `card` (the old
+// `+ 텍스트 추가` default), as `scrim-bottom`, or with no bg at all. Captions already in a
+// bubble are left untouched, so re-running is a no-op.
 const migrateLegacyCaptionsToBubbles = (cfg: VideoConfig): VideoConfig => {
   let changed = false;
   const photos = cfg.photos.map((p) => {
     if (!p.captions || p.captions.length === 0) return p;
     let photoChanged = false;
     const captions = p.captions.map((cap) => {
-      if (cap.bg?.kind) return cap; // user already picked a bg explicitly — respect
+      const k = cap.bg?.kind;
+      if (k === "bubble-yellow" || k === "bubble-purple") return cap;
       if (cap.speaker !== "슬기" && cap.speaker !== "예찬") return cap;
       photoChanged = true;
       changed = true;
