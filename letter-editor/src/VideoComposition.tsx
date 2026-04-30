@@ -1555,7 +1555,16 @@ const ChatInterludeScene: React.FC<{
           const visibleCount = Math.floor(typeProgress);
           const isTyping = localT > 0 && localT < typeFraction && chars.length > 0;
           const isEmpty = chars.length === 0;
-          const isRight = msg.side === "right";
+          // Speaker drives side + color so it matches the photo-caption bubble convention:
+          // 슬기 → 왼쪽 노랑, 예찬 → 오른쪽 보라. Falls back to msg.side if speaker is something else.
+          const side: "left" | "right" =
+            msg.speaker === "슬기" ? "left" :
+            msg.speaker === "예찬" ? "right" :
+            (msg.side === "right" ? "right" : "left");
+          const isRight = side === "right";
+          const palette = isRight
+            ? { bg: "#C7A8EA", text: "#2A1B40", border: "rgba(0,0,0,0.12)" }   // 예찬 (오른쪽 보라)
+            : { bg: "#FFE27A", text: "#2A2010", border: "rgba(0,0,0,0.12)" };  // 슬기 (왼쪽 노랑)
 
           return (
             <div key={i} style={{
@@ -1577,21 +1586,17 @@ const ChatInterludeScene: React.FC<{
               }}>
                 {msg.speaker}
               </div>
-              {/* Bubble */}
+              {/* Bubble — 슬기 노랑(왼쪽) / 예찬 보라(오른쪽), 사진 자막 말풍선과 동일 팔레트 */}
               <div style={{
                 maxWidth: "74%",
                 padding: "22px 32px",
-                background: isRight
-                  ? "linear-gradient(135deg, #efd78a 0%, #dcb85c 100%)"   // 오른쪽 — 금빛
-                  : "rgba(255, 252, 240, 0.96)",                           // 왼쪽 — 크림
-                color: INK,
-                border: isRight
-                  ? "1px solid rgba(168,136,72,0.55)"
-                  : "1px solid rgba(58,42,24,0.18)",
+                background: palette.bg,
+                color: palette.text,
+                border: `1.5px solid ${palette.border}`,
                 borderRadius: 28,
                 borderTopRightRadius: isRight ? 8 : 28,
                 borderTopLeftRadius: isRight ? 28 : 8,
-                boxShadow: "0 6px 20px rgba(58,42,24,0.18), 0 1px 3px rgba(58,42,24,0.10)",
+                boxShadow: "0 6px 20px rgba(58,42,24,0.20), 0 1px 3px rgba(58,42,24,0.10)",
                 fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif",
                 fontSize: 38,
                 lineHeight: 1.48,
@@ -1600,7 +1605,8 @@ const ChatInterludeScene: React.FC<{
                 wordBreak: "keep-all",
               }}>
                 {isEmpty ? (
-                  // Typing indicator — three bouncing dots
+                  // Typing indicator — three bouncing dots (use bubble's text color so dots
+                  // are readable on yellow/purple bg).
                   <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 6px" }}>
                     {[0, 1, 2].map((di) => {
                       const phase = (frame / 8 + di * 0.55) % 2;
@@ -1609,7 +1615,7 @@ const ChatInterludeScene: React.FC<{
                       return (
                         <div key={di} style={{
                           width: 16, height: 16, borderRadius: "50%",
-                          background: INK,
+                          background: palette.text,
                           transform: `translateY(${dotY}px)`,
                           opacity: dotOp,
                         }} />
@@ -1624,7 +1630,7 @@ const ChatInterludeScene: React.FC<{
                         display: "inline-block",
                         width: 3,
                         height: 36,
-                        background: INK,
+                        background: palette.text,
                         marginLeft: 6,
                         verticalAlign: "text-bottom",
                         opacity: 0.8,
