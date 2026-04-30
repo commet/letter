@@ -1611,6 +1611,20 @@ const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
 // purple top-right for 예찬). This covers legacy captions originally saved as `card` (the old
 // `+ 텍스트 추가` default), as `scrim-bottom`, or with no bg at all. Captions already in a
 // bubble are left untouched, so re-running is a no-op.
+// Migrate saved configs that pin BGM track-B to an absolute timestamp
+// (legacy `trackBStartSec`) over to the act-anchored `trackBStartAct: 2`.
+// The Supabase-saved config takes priority over data.ts defaults, so without
+// this the new act-anchor never takes effect for users who saved before the
+// change. Re-running is a no-op once trackBStartAct is set.
+const migrateAudioToActAnchor = (cfg: VideoConfig): VideoConfig => {
+  const a = cfg.audio;
+  if (!a) return cfg;
+  if (a.trackBStartAct != null) return cfg;
+  if (!a.trackB) return cfg;
+  const { trackBStartSec, ...rest } = a;
+  return { ...cfg, audio: { ...rest, trackBStartAct: 2 } };
+};
+
 const migrateLegacyCaptionsToBubbles = (cfg: VideoConfig): VideoConfig => {
   let changed = false;
   const photos = cfg.photos.map((p) => {
@@ -2234,12 +2248,17 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadConfig().then((saved) => {
       if (saved) {
-        // Migrate legacy speaker captions → bubbles. Pin remoteAppliedConfigRef to the
-        // pre-migration `saved` so the migrated config differs from it; this allows the
-        // auto-save effect to fire (~2s later) and persist the migration to Supabase.
-        const migrated = migrateLegacyCaptionsToBubbles(saved);
+        // Migrate legacy speaker captions → bubbles, and legacy trackBStartSec → trackBStartAct.
+        // Pin remoteAppliedConfigRef to the pre-migration `saved` so the migrated config differs
+        // from it; this allows the auto-save effect to fire and persist the migration.
+        const migrated = migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved));
         remoteAppliedConfigRef.current = saved;
         setConfig(migrated);
+        // If migration actually changed something, persist immediately so peers and future
+        // loads see the new shape (auto-save effect skips the first config change on mount).
+        if (migrated !== saved) {
+          saveConfig(migrated).catch(() => {});
+        }
       }
       setLoading(false);
     });
