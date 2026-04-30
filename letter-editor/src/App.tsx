@@ -1611,18 +1611,23 @@ const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
 // purple top-right for 예찬). This covers legacy captions originally saved as `card` (the old
 // `+ 텍스트 추가` default), as `scrim-bottom`, or with no bg at all. Captions already in a
 // bubble are left untouched, so re-running is a no-op.
-// Hard-remove the stale "바다를 사이에 두고" chat (legacy `chat-4`). It was deleted
-// from defaults but lingers in Supabase saved configs and keeps surfacing whenever
-// the user's manual deletion fails to persist (debounce window, peer broadcast, etc).
-// This migration runs on every load — once it strips the row and the migrated
-// config is force-saved, the chat is gone for good.
-const STALE_CHAT_IDS = new Set(["chat-4"]);
-const STALE_CHAT_HEADER_SUBSTR = "바다를 사이에 두고";
+// Hard-remove stale "유학/카투사" chats (legacy chat-4 + a duplicate with random id).
+// They were deleted from defaults but lingered in Supabase saved configs and kept
+// surfacing whenever a manual delete failed to persist (debounce / peer broadcast /
+// etc). Match by id, header substring, OR characteristic message text — the duplicate
+// has neither matching id nor header, so message-text detection is the catch-all.
+const STALE_CHAT_IDS = new Set(["chat-4", "ci1777534138021"]);
+const STALE_CHAT_HEADER_SUBSTRS = ["바다를 사이에 두고"];
+const STALE_CHAT_MESSAGE_SUBSTRS = ["뉴욕으로 유학을 가게 됐지", "카투사 입대로 한국 속의 미국"];
 const migrateRemoveStaleChats = (cfg: VideoConfig): VideoConfig => {
   const chats = cfg.chatInterludes ?? [];
   const cleaned = chats.filter((c) => {
     if (STALE_CHAT_IDS.has(c.id)) return false;
-    if (c.header && c.header.includes(STALE_CHAT_HEADER_SUBSTR)) return false;
+    if (c.header && STALE_CHAT_HEADER_SUBSTRS.some((s) => c.header!.includes(s))) return false;
+    const msgsHit = (c.messages ?? []).some((m) =>
+      STALE_CHAT_MESSAGE_SUBSTRS.some((s) => (m.text ?? "").includes(s))
+    );
+    if (msgsHit) return false;
     return true;
   });
   if (cleaned.length === chats.length) return cfg;
