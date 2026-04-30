@@ -144,7 +144,8 @@ export const enrichCaptionsForRender = <T extends {
     if (durFrames !== undefined) {
       const D = Math.max(60, durFrames);
       const bubbleIdx = caps.slice(0, i).reduce((n, _, j) => n + (isBubbleAt(j) ? 1 : 0), 0);
-      const headFrames = 14;       // ~0.5s of stillness before first bubble
+      const headFrames = 30;       // ~1.0s of stillness before first bubble — lets the
+                                   // photo register before the conversation starts.
       const tailFrac = 0.13;       // last 13% kept clear so final bubble reads
       const usable = Math.max(1, D * (1 - tailFrac) - headFrames);
       const naturalGap = totalBubbles > 1 ? usable / (totalBubbles - 1) : 0;

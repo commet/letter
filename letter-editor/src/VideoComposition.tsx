@@ -567,11 +567,11 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       borderRadius: 48,  // pillowy, comic-bubble feel
       boxShadow: BUBBLE_SHADOW,
     };
-    // Pop-in: gentler, slower swell — 0.86 → 1.04 → 1.0 over 18 frames (~0.6s).
-    // Smaller starting scale gap and overshoot reads as graceful, not bouncy.
+    // Pop-in: gentle, drawn-out swell — 0.86 → 1.04 → 1.0 over 22 frames (~0.73s).
+    // Slow enough to feel deliberate; tiny overshoot keeps it alive without bouncing.
     popScale = interpolate(
       frame,
-      [fromFrame, fromFrame + 10, fromFrame + 18],
+      [fromFrame, fromFrame + 12, fromFrame + 22],
       [0.86, 1.04, 1.0],
       { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
     );
