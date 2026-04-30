@@ -544,8 +544,8 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
   // a long bubble can grow before it has to wrap. Without minWidth, slki's long line
   // and yechan's short line ended up wildly different widths even though both speakers
   // share the same chat column.
-  const maxWidthPct = cap.maxWidthPct ?? (isBubble ? 42 : 95);
-  const minWidthPct = isBubble ? 26 : undefined;
+  const maxWidthPct = cap.maxWidthPct ?? (isBubble ? 46 : 95);
+  const minWidthPct = isBubble ? 30 : undefined;
 
   // Window timing — used for typing for non-bubbles, and for the pop-in scale envelope for bubbles.
   const fromFrame = (cap.fromT ?? 0) * dur;
