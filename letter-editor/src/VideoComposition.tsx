@@ -2459,9 +2459,24 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     const fadeOutF = Math.max(1, Math.round((audio?.fadeOutSec ?? 2.5) * fps));
     const xfF      = Math.max(1, Math.round((audio?.crossfadeSec ?? 6) * fps));
     const xfHalf   = Math.round(xfF / 2);
-    const transitionF = audio?.trackBStartSec != null
-      ? Math.round(audio.trackBStartSec * fps)
-      : Math.round(totalF * 0.65);
+    // If trackBStartAct is set, anchor the crossfade center to the Act's title card
+    // start frame in the timeline (sequence-of-items minus crossfade overlap).
+    let actAnchorF: number | null = null;
+    if (audio?.trackBStartAct != null) {
+      let cur = 0;
+      for (const it of timeline) {
+        if (it.kind === "titleCard" && it.act === audio.trackBStartAct) {
+          actAnchorF = cur;
+          break;
+        }
+        cur += it.durationInFrames - cf;
+      }
+    }
+    const transitionF = actAnchorF != null
+      ? actAnchorF
+      : audio?.trackBStartSec != null
+        ? Math.round(audio.trackBStartSec * fps)
+        : Math.round(totalF * 0.65);
     const trackBSeqStart = Math.max(0, transitionF - xfHalf);
     const trackBLocalDur = Math.max(1, totalF - trackBSeqStart);
     // Equal-power crossfade curves keep perceived combined loudness ~constant

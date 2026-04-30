@@ -321,11 +321,15 @@ export type Collage = {
 
 // Two-track BGM with auto crossfade + master fade in/out at scene boundaries.
 // Tracks live in `public/<src>` and are referenced via Remotion's staticFile.
-// Track A plays from the start, then crossfades into Track B at trackBStartSec.
+// Track A plays from the start, then crossfades into Track B at the transition.
+// The transition point is either an absolute time (trackBStartSec) or anchored
+// to the start frame of an Act's title card (trackBStartAct). When both are set,
+// trackBStartAct wins.
 export type AudioConfig = {
   trackA?: string;          // path under public/, e.g. "audio/bgm-1.mp3"
   trackB?: string;
   trackBStartSec?: number;  // composition seconds — center of crossfade
+  trackBStartAct?: number;  // align crossfade center to start of this Act's title card
   crossfadeSec?: number;    // crossfade duration (default 4)
   volume?: number;          // master volume 0-1 (default 0.30)
   fadeInSec?: number;       // fade in at video start (default 1.5)
@@ -829,9 +833,9 @@ export const defaultConfig: VideoConfig = {
     message: "함께 해 주셔서 감사드립니다",
   },
   audio: {
-    trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26)
-    trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49)
-    trackBStartSec: 250,                 // 4:10 — 트랙 A 끝(4:26) 직전, 자연스러운 크로스페이드
+    trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26) — Act I
+    trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49) — Act II 분당부터 끝까지
+    trackBStartAct: 2,                   // Act II (분당) 타이틀카드에 크로스페이드 센터 정렬
     crossfadeSec: 6,
     volume: 0.30,
     fadeInSec: 1.5,
