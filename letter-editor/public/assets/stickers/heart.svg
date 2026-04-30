@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="heartFill" cx="40%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#fbe4de"/>
+      <stop offset="60%" stop-color="#e8a8a0"/>
+      <stop offset="100%" stop-color="#b86b68"/>
+    </radialGradient>
+    <filter id="heartShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" in="SourceAlpha"/>
+      <feOffset dx="0" dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <path filter="url(#heartShadow)" fill="url(#heartFill)" stroke="#7a3e3d" stroke-width="2.5"
+        d="M100 170 C 40 130, 15 85, 30 55 C 45 28, 82 28, 100 60 C 118 28, 155 28, 170 55 C 185 85, 160 130, 100 170 Z"/>
+  <ellipse cx="75" cy="70" rx="14" ry="8" fill="rgba(255,255,255,0.45)" transform="rotate(-20 75 70)"/>
+</svg>

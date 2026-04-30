@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="leafFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8ca37a"/>
+      <stop offset="60%" stop-color="#5a6e4f"/>
+      <stop offset="100%" stop-color="#3a4a30"/>
+    </linearGradient>
+    <filter id="lShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" in="SourceAlpha"/>
+      <feOffset dx="1" dy="2"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#lShadow)" transform="rotate(-25 100 100)">
+    <path fill="url(#leafFill)" stroke="#2a3a22" stroke-width="1.5"
+          d="M100 20 C 155 60, 165 135, 100 180 C 35 135, 45 60, 100 20 Z"/>
+    <path fill="none" stroke="#d9e8c8" stroke-width="1.5" opacity="0.55"
+          d="M100 30 L 100 172"/>
+    <path fill="none" stroke="#d9e8c8" stroke-width="1" opacity="0.4"
+          d="M100 55 Q 130 70, 148 88 M100 85 Q 130 100, 148 118 M100 115 Q 130 130, 143 148 M100 55 Q 70 70, 52 88 M100 85 Q 70 100, 52 118 M100 115 Q 70 130, 57 148"/>
+  </g>
+</svg>

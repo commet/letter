@@ -34,9 +34,78 @@ export const FILTER_CSS: Record<FilterType, string> = {
   cool: "saturate(0.9) brightness(1.05) hue-rotate(10deg)",
 };
 
+// Legacy single-caption (kept for backward-compat; auto-migrated to CaptionEntry[]).
 export type CaptionConfig = {
   text: string;
   position: "top" | "bottom" | "center";
+};
+
+// Per-entry caption with full position + styling control.
+export type CaptionFont =
+  | "serif"       // italic EB Garamond — classic elegant
+  | "serif-kr"    // Nanum Myeongjo — formal Korean serif
+  | "script-kr"   // Nanum Pen Script — handwritten
+  | "brush-kr"    // Nanum Brush — calligraphy
+  | "sans-kr";    // Noto Sans — modern
+
+export type CaptionAlign = "left" | "center" | "right";
+
+// Visual treatment behind caption text.
+//   none          — plain text, no shadow, no bg. Only if caption is on an already-safe area.
+//   shadow        — heavy text shadow only. Good on mid-contrast photos.
+//   scrim-bottom  — gradient darken across bottom ~38% of frame. Default for captions at y ≥ 0.5.
+//   scrim-top     — gradient darken across top ~38% of frame. For captions at y < 0.5.
+//   card          — solid/translucent box behind text (uses color/padding/radius/blur).
+export type CaptionBgKind = "none" | "shadow" | "scrim-bottom" | "scrim-top" | "card";
+
+export type CaptionBackground = {
+  kind?: CaptionBgKind;  // default resolves to "scrim-bottom" at render. Legacy rows with just { color } are treated as "card".
+  color?: string;        // used only by kind="card" — e.g., "rgba(15,12,8,0.55)"
+  paddingX?: number;     // card: default 22
+  paddingY?: number;     // card: default 10
+  radius?: number;       // card: default 4
+  blur?: boolean;        // card: backdrop blur behind box
+};
+
+// Shared between renderer and editor so the preview stays WYSIWYG.
+export const resolveCaptionBgKind = (
+  cap: { bg?: CaptionBackground }
+): CaptionBgKind => {
+  if (cap.bg?.kind) return cap.bg.kind;
+  if (cap.bg?.color) return "card";  // legacy rows with only { color }
+  return "scrim-bottom";
+};
+
+export const CAPTION_FONT_STACK: Record<CaptionFont, { fontFamily: string; fontStyle: "normal" | "italic"; letterSpacing: string }> = {
+  "serif":     { fontFamily: "'EB Garamond', 'Cormorant Garamond', serif", fontStyle: "italic", letterSpacing: "0.16em" },
+  "serif-kr":  { fontFamily: "'Nanum Myeongjo', 'Gowun Batang', 'Noto Serif KR', serif", fontStyle: "normal", letterSpacing: "0.08em" },
+  "script-kr": { fontFamily: "'Nanum Pen Script', 'Gaegu', cursive", fontStyle: "normal", letterSpacing: "0.04em" },
+  "brush-kr":  { fontFamily: "'Nanum Brush Script', cursive", fontStyle: "normal", letterSpacing: "0.04em" },
+  "sans-kr":   { fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif", fontStyle: "normal", letterSpacing: "0.04em" },
+};
+
+export type CaptionEntry = {
+  id: string;
+  text: string;
+  speaker?: string;          // e.g., "예찬" | "슬기" — rendered as "speaker: text"
+  // Position in normalized 0-1 coords over the 1920×1080 canvas.
+  //   The anchor is interpreted by `align`:
+  //     center → box centered on (x,y)
+  //     left   → box's left edge at x
+  //     right  → box's right edge at x
+  //   y is the vertical center of the text box in all cases.
+  x: number;
+  y: number;
+  align?: CaptionAlign;
+  fontFamily?: CaptionFont;
+  fontSize?: number;         // px at 1920×1080
+  color?: string;
+  bg?: CaptionBackground;
+  maxWidthPct?: number;      // 0-100, max horizontal width as % of canvas (default 95)
+  // Optional time window (normalized 0-1 of scene duration).
+  // Only visible (faded in/out + typing) inside [fromT, toT]. Defaults: [0, 1] = whole scene.
+  fromT?: number;
+  toT?: number;
 };
 
 export type SpotlightConfig = {
@@ -44,6 +113,84 @@ export type SpotlightConfig = {
   y: number;        // 0-1
   radius: number;   // 0.05-0.5 (fraction of image size)
   strength: number;  // 0-1, dimming intensity outside (0.6 = 60% dim)
+};
+
+// Crop rectangle in normalized image coordinates (0-1).
+// The crop region [x, x+w] × [y, y+h] is what gets shown at viewport size.
+export type CropRect = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+// "Popout" — a rectangular region of the photo that lifts forward (scale + shadow)
+// during a time window. The base photo stays still; a clipped duplicate animates above.
+// Used for highlighting badges, signs, faces inside a still composition.
+//
+// Coords are normalized 0-1 to the photo's image area (same basis as spotlights).
+// Time window is normalized 0-1 to the scene duration.
+export type PopoutRegion = {
+  id: string;
+  x: number;          // top-left of region inside the image
+  y: number;
+  w: number;          // size as fraction of image
+  h: number;
+  scale?: number;     // peak scale, default 1.5 (1.0 = no lift)
+  fromT?: number;     // window start, default 0
+  toT?: number;       // window end, default 1
+  shadow?: "soft" | "strong";  // default "strong"
+};
+
+// Annotation arrow — points to a person/object in a group photo, with optional label.
+// Coordinates are normalized to the image area (0-1, same basis as spotlights/focalPoint).
+export type ArrowStyle =
+  | "curve"          // thin ink curve (default)
+  | "straight"       // thin ink straight
+  | "dashed"         // thin dashed
+  | "brush"          // thick gold brush
+  | "bold-curve"     // bold ink curve
+  | "bold-straight"  // bold ink straight
+  | "marker";        // extra-thick marker (heaviest body)
+export type ArrowColor = "ink" | "gold" | "burgundy" | "navy" | "sage" | "cream" | "white" | "lilac" | "lemon";
+
+export const ARROW_COLOR_MAP: Record<ArrowColor, string> = {
+  ink:      "#1a1510",           // classic black ink (default)
+  gold:     "#a88848",           // warm gold (matches palette)
+  burgundy: "#8a3a3a",           // deep red, classy
+  navy:     "#2a3a5a",           // deep blue
+  sage:     "#5a6e4f",           // muted green
+  cream:    "#d9c89f",           // paper-tone ink (subtle)
+  white:    "rgba(255,255,255,0.95)",
+  lilac:    "#c896ff",           // bright lavender — high-vis on most photo subjects
+  lemon:    "#ffe34a",           // highlighter yellow — high-vis on dark/mid photos
+};
+
+export const ARROW_COLOR_LABELS: Record<ArrowColor, string> = {
+  ink:      "잉크",
+  gold:     "금색",
+  burgundy: "버건디",
+  navy:     "네이비",
+  sage:     "세이지",
+  cream:    "크림",
+  white:    "화이트",
+  lilac:    "라일락",
+  lemon:    "레몬",
+};
+
+export type AnnotationArrow = {
+  id: string;
+  tipX: number;            // where the arrow points
+  tipY: number;
+  labelX: number;          // where the label sits (arrow starts from near here)
+  labelY: number;
+  label?: string;          // optional text; arrow-only if omitted/empty
+  style?: ArrowStyle;      // default 'curve'
+  color?: ArrowColor;      // default 'ink' (or 'gold' for brush style)
+  // Optional time window (normalized 0-1 of scene duration). If set, the arrow
+  // draws/fades within this window instead of using the scene-wide envelope.
+  fromT?: number;
+  toT?: number;
 };
 
 export type PhotoEntry = {
@@ -55,8 +202,13 @@ export type PhotoEntry = {
   focalPoint: { x: number; y: number }; // 0-1, default 0.5,0.5
   transition: TransitionType;
   filter: FilterType;
-  caption?: CaptionConfig;
+  caption?: CaptionConfig;        // legacy — prefer `captions`
+  captions?: CaptionEntry[];      // multi-caption support (dialog, monologue)
   spotlights: SpotlightConfig[];
+  crop?: CropRect; // if set, only this rect of the image is shown (normalized 0-1)
+  kenBurnsAmount?: number; // per-photo override for zoom/pan intensity (0-1). undefined = use global.
+  annotations?: AnnotationArrow[]; // hand-drawn arrows pointing to people/objects in group photos
+  popouts?: PopoutRegion[];        // regions that lift forward (scale + shadow) on a time window
   splitPair?: boolean; // true = this photo + next photo form a split screen
   splitStyle?: SplitStyle; // layout when this is the left photo of a split pair
   splitLabel?: string; // custom label under polaroid/cameo (fallback: tag first word)
@@ -117,6 +269,7 @@ export type JourneyMap = {
   subtitle?: string;       // Korean subtitle under title
   caption?: string;        // bottom caption
   durationSec?: number;    // default 8.0
+  visibleCount?: number;   // 1..5 — reveal only first N locations (last one is "present"). Default 5 (all).
 };
 
 // P2-4 Letter interlude
@@ -129,6 +282,22 @@ export type LetterInterlude = {
   durationSec?: number;    // default 8.0
 };
 
+// Chat interlude — messenger-style conversation with typing animation.
+// Empty message text renders as a "…" typing indicator (useful for "one side is still typing").
+export type ChatMessage = {
+  speaker: string;              // "예찬" | "슬기" | etc (display name above bubble)
+  side?: "left" | "right";      // default: "left"
+  text: string;                 // empty string → typing indicator
+};
+
+export type ChatInterlude = {
+  id: string;
+  afterPhotoIndex: number;
+  header?: string;              // small italic header at top (e.g., "성모병원 · 1988")
+  messages: ChatMessage[];
+  durationSec?: number;         // default 12.0
+};
+
 // P2-5 Polaroid Collage (7 photo slots on kraft paper)
 export type CollageSlot = {
   file: string;            // photo URL
@@ -139,6 +308,24 @@ export type Collage = {
   afterPhotoIndex: number;
   slots: CollageSlot[];    // up to 7 entries
   durationSec?: number;    // default 6.0
+  beforeTitle?: boolean;   // if true, insert BEFORE the act title card at the transition point
+                           //   (use case: "end of prev act" bookend before the new act starts)
+  caption?: string;        // scene-level bottom caption (handwritten script on scrim)
+};
+
+// Two-track BGM with auto crossfade + master fade in/out at scene boundaries.
+// Tracks live in `public/<src>` and are referenced via Remotion's staticFile.
+// Track A plays from the start, then crossfades into Track B at trackBStartSec.
+export type AudioConfig = {
+  trackA?: string;          // path under public/, e.g. "audio/bgm-1.mp3"
+  trackB?: string;
+  trackBStartSec?: number;  // composition seconds — center of crossfade
+  crossfadeSec?: number;    // crossfade duration (default 4)
+  volume?: number;          // master volume 0-1 (default 0.30)
+  fadeInSec?: number;       // fade in at video start (default 1.5)
+  fadeOutSec?: number;      // fade out at video end  (default 2.5)
+  trackAOffsetSec?: number; // optional: skip into track A (default 0)
+  trackBOffsetSec?: number; // optional: skip into track B (default 0)
 };
 
 export type VideoConfig = {
@@ -153,6 +340,7 @@ export type VideoConfig = {
   particles: ParticleType;
   frame: FrameType;
   bgmUrl?: string;
+  audio?: AudioConfig;
   // NEW
   backgroundStyle: BackgroundStyle;
   kenBurnsAmount: number;
@@ -161,6 +349,7 @@ export type VideoConfig = {
   yearMarkers?: YearMarker[]; // year / location title interstitials
   journeyMaps?: JourneyMap[]; // animated journey map scenes
   letterInterludes?: LetterInterlude[]; // handwritten letter scenes
+  chatInterludes?: ChatInterlude[]; // messenger-style conversation scenes
   collages?: Collage[]; // 7-polaroid scrapbook scenes
 };
 
@@ -178,6 +367,7 @@ export type TimelineItem =
   | { kind: "yearMarker"; marker: YearMarker; durationInFrames: number; name: string }
   | { kind: "journeyMap"; map: JourneyMap; durationInFrames: number; name: string }
   | { kind: "letter"; letter: LetterInterlude; durationInFrames: number; name: string }
+  | { kind: "chat"; chat: ChatInterlude; durationInFrames: number; name: string }
   | { kind: "collage"; collage: Collage; durationInFrames: number; name: string }
   | { kind: "ending"; durationInFrames: number; name: string };
 
@@ -190,7 +380,8 @@ export function buildTimeline(
   yearMarkers: YearMarker[] = [],
   journeyMaps: JourneyMap[] = [],
   letterInterludes: LetterInterlude[] = [],
-  collages: Collage[] = []
+  collages: Collage[] = [],
+  chatInterludes: ChatInterlude[] = []
 ): TimelineItem[] {
   const items: TimelineItem[] = [];
   const seenActs = new Set<number>();
@@ -232,9 +423,33 @@ export function buildTimeline(
     collagesBefore.get(key)!.push(c);
   }
 
+  const chatsBefore = new Map<number, ChatInterlude[]>();
+  for (const c of chatInterludes) {
+    const key = c.afterPhotoIndex + 1;
+    if (!chatsBefore.has(key)) chatsBefore.set(key, []);
+    chatsBefore.get(key)!.push(c);
+  }
+
   let i = 0;
   while (i < photos.length) {
     const p = photos[i];
+
+    // Collages with beforeTitle=true appear BEFORE the act title card
+    // (used as "end of previous act" bookends at act transition points).
+    const collagesAtI = collagesBefore.get(i) ?? [];
+    const collagesBeforeTitle = collagesAtI.filter((c) => c.beforeTitle);
+    const collagesAfterTitle  = collagesAtI.filter((c) => !c.beforeTitle);
+
+    if (collagesBeforeTitle.length > 0) {
+      for (const c of collagesBeforeTitle) {
+        items.push({
+          kind: "collage",
+          collage: c,
+          durationInFrames: Math.round((c.durationSec ?? 6.0) * fps),
+          name: `Collage (end of act) — ${c.slots.length} photos`,
+        });
+      }
+    }
 
     if (!seenActs.has(p.act)) {
       seenActs.add(p.act);
@@ -293,10 +508,22 @@ export function buildTimeline(
         });
       }
     }
-    // Collages
-    const collagesHere = collagesBefore.get(i);
-    if (collagesHere) {
-      for (const c of collagesHere) {
+    // Chat interludes (after letters, before collages — conversation framing)
+    const chatsHere = chatsBefore.get(i);
+    if (chatsHere) {
+      for (const c of chatsHere) {
+        const preview = c.header ?? c.messages.find((m) => m.text)?.text?.slice(0, 20) ?? "대화";
+        items.push({
+          kind: "chat",
+          chat: c,
+          durationInFrames: Math.round((c.durationSec ?? 12.0) * fps),
+          name: `Chat — ${preview}`,
+        });
+      }
+    }
+    // Collages (only those WITHOUT beforeTitle — the others were inserted earlier)
+    if (collagesAfterTitle.length > 0) {
+      for (const c of collagesAfterTitle) {
         items.push({
           kind: "collage",
           collage: c,
@@ -316,7 +543,8 @@ export function buildTimeline(
         kind: "split",
         left: p,
         right,
-        durationInFrames: Math.round(4.0 * fps),
+        // Respect the left photo's configured duration (was hardcoded 4.0).
+        durationInFrames: Math.round(p.durationSec * fps),
         mergeOut: isLastSplit,
         name: `Split — ${p.tag} / ${right.tag}`,
       });
@@ -376,6 +604,7 @@ export function getPhotoIndexAtFrame(frame: number, config: VideoConfig): number
     config.journeyMaps ?? [],
     config.letterInterludes ?? [],
     config.collages ?? [],
+    config.chatInterludes ?? [],
   );
 
   let cursor = 0;
@@ -405,6 +634,7 @@ export function getPhotoStartFrame(photoIdx: number, config: VideoConfig): numbe
     config.journeyMaps ?? [],
     config.letterInterludes ?? [],
     config.collages ?? [],
+    config.chatInterludes ?? [],
   );
 
   let cursor = 0;
@@ -432,6 +662,7 @@ export function computeTotalFrames(config: VideoConfig): number {
     config.journeyMaps ?? [],
     config.letterInterludes ?? [],
     config.collages ?? [],
+    config.chatInterludes ?? [],
   );
   const sum = tl.reduce((s, it) => s + it.durationInFrames, 0);
   return sum - cf * (tl.length - 1);
@@ -465,7 +696,7 @@ const e = (i: number): Effect => fx[i % fx.length];
 // Helper to create photo entries with sensible defaults
 const P = (
   tag: string, act: number, file: string, durationSec: number, effect: Effect,
-  extra?: Partial<Pick<PhotoEntry, "focalPoint" | "transition" | "filter" | "caption" | "spotlights" | "splitPair" | "splitStyle" | "frameOverride" | "overlayOverride" | "particlesOverride">>
+  extra?: Partial<PhotoEntry>
 ): PhotoEntry => ({
   tag, act, file, durationSec, effect,
   focalPoint: { x: 0.5, y: 0.5 },
@@ -475,17 +706,18 @@ const P = (
   ...extra,
 });
 
-// Moderate spotlight helper — 부드러운 얼굴 강조 (다른 사람들 약간만 어둠)
-// 실제 얼굴 위치는 사용자가 에디터에서 미세 조정. 일단 합리적 중심 위치로 배치.
-const SP = (x: number, y: number): SpotlightConfig => ({ x, y, radius: 0.18, strength: 0.35 });
+// Spotlight helper for multi-spot config (default r=0.25, strength=0.55 — matches editor default)
+const SL = (x: number, y: number, radius = 0.25, strength = 0.55): SpotlightConfig => ({ x, y, radius, strength });
+// Focal helper
+const FP = (x: number, y: number) => ({ x, y });
 
 const defaultPhotos: PhotoEntry[] = [
   // ── Act I — 그때의 우리 (유년기 페어 6쌍 + 경복궁) ──────
   // 아이콘은 페어당 1개만, 반복 피해서 절제
-  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "cameo", eraIcon: "teddy-bear" }),
+  P("슬기 성모병원",              1, `${S}/001.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "teddy-bear" }),
   P("예찬 성모병원",              1, `${S}/002.jpg`, D.split, "zoomIn"),
   P("슬기 생일",                  1, `${S}/003.jpg`, D.split, "zoomOut", { splitPair: true, splitStyle: "polaroid", eraIcon: "birthday-cake" }),
-  P("예찬 생일",                  1, `${S}/004.png`, D.split, "zoomOut"),
+  P("예찬 생일",                  1, `${S}/004b.jpg`, D.split, "zoomOut"),
   P("슬기 아빠와",                1, `${S}/005.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid" }),
   P("예찬 아빠와",                1, `${S}/006.jpg`, D.split, "zoomIn"),
   P("슬기 장난기",                1, `${S}/007.jpg`, D.split, "panRight", { splitPair: true, splitStyle: "polaroid", eraIcon: "rocking-horse" }),
@@ -494,33 +726,42 @@ const defaultPhotos: PhotoEntry[] = [
   P("예찬 부엌",                  1, `${S}/010.jpg`, D.split, "zoomOut"),
   P("슬기 그림",                  1, `${S}/011.jpg`, D.split, "zoomIn",  { splitPair: true, splitStyle: "polaroid", eraIcon: "crayon" }),
   P("예찬 그림",                  1, `${S}/012.jpg`, D.split, "zoomIn"),
-  P("경복궁",                    1, `${S}/013.jpg`, D.reveal, "zoomIn"),
 
-  // ── Act II — 같은 마당 (1994~ 분당교회) ──────
-  // 단체사진 중 핵심 3장에 얼굴 스포트라이트. 아이콘은 섹션 경계에만.
-  P("★ 분당선교원 단체",           2, `${S}/014.jpeg`, D.growStar, "zoomIn",  {
-    eraIcon: "church-steeple",
-    spotlights: [SP(0.38, 0.55), SP(0.62, 0.52)],  // 좌(슬기)·우(예찬) 중심 근처
-  }),
+  // ── Act II — 분당 (1997~ 분당교회) ──────
+  // 순서: 경복궁 → 바다 여행 → 분당선교원 2 → 단체사진들 → ... (사용자 지정 순서)
+  P("경복궁",                    2, `${S}/013b.jpg`,   D.reveal, "zoomIn"),
+  P("바다 여행 1",               2, `${S}/sea-1.jpeg`, D.reveal, "zoomIn"),
+  P("바다 여행 2",               2, `${S}/sea-2.jpeg`, D.reveal, "panRight"),
   P("분당선교원 2",               2, `${S}/015.jpeg`, D.growStar, "zoomIn", {
-    spotlights: [SP(0.42, 0.50), SP(0.60, 0.54)],
+    focalPoint: FP(0.577, 0.404),
+    spotlights: [SL(0.405, 0.317), SL(0.710, 0.579), SL(0.485, 0.225), SL(0.695, 0.526)],
   }),
-  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, e(4), {
-    spotlights: [SP(0.40, 0.55), SP(0.58, 0.52)],
+  P("여름 단체사진",              2, `${S}/019.jpeg`, D.grow, "zoomIn", {
+    spotlights: [SL(0.512, 0.414), SL(0.852, 0.416)],
   }),
-  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, e(5)),
-  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, e(6), {
-    spotlights: [SP(0.42, 0.55), SP(0.60, 0.50)],
+  P("가을 단체사진",              2, `${S}/020.jpeg`, D.grow, "zoomIn", {
+    focalPoint: FP(0.706, 0.392),
+    spotlights: [SL(0.678, 0.326), SL(0.776, 0.412), SL(0.575, 0.423), SL(0.781, 0.421)],
   }),
-  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, e(7)),
+  P("겨울 단체사진",              2, `${S}/021.jpeg`, D.grow, "zoomOut", {
+    focalPoint: FP(0.603, 0.497),
+    spotlights: [
+      { x: 0.42, y: 0.55, radius: 0.18, strength: 0.35 },
+      { x: 0.60, y: 0.50, radius: 0.18, strength: 0.35 },
+      SL(0.528, 0.452), SL(0.772, 0.528), SL(0.736, 0.507),
+    ],
+  }),
   P("붉은악마 단체",              2, `${S}/016.jpeg`, D.grow, "zoomIn"),
-  P("영화관",                     2, `${S}/023.jpeg`, D.grow, e(8)),
-  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, e(9)),
-  P("스키장",                     2, `${S}/025.jpeg`, D.grow, e(10)),
-  P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, e(11), { eraIcon: "grad-cap" }),
-  P("침례식",                     2, `${S}/027.jpeg`, D.grow, e(12), { eraIcon: "stained-glass" }),
+  P("서울 단체사진",              2, `${S}/022.jpeg`, D.grow, "panLeft"),
+  P("교회 기획실",                2, `${S}/024.jpeg`, D.grow, "panRight"),
+  P("영화관",                     2, `${S}/023.jpeg`, D.grow, "zoomIn"),
+  P("스키장",                     2, `${S}/025.jpeg`, D.grow, "zoomIn", {
+    focalPoint: FP(0.573, 0.553),
+  }),
+  P("고등학교 졸업식",            2, `${S}/026.jpeg`, D.grow, "zoomIn", { eraIcon: "grad-cap" }),
+  P("침례식",                     2, `${S}/027.jpeg`, D.grow, "zoomIn", { eraIcon: "stained-glass" }),
 
-  // ── Act III — 함께 걸은 봄 (한국 청년기) ──────
+  // ── Act III — 청춘 (한국 청년기) ──────
   // 아이콘은 섹션 시작에만 (여행 첫 장, 공연 첫 장, 갤러리 첫 장, 슬기 졸업)
   P("여행 식사 1",                3, `${S}/028.jpeg`, D.trip, e(0), { eraIcon: "suitcase" }),
   P("여행 식사 2",                3, `${S}/029.jpeg`, D.trip, e(1)),
@@ -546,14 +787,14 @@ const defaultPhotos: PhotoEntry[] = [
   P("예찬 군입대 4",              4, `${S}/049.jpeg`, D.mile, "zoomIn"),
   P("뉴욕 1",                     4, `${S}/042.png`,  D.date, "zoomIn",  { eraIcon: "nyc-skyline" }),
   P("뉴욕 2",                     4, `${S}/043.png`,  D.date, "panLeft"),
-  P("뉴욕 3",                     4, `${S}/044.jpg`,  D.date, "zoomOut"),
+  P("뉴욕 3",                     4, `${S}/044d.jpg`, D.date, "zoomOut"),
   P("뉴욕 4",                     4, `${S}/045.png`,  D.date, "zoomIn"),
   P("예찬 졸업식",                4, `${S}/051.jpg`,  D.mile, "zoomOut", { eraIcon: "diploma" }),
 
   // ── Act V — 그리고, 오늘 (2026 재회·연인·결혼) ──────
   // 아이콘은 시작·중간·마지막 3장에만 (과하지 않게)
-  P("두 사람 1",                  5, `${S}/052.jpg`, D.us, "zoomIn", { eraIcon: "two-cups" }),
-  P("두 사람 2",                  5, `${S}/053.jpg`, D.us, "zoomOut"),
+  P("두 사람 1",                  5, `${S}/052c.jpg`, D.us, "zoomIn", { eraIcon: "two-cups" }),
+  P("두 사람 2",                  5, `${S}/053d.jpg`, D.us, "zoomOut"),
   P("두 사람 3",                  5, `${S}/054.jpg`, D.us, "panRight"),
   P("두 사람 4",                  5, `${S}/055.png`, D.us, "zoomIn"),
   P("두 사람 5",                  5, `${S}/056.jpg`, D.us, "panLeft", { eraIcon: "bouquet" }),
@@ -566,8 +807,8 @@ const defaultPhotos: PhotoEntry[] = [
 
 const defaultActTitles: Record<number, ActTitle> = {
   1: { chapter: "Act I",   kr: "그때의 우리",          year: "1988 · 1993" },
-  2: { chapter: "Act II",  kr: "같은 마당",            year: "1994 — " },
-  3: { chapter: "Act III", kr: "함께 걸은 봄",         year: "2008 — 2015" },
+  2: { chapter: "Act II",  kr: "분당",                 year: "1997 — " },
+  3: { chapter: "Act III", kr: "청춘",                 year: "2008 — 2015" },
   4: { chapter: "Act IV",  kr: "바다를 사이에 두고",   year: "2016 — 2025" },
   5: { chapter: "Act V",   kr: "그리고, 오늘",         year: "2026" },
 };
@@ -579,7 +820,16 @@ export const defaultConfig: VideoConfig = {
     date: "2026 · 05 · 05",
     groomName: "이예찬",
     brideName: "송슬기",
-    message: "와주셔서 감사합니다",
+    message: "함께 해 주셔서 감사드립니다",
+  },
+  audio: {
+    trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26)
+    trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49)
+    trackBStartSec: 250,                 // 4:10 — 트랙 A 끝(4:26) 직전, 자연스러운 크로스페이드
+    crossfadeSec: 6,
+    volume: 0.30,
+    fadeInSec: 1.5,
+    fadeOutSec: 2.5,
   },
   titleCardSec: 4.0,   // slightly longer for breathing
   endingSec: 13.0,     // extended for held silence + botanical sprig + message breath
@@ -591,29 +841,144 @@ export const defaultConfig: VideoConfig = {
   backgroundStyle: "paper",  // NEW — cream paper (vintage journal feel)
   kenBurnsAmount: 0.04,      // NEW — half of previous 0.08 (calmer)
   titleVariant: "journal",   // NEW — elegant journal style for all acts
-  // ── 인터스티셜 배치 (실제 스토리 기반) ──
-  // photos 인덱스 (경복궁 Act I 복귀 후):
-  //   Act I 0-12 (13장 · 페어 6쌍 + 경복궁), Act II 13-24 (12장),
-  //   Act III 25-39 (15장), Act IV 40-48 (9장), Act V 49-57 (9장)
+  // ── 인터스티셜 배치 ──
+  // photos 인덱스 (★분당선교원 단체 제거 후):
+  //   Act I   0-11  (12장 · 페어 6쌍)
+  //   Act II  12-25 (14장 · 경복궁/바다1/바다2 + 분당선교원 2 + 단체사진 등)
+  //   Act III 26-40 (15장)
+  //   Act IV  41-49 (9장)
+  //   Act V   50-58 (9장)
   moments: [
-    // Act II 시작 (같은 마당) — 잔잔한 여는 말
-    { id: "m-2", afterPhotoIndex: 12, l1: "같은 마당에서",  l2: "함께 자란 날들", year: "1994 ~", durationSec: 2.2 },
-    // Act V 시작 (2026 재회) — 핵심 리빌
-    { id: "m-5", afterPhotoIndex: 48, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
+    // Act V 시작 (2026 재회)
+    { id: "m-5", afterPhotoIndex: 49, l1: "다시, 여기서", l2: "우리가 되었다", year: "2026 · 봄", durationSec: 2.5 },
   ],
-  yearMarkers: [
-    // Act IV 시작 (거리의 시간)
-    { id: "y-4", afterPhotoIndex: 39, year: "2016", location: "서울 ↔ 뉴욕", durationSec: 3.0 },
-  ],
+  yearMarkers: [],
   journeyMaps: [
-    // Act IV 뉴욕 파트 직전 — 성모병원 → 분당 → 서울 → 뉴욕 시각화
-    { id: "jm-nyc", afterPhotoIndex: 43,
-      title: "Across the Ocean",
-      subtitle: "성모병원 · 분당 · 서울 · 뉴욕",
-      caption: "계절이 몇 번, 그래도 서로에게",
-      durationSec: 8.0,
-    },
+    { id: "jm-1", afterPhotoIndex: -1, title: "Our Journey",      visibleCount: 1, durationSec: 4.5 },
+    { id: "jm-2", afterPhotoIndex: 11, title: "Our Journey",      visibleCount: 2, durationSec: 6.5 },
+    { id: "jm-3", afterPhotoIndex: 25, title: "Our Journey",      visibleCount: 3, durationSec: 6.5 },
+    { id: "jm-4", afterPhotoIndex: 40, title: "Across the Ocean", visibleCount: 4, durationSec: 7.0, caption: "계절이 몇 번, 그래도 서로에게" },
+    { id: "jm-5", afterPhotoIndex: 49, title: "Here, Today",      visibleCount: 5, durationSec: 7.5 },
   ],
   letterInterludes: [],      // 의도적으로 비움 — 편지 인터루드는 스토리에 맞지 않음
-  collages: [],              // 기본 0개. 에디터에서 추가 가능
+  chatInterludes: [
+    {
+      id: "chat-1",
+      afterPhotoIndex: -1,   // jm-1 여정 지도 직후, 성모병원 폴라로이드 페어 직전
+      header: "성모병원 · 1988",
+      messages: [
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "우리가 시간만 달랐지, 아예 같은 병원에서 태어난줄은 크고나서 알았지. 정말 인연이었나봐:)",
+        },
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",  // 아직 공백 — "typing..." 인디케이터로 렌더
+        },
+      ],
+      durationSec: 12.0,
+    },
+    {
+      id: "chat-2",
+      afterPhotoIndex: 11,   // Act II 타이틀 + jm-2 여정 지도 직후, 경복궁 직전
+      header: "분당 · 1997",
+      messages: [
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "내 첫 돌부터 함께 했었다니! 우리는 정말 어렸을 때부터 평생을 함께 자라왔네",
+        },
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",  // 아직 공백
+        },
+      ],
+      durationSec: 12.0,
+    },
+    {
+      id: "chat-3",
+      afterPhotoIndex: 25,   // Act III 타이틀 + jm-3 여정 지도 직후, 여행 식사 1 직전
+      header: "청춘 · 2008 — 2015",
+      // 이번에는 슬기가 먼저 — 서사는 추후 결정. 현재 둘 다 공백(... 인디케이터 표시됨).
+      messages: [
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",  // 서사 미정
+        },
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "",  // 서사 미정
+        },
+      ],
+      durationSec: 12.0,
+    },
+    {
+      id: "chat-4",
+      afterPhotoIndex: 40,   // Act IV 타이틀 + jm-4 (Across the Ocean) 직후, 예찬 군입대 직전
+      header: "바다를 사이에 두고 · 2016 — 2025",
+      messages: [
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "내가 뉴욕으로 유학을 가게 됐지.....",
+        },
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "나도 카투사 입대로 한국 속의 미국에 갔고... 제대 이후에는 뉴욕을 계절마다 갔었지 ...",
+        },
+      ],
+      durationSec: 12.0,
+    },
+    {
+      id: "chat-5",
+      afterPhotoIndex: 49,   // Act V 타이틀 + m-5 모먼트 + jm-5 (Here, Today) 직후, 두 사람 1 직전
+      header: "그리고, 오늘 · 2026",
+      // 서사 미정 — 다섯 Act 모두 슬기 답변은 추후 채움.
+      messages: [
+        {
+          speaker: "예찬",
+          side: "left",
+          text: "",
+        },
+        {
+          speaker: "슬기",
+          side: "right",
+          text: "",
+        },
+      ],
+      durationSec: 12.0,
+    },
+  ],
+  collages: [
+    // Act I 엔딩 북엔드 — Act 1 마지막 페어(예찬 그림, idx 11) 뒤, Act II 타이틀 앞에 삽입.
+    // 2개 연속: 슬기 단독 모음 → 예찬 단독 모음.
+    {
+      id: "cg-sl-solo",
+      afterPhotoIndex: 11,
+      beforeTitle: true,
+      durationSec: 5.5,
+      slots: [
+        { file: `${S}/sl-solo-1b.png` },
+        { file: `${S}/sl-solo-2.jpeg` },
+        { file: `${S}/sl-solo-3.jpeg` },
+      ],
+    },
+    {
+      id: "cg-ye-solo",
+      afterPhotoIndex: 11,
+      beforeTitle: true,
+      durationSec: 5.5,
+      slots: [
+        { file: `${S}/ye-solo-1.jpeg` },
+        { file: `${S}/ye-solo-2.jpeg` },
+        { file: `${S}/ye-solo-3.jpeg` },
+      ],
+    },
+  ],
 };

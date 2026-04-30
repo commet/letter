@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
 import {
   AbsoluteFill,
+  Audio,
   Img,
   Sequence,
   interpolate,
+  staticFile,
   useCurrentFrame,
 } from "remotion";
 import {
@@ -13,6 +15,7 @@ import {
   EndingConfig,
   Effect,
   SpotlightConfig,
+  AnnotationArrow as AnnotationArrowConfig,
   TransitionMode,
   TimelineItem,
   OverlayType,
@@ -23,11 +26,17 @@ import {
   BackgroundStyle,
   JourneyMap as JourneyMapConfig,
   LetterInterlude as LetterInterludeConfig,
+  ChatInterlude as ChatInterludeConfig,
   Collage as CollageConfig,
+  CaptionEntry,
+  PopoutRegion,
+  CAPTION_FONT_STACK,
+  resolveCaptionBgKind,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
 import { ERA_ICONS } from "./eraIcons";
+import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OUTLINE_COLOR } from "./arrow";
 
 // ─────────────────────────────────────────────
 // Shared
@@ -272,6 +281,142 @@ const getFrameStyle = (type: FrameType): React.CSSProperties => {
   }
 };
 
+// ─── Annotation Arrow Layer ───────────────────
+// Arrows point to people/objects in group photos. Normalized coords (0-1)
+// relative to the photo area (so they live INSIDE the photo wrapper, next to Img).
+
+// Per-arrow timing — respects optional fromT/toT window, otherwise uses scene-wide envelope.
+const arrowTiming = (a: AnnotationArrowConfig, tN: number) => {
+  const hasWindow = a.fromT !== undefined || a.toT !== undefined;
+  if (!hasWindow) {
+    return {
+      drawT:  interpolate(tN, [0.20, 0.48], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+      labelT: interpolate(tN, [0.45, 0.65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+      opacity: interpolate(tN, [0.90, 1.0],  [1, 0], { extrapolateLeft: "clamp" }),
+    };
+  }
+  const fromT = a.fromT ?? 0;
+  const toT   = a.toT   ?? 1;
+  const span  = Math.max(0.001, toT - fromT);
+  const localT = (tN - fromT) / span;   // 0 at window start, 1 at window end (can go outside)
+  const drawT  = interpolate(localT, [0.05, 0.55], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const labelT = interpolate(localT, [0.40, 0.70], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fadeIn  = interpolate(localT, [0, 0.08], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fadeOut = interpolate(localT, [0.92, 1], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const opacity = Math.max(0, Math.min(fadeIn, fadeOut));
+  return { drawT, labelT, opacity };
+};
+
+const AnnotationLayer: React.FC<{
+  annotations: AnnotationArrowConfig[];
+  dur: number;
+}> = ({ annotations, dur }) => {
+  const frame = useCurrentFrame();
+  if (!annotations || annotations.length === 0) return null;
+  const tN = Math.min(1, Math.max(0, frame / dur));
+  return (
+    <>
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        {annotations.map((a) => {
+          const info = buildArrowPath(a);
+          const stroke = arrowStroke(a.style, a.color);
+          const { drawT, opacity } = arrowTiming(a, tN);
+          // Approx path length via bbox — good enough for dash reveal
+          const dx = (a.tipX - a.labelX) * 100;
+          const dy = (a.tipY - a.labelY) * 100;
+          const approxLen = Math.hypot(dx, dy) * 1.15;
+          const dashLen = Math.max(approxLen, 1);
+          const isDashed = a.style === "dashed";
+          // Bright/light colors (라일락/레몬/화이트/크림) get a dark underlay so they
+          // stay readable on light photo backgrounds without extra user config.
+          const outline = arrowNeedsOutline(a.color);
+          const outlineWidth = stroke.width + 2.2;
+          return (
+            <g key={a.id} opacity={stroke.opacity * opacity}>
+              {outline && (
+                <path
+                  d={info.d}
+                  fill="none"
+                  stroke={ARROW_OUTLINE_COLOR}
+                  strokeWidth={outlineWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                  strokeDasharray={isDashed ? "3 2" : `${dashLen}`}
+                  strokeDashoffset={isDashed ? 0 : (1 - drawT) * dashLen}
+                />
+              )}
+              <path
+                d={info.d}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth={stroke.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                strokeDasharray={isDashed ? "3 2" : `${dashLen}`}
+                strokeDashoffset={isDashed ? 0 : (1 - drawT) * dashLen}
+              />
+              {drawT > 0.6 && (
+                <g transform={`translate(${a.tipX * 100} ${a.tipY * 100}) rotate(${info.tipAngleDeg})`}
+                   opacity={interpolate(drawT, [0.6, 1.0], [0, 1], { extrapolateRight: "clamp" })}>
+                  {outline && (
+                    <path
+                      d={arrowHeadPath(a.style)}
+                      fill={ARROW_OUTLINE_COLOR}
+                      stroke={ARROW_OUTLINE_COLOR}
+                      strokeWidth={2.4}
+                      strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  )}
+                  <path
+                    d={arrowHeadPath(a.style)}
+                    fill={stroke.color}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {annotations.map((a) => {
+        if (!a.label) return null;
+        const { labelT, opacity } = arrowTiming(a, tN);
+        return (
+          <div
+            key={`lbl-${a.id}`}
+            style={{
+              position: "absolute",
+              left: `${a.labelX * 100}%`,
+              top: `${a.labelY * 100}%`,
+              transform: "translate(-50%, -50%)",
+              fontFamily: "'Nanum Pen Script', 'Nanum Myeongjo', cursive",
+              fontSize: 26,
+              color: "#1a1510",
+              background: "rgba(251, 244, 220, 0.92)",
+              padding: "3px 11px",
+              borderRadius: 2,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+              whiteSpace: "nowrap",
+              opacity: labelT * opacity,
+              pointerEvents: "none",
+              lineHeight: 1.1,
+            }}
+          >
+            {a.label}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
 const SpotlightOverlay: React.FC<{ spotlights: SpotlightConfig[] }> = ({ spotlights }) => {
   if (spotlights.length === 0) return null;
   const gradients = spotlights.map(
@@ -290,57 +435,272 @@ const SpotlightOverlay: React.FC<{ spotlights: SpotlightConfig[] }> = ({ spotlig
   );
 };
 
-const CaptionOverlay: React.FC<{
-  text: string;
-  position: "top" | "bottom" | "center";
-  dur: number;
-}> = ({ text, position, dur }) => {
-  const frame = useCurrentFrame();
-  const fadeIn = interpolate(frame, [8, 30], [0, 1], { extrapolateRight: "clamp" });
-  const fadeOut = interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" });
-  const opacity = Math.min(fadeIn, fadeOut);
-  // Subtle vertical drift for elegance
-  const translateY = interpolate(frame, [8, 30], [6, 0], { extrapolateRight: "clamp" });
+// Convert legacy photo.caption → CaptionEntry (render-time safety net).
+// Keep parity with materializeCaptions in App.tsx — same bg kind based on position.
+const legacyCaptionToEntry = (c: { text: string; position: "top" | "bottom" | "center" }): CaptionEntry => ({
+  id: "legacy",
+  text: c.text,
+  x: 0.5,
+  y: c.position === "top" ? 0.08 : c.position === "center" ? 0.5 : 0.92,
+  align: "center",
+  fontFamily: "serif",
+  fontSize: 40,
+  bg: { kind: c.position === "top" ? "scrim-top" : c.position === "center" ? "shadow" : "scrim-bottom" },
+});
 
-  const posStyle: React.CSSProperties =
-    position === "top" ? { top: 72 } :
-    position === "center" ? { top: "50%", transform: `translate(0, calc(-50% + ${translateY}px))` } :
-    { bottom: 72 };
+const EMPTY_CAPTIONS: readonly CaptionEntry[] = Object.freeze([]);
+
+// Stable-ish legacy array cache keyed by the legacy caption object itself.
+// Photos whose legacy caption hasn't been migrated yet will still get the same
+// array on repeated calls (as long as the caption object is referentially stable).
+const _legacyCache = new WeakMap<object, CaptionEntry[]>();
+
+const resolveCaptions = (photo: { captions?: CaptionEntry[]; caption?: { text: string; position: "top" | "bottom" | "center" } }): readonly CaptionEntry[] => {
+  if (photo.captions && photo.captions.length > 0) return photo.captions;
+  if (photo.caption && photo.caption.text) {
+    const cached = _legacyCache.get(photo.caption);
+    if (cached) return cached;
+    const fresh = [legacyCaptionToEntry(photo.caption)];
+    _legacyCache.set(photo.caption, fresh);
+    return fresh;
+  }
+  return EMPTY_CAPTIONS;
+};
+
+// Heavy text shadow used by shadow/scrim kinds for AA-safe readability at wedding-venue distance.
+const CAPTION_TEXT_SHADOW = "0 2px 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.7), 0 0 18px rgba(0,0,0,0.4)";
+
+// Character-by-character typed reveal. Length-proportional within its visible window.
+// `windowDur` = duration of the visible window (ms in scene frames at fps); `startFrame` =
+// when typing should begin (absolute scene frame). For non-windowed captions this is the
+// scene duration starting at frame 0.
+const typedTextSlice = (
+  text: string,
+  frame: number,
+  windowDur: number,
+  startFrame: number = 0,
+): string => {
+  if (!text) return "";
+  const headDelay = 6;
+  // Target 8 frames/char (~3.75 Korean chars/sec at 30fps) — slowed for older relatives
+  // following along live. Cap at 70% of window so ~30% remains as comfortable read-hold
+  // after typing finishes. Falls back to fitting in window if the scene is too short.
+  const preferred = text.length * 8;
+  const cap = Math.max(15, Math.round(windowDur * 0.70));
+  const targetFrames = Math.min(preferred, cap);
+  const elapsed = Math.max(0, frame - startFrame - headDelay);
+  const ratio = Math.min(1, elapsed / Math.max(1, targetFrames));
+  const count = Math.min(text.length, Math.round(ratio * text.length));
+  return text.slice(0, count);
+};
+
+// Per-caption opacity. If the caption has fromT/toT, fade in/out within that window.
+// Otherwise fall back to the scene-wide fade (matches old global behavior).
+const computeCaptionOpacity = (cap: CaptionEntry, frame: number, dur: number): number => {
+  const hasWindow = cap.fromT !== undefined || cap.toT !== undefined;
+  if (hasWindow) {
+    const fromFrame = (cap.fromT ?? 0) * dur;
+    const toFrame   = (cap.toT   ?? 1) * dur;
+    const inP  = interpolate(frame, [fromFrame, fromFrame + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+    const outP = interpolate(frame, [toFrame - 12, toFrame],    [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+    return Math.max(0, Math.min(inP, outP));
+  }
+  const fadeIn  = interpolate(frame, [8, 30],         [0, 1], { extrapolateRight: "clamp" });
+  const fadeOut = interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" });
+  return Math.max(0, Math.min(fadeIn, fadeOut));
+};
+
+const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }> = ({ cap, dur, opacity }) => {
+  const frame = useCurrentFrame();
+  const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
+  const align: "left" | "center" | "right" = cap.align ?? "center";
+  const xPct = Math.max(0, Math.min(1, cap.x)) * 100;
+  const yPct = Math.max(0, Math.min(1, cap.y)) * 100;
+  // Vertical anchor depends on y position so multi-line text doesn't collide
+  // with stacked captions below: bottom-anchor in lower band (text grows up),
+  // top-anchor in upper band (text grows down), center otherwise.
+  const xT = align === "left" ? "0" : align === "right" ? "-100%" : "-50%";
+  const yT = cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%";
+  const translate = `translate(${xT}, ${yT})`;
+  const maxWidthPct = cap.maxWidthPct ?? 95;
+
+  const kind = resolveCaptionBgKind(cap);
+  const boxStyle: React.CSSProperties =
+    kind === "card" ? {
+      background: cap.bg?.color ?? "rgba(15,12,8,0.55)",
+      padding: `${cap.bg?.paddingY ?? 10}px ${cap.bg?.paddingX ?? 22}px`,
+      borderRadius: cap.bg?.radius ?? 4,
+      backdropFilter: cap.bg?.blur ? "blur(3px)" : undefined,
+      WebkitBackdropFilter: cap.bg?.blur ? "blur(3px)" : undefined,
+    } :
+    kind === "none" ? {} :
+    { textShadow: CAPTION_TEXT_SHADOW };  // shadow / scrim-bottom / scrim-top
+
+  // Typing window matches the caption's visible window (or the whole scene if not windowed).
+  const fromFrame = (cap.fromT ?? 0) * dur;
+  const toFrame   = (cap.toT   ?? 1) * dur;
+  const windowDur = Math.max(1, toFrame - fromFrame);
+  const typed = typedTextSlice(cap.text, frame, windowDur, fromFrame);
+
+  if (opacity <= 0) return null;
+  return (
+    <div style={{
+      position: "absolute",
+      left: `${xPct}%`,
+      top: `${yPct}%`,
+      transform: translate,
+      maxWidth: `${maxWidthPct}%`,
+      textAlign: align,
+      fontFamily: font.fontFamily,
+      fontStyle: font.fontStyle,
+      letterSpacing: font.letterSpacing,
+      fontSize: cap.fontSize ?? 40,
+      color: cap.color ?? "#f5ecd7",
+      whiteSpace: "pre-wrap",
+      lineHeight: 1.35,
+      opacity,
+      ...boxStyle,
+    }}>
+      {cap.speaker ? (
+        <span style={{ fontWeight: 600, marginRight: 10, opacity: 0.95 }}>{cap.speaker}:</span>
+      ) : null}
+      <span>{typed}</span>
+    </div>
+  );
+};
+
+// Bottom/top gradient overlay for scrim kinds. Rendered once per direction,
+// regardless of how many captions share the same scrim.
+const SCRIM_BOTTOM_STYLE: React.CSSProperties = {
+  position: "absolute", left: 0, right: 0, bottom: 0, height: "38%",
+  background: "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)",
+};
+const SCRIM_TOP_STYLE: React.CSSProperties = {
+  position: "absolute", left: 0, right: 0, top: 0, height: "38%",
+  background: "linear-gradient(to bottom, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)",
+};
+
+const CaptionsLayer: React.FC<{
+  captions: readonly CaptionEntry[];
+  dur: number;
+}> = ({ captions, dur }) => {
+  const frame = useCurrentFrame();
+  if (!captions.length) return null;
+
+  // Compute opacity per caption (windowed or scene-wide). Then derive scrim opacities
+  // as the max of the captions that use them, so a windowed caption's scrim only
+  // shows while that caption is visible.
+  const items = captions.map((c) => ({
+    cap: c,
+    opacity: computeCaptionOpacity(c, frame, dur),
+    kind: resolveCaptionBgKind(c),
+  }));
+
+  const bottomCaps = items.filter(({ kind }) => kind === "scrim-bottom");
+  const topCaps    = items.filter(({ kind }) => kind === "scrim-top");
+  const bottomScrimOpacity = bottomCaps.length ? Math.max(...bottomCaps.map((i) => i.opacity)) : 0;
+  const topScrimOpacity    = topCaps.length    ? Math.max(...topCaps.map((i) => i.opacity))    : 0;
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {bottomScrimOpacity > 0 && <div style={{ ...SCRIM_BOTTOM_STYLE, opacity: bottomScrimOpacity }} />}
+      {topScrimOpacity > 0    && <div style={{ ...SCRIM_TOP_STYLE,    opacity: topScrimOpacity }}    />}
+      {items.map(({ cap, opacity }) => (
+        <CaptionItem key={cap.id} cap={cap} dur={dur} opacity={opacity} />
+      ))}
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
+// Popout — region of a photo lifts forward (clipped duplicate scales + drops shadow)
+// ─────────────────────────────────────────────
+
+// Smooth in/out for the "lift" envelope.
+const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+const PopoutItem: React.FC<{
+  region: PopoutRegion;
+  src: string;
+  dur: number;
+}> = ({ region, src, dur }) => {
+  const frame = useCurrentFrame();
+
+  const fromFrame = (region.fromT ?? 0) * dur;
+  const toFrame   = (region.toT   ?? 1) * dur;
+  // Slower in/out so the popout doesn't feel like a sharp snap — feels deliberate.
+  const inFrames  = Math.max(10, Math.min(36, (toFrame - fromFrame) * 0.32));
+  const outFrames = inFrames;
+
+  const inLin  = interpolate(frame, [fromFrame, fromFrame + inFrames], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const outLin = interpolate(frame, [toFrame - outFrames, toFrame], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const t = Math.min(easeInOutCubic(inLin), easeInOutCubic(outLin));
+  if (t <= 0.001) return null;
+
+  // Clamp region to keep clip-path math sane.
+  const x = Math.max(0, Math.min(1, region.x));
+  const y = Math.max(0, Math.min(1, region.y));
+  const w = Math.max(0.01, Math.min(1 - x, region.w));
+  const h = Math.max(0.01, Math.min(1 - y, region.h));
+
+  const targetScale = region.scale ?? 1.5;
+  const activeScale = 1 + (targetScale - 1) * t;
+
+  // transform-origin at the center of the region — scaling lifts from that point.
+  const cxPct = (x + w / 2) * 100;
+  const cyPct = (y + h / 2) * 100;
+
+  // clip-path inset(top right bottom left) — show only the popout rectangle.
+  const insetTop    = y * 100;
+  const insetRight  = (1 - x - w) * 100;
+  const insetBottom = (1 - y - h) * 100;
+  const insetLeft   = x * 100;
+
+  const isStrong = (region.shadow ?? "strong") === "strong";
+  const shadowMaxAlpha = isStrong ? 0.6 : 0.35;
+  const shadowMaxBlur  = isStrong ? 28  : 16;
+  const shadowMaxY     = isStrong ? 14  : 8;
+  const dropShadow = `drop-shadow(0 ${shadowMaxY * t}px ${shadowMaxBlur * t}px rgba(0,0,0,${shadowMaxAlpha * t}))`;
 
   return (
     <div style={{
-      position: "absolute", left: 0, right: 0, ...posStyle,
-      display: "flex", justifyContent: "center", pointerEvents: "none",
-      opacity,
+      position: "absolute", inset: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      pointerEvents: "none",
+      // The drop-shadow filter on the wrapper applies after clipping — keeps shadow tight to the clip shape.
+      filter: dropShadow,
     }}>
-      <div style={{
-        display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6,
-        transform: position !== "center" ? `translateY(${translateY}px)` : undefined,
-      }}>
-        {/* Thin gold hairline above (appears with text) */}
-        <div style={{ width: 32, height: 1, background: GOLD_SOFT, opacity: 0.6 }} />
-        {/* Caption text — cream paper label aesthetic */}
-        <div style={{
-          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
-          fontStyle: "italic",
-          fontWeight: 400,
-          fontSize: 32,
-          letterSpacing: "0.12em",
-          color: "#f5ecd7",
-          textShadow: "0 2px 10px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.55)",
-          padding: "8px 26px",
-          background: "linear-gradient(180deg, rgba(15,12,8,0.28) 0%, rgba(15,12,8,0.42) 100%)",
-          backdropFilter: "blur(1.5px)",
-          WebkitBackdropFilter: "blur(1.5px)",
-          border: "1px solid rgba(232,208,155,0.18)",
-          borderRadius: 2,
-        }}>
-          {text}
-        </div>
-        {/* Thin gold hairline below */}
-        <div style={{ width: 32, height: 1, background: GOLD_SOFT, opacity: 0.6 }} />
-      </div>
+      <Img src={src} style={{
+        maxWidth: "100%", maxHeight: "100%",
+        width: "auto", height: "auto",
+        objectFit: "contain", display: "block",
+        clipPath: `inset(${insetTop}% ${insetRight}% ${insetBottom}% ${insetLeft}%)`,
+        WebkitClipPath: `inset(${insetTop}% ${insetRight}% ${insetBottom}% ${insetLeft}%)`,
+        transformOrigin: `${cxPct}% ${cyPct}%`,
+        transform: `scale(${activeScale})`,
+        willChange: "transform",
+      }} />
     </div>
+  );
+};
+
+const PopoutLayer: React.FC<{
+  popouts: readonly PopoutRegion[] | undefined;
+  src: string;
+  dur: number;
+}> = ({ popouts, src, dur }) => {
+  if (!popouts?.length) return null;
+  return (
+    <>
+      {popouts.map((r) => (
+        <PopoutItem key={r.id} region={r} src={src} dur={dur} />
+      ))}
+    </>
   );
 };
 
@@ -366,8 +726,11 @@ const TitleCardScene: React.FC<{
   if (effectiveVariant === "journal") {
     const chars = Array.from(kr);
     // Act illustration fades in slowly, stays subtle behind text
-    const illuOpacity = interpolate(frame, [0, 40], [0, 0.55], { extrapolateRight: "clamp" });
+    const illuOpacity = interpolate(frame, [0, 40], [0, 0.40], { extrapolateRight: "clamp" });
     const illuScale = interpolate(frame, [0, dur], [1.0, 1.04], { extrapolateRight: "clamp" });
+    // Mask: hide the top half of the illustration so tall elements (e.g., Act II
+    // doorway arch) don't collide with the centered title text.
+    const illuMask = "linear-gradient(to bottom, transparent 0%, transparent 48%, black 72%, black 100%)";
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground seed={act * 7} />
@@ -377,6 +740,8 @@ const TitleCardScene: React.FC<{
             opacity: illuOpacity,
             transform: `scale(${illuScale})`,
             transformOrigin: "center center",
+            WebkitMaskImage: illuMask,
+            maskImage: illuMask,
           }}>
             <Img src={`/assets/acts/act-${act}.svg`} style={{
               width: "100%", height: "100%", objectFit: "contain",
@@ -671,6 +1036,27 @@ const YearMarkerScene: React.FC<{
 // Journey Map Scene (Claude Design P2-2)
 // ─────────────────────────────────────────────
 
+// Journey map locations (5 points, shared across all Act maps).
+// Coordinates tuned for balanced layout on 1920×1080 with smooth catmull-rom curves.
+const JOURNEY_LOCATIONS = [
+  { cx: 260,  cy: 490, label: "성모병원",    year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
+  { cx: 540,  cy: 660, label: "분당",        year: "1997 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 880,  cy: 380, label: "청춘",        year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
+  { cx: 1300, cy: 590, label: "뉴욕 · 서울", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 1650, cy: 380, label: "여기, 오늘",  year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
+];
+
+// Smooth cubic beziers between consecutive points — catmull-rom-derived control points.
+const JOURNEY_SEGMENTS = [
+  "M 260 490 C 353 547, 437 678, 540 660",
+  "M 540 660 C 643 642, 753 392, 880 380",
+  "M 880 380 C 1007 368, 1172 590, 1300 590",
+  "M 1300 590 C 1428 590, 1533 450, 1650 380",
+];
+
+// Raw stops for plane linear interpolation.
+const JOURNEY_STOPS: [number, number][] = JOURNEY_LOCATIONS.map((L) => [L.cx, L.cy]);
+
 const JourneyMapScene: React.FC<{
   config: JourneyMapConfig;
   dur: number;
@@ -678,53 +1064,86 @@ const JourneyMapScene: React.FC<{
   particlesType: ParticleType;
 }> = ({ config, dur, overlayType, particlesType }) => {
   const frame = useCurrentFrame();
-  const fps = 30;
-
-  // 4 locations — 실제 커플 타임라인 반영 (붉은 광장 삭제).
-  // 성모병원(1988/1993 출생) → 분당(1994~ 교회) → 서울(청년기) → 뉴욕(2016~ 슬기 유학)
-  const LOCATIONS = [
-    { cx: 330,  cy: 430, label: "성모병원", year: "1988 · 1993", anchor: "start",  ly: -38, lx: -18 },
-    { cx: 620,  cy: 650, label: "분당",     year: "1994 ~",      anchor: "middle", ly:  66, lx:  0  },
-    { cx: 1050, cy: 380, label: "서울",     year: "2010 ~",      anchor: "start",  ly: -28, lx: 22  },
-    { cx: 1640, cy: 560, label: "뉴욕",     year: "2016 ~",      anchor: "end",    ly:  66, lx: 8   },
-  ];
-  const SEGMENTS = [
-    "M 330 430 C 430 500, 530 600, 620 650",
-    "M 620 650 C 760 560, 920 450, 1050 380",
-    "M 1050 380 C 1220 330, 1380 480, 1640 560",
-  ];
-  const FULL = SEGMENTS.join(" ").replace(/M /g, "L ").replace(/^L /, "M ");
-
-  // Normalize time t: 0 → 1 over full duration
   const t = Math.max(0, Math.min(1, frame / dur));
 
-  // Timing aligned to 8s original:
-  const titleOp = interpolate(t, [0.03, 0.10, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
-  const subOp   = interpolate(t, [0.06, 0.14, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
-  const capOp   = interpolate(t, [0.70, 0.78, 0.95, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
+  const vc = Math.max(1, Math.min(JOURNEY_LOCATIONS.length, config.visibleCount ?? JOURNEY_LOCATIONS.length));
+  const presentIdx = vc - 1;           // index of the "present" location
+  const hasPresentLeg = vc >= 2;        // is there a previous location → plane animates
 
-  // Segment dash draw: start times 0.10/0.30/0.50/0.60, each ~0.18 to draw
-  const segProgress = (start: number, len = 0.18) =>
-    interpolate(t, [start, start + len], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // Title / subtitle / caption
+  const titleOp = interpolate(t, [0.03, 0.12, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  const subOp   = interpolate(t, [0.06, 0.16, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
+  const capOp   = interpolate(t, [0.72, 0.85, 0.95, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
 
-  // Location reveal windows
-  const locOp = (start: number) =>
-    interpolate(t, [start, start + 0.04, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  // Base fade-in (shared) and global fade-out
+  const baseFade = interpolate(t, [0.08, 0.22, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
 
-  // Plane progress along path: 0 at t=0.175, 1 at t=0.875
-  const planeT = Math.max(0, Math.min(1, (t - 0.175) / (0.875 - 0.175)));
-  const planeIdx = Math.floor(planeT * SEGMENTS.length * 0.999);
-  const segT = (planeT * SEGMENTS.length) - planeIdx;
-  // 3 segments: 성모병원 → 분당 → 서울 → 뉴욕
-  const segStarts = [[330, 430], [620, 650], [1050, 380]];
-  const segEnds   = [[620, 650], [1050, 380], [1640, 560]];
-  const safeIdx = Math.max(0, Math.min(2, planeIdx));
-  const px = segStarts[safeIdx][0] + (segEnds[safeIdx][0] - segStarts[safeIdx][0]) * segT;
-  const py = segStarts[safeIdx][1] + (segEnds[safeIdx][1] - segStarts[safeIdx][1]) * segT;
-  const planeVis = interpolate(t, [0.10, 0.14, 0.85, 0.92], [0, 1, 1, 0], { extrapolateRight: "clamp" });
-  const nextX = segStarts[safeIdx][0] + (segEnds[safeIdx][0] - segStarts[safeIdx][0]) * Math.min(1, segT + 0.02);
-  const nextY = segStarts[safeIdx][1] + (segEnds[safeIdx][1] - segStarts[safeIdx][1]) * Math.min(1, segT + 0.02);
-  const angle = Math.atan2(nextY - py, nextX - px) * 180 / Math.PI;
+  // Past: solid (already traveled, confidently drawn)
+  const pastOp   = baseFade * 0.82;
+  // Future: preview — visible but deferred (foreshadows the road ahead)
+  const futureOp = baseFade * 0.42;
+
+  // Present emphasis timeline:
+  //   • Act 1 (no plane): present emerges early (0.10→0.28) and then pulses
+  //   • Act 2+ (with plane): present stays pale (future-level) until plane arrives, then emphasizes (0.72→0.85)
+  const presentEmphasizeStart = hasPresentLeg ? 0.72 : 0.10;
+  const presentEmphasizeEnd   = hasPresentLeg ? 0.85 : 0.28;
+
+  // Opacity lerps from the "pre" state (futureOp for Act 2+, 0 for Act 1) to full baseFade.
+  // For Act 1 the emphasis window (0.10→0.28) overlaps the base fade window, so we use
+  // a shorter 4-stop ramp. For Act 2+ the emphasis lives far later so we use the 6-stop ramp.
+  const presentPreOp = hasPresentLeg ? futureOp : 0;
+  const presentOp = hasPresentLeg
+    ? interpolate(
+        t,
+        [0.08, 0.22, presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
+        [0, presentPreOp, presentPreOp, baseFade, baseFade, 0],
+        { extrapolateRight: "clamp" },
+      )
+    : interpolate(
+        t,
+        [presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
+        [0, baseFade, baseFade, 0],
+        { extrapolateRight: "clamp" },
+      );
+
+  // Scale grows into emphasis
+  const presentScale = interpolate(
+    t,
+    [presentEmphasizeStart, presentEmphasizeEnd],
+    [0.88, 1.12],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+
+  // Gentle pulse after emphasis has landed — subtle (~6% amplitude, slow sine)
+  const pulseActive = t > presentEmphasizeEnd;
+  const pulsePhase = (t - presentEmphasizeEnd) * 9.0;
+  const pulse = pulseActive ? 1 + 0.06 * Math.sin(pulsePhase) : 1;
+  const pulseOp = pulseActive ? 1 + 0.08 * Math.sin(pulsePhase + 0.4) : 1;
+
+  // Plane animation (Act 2+)
+  const planeT = hasPresentLeg
+    ? interpolate(t, [0.40, 0.78], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 0;
+  const planeVis = hasPresentLeg
+    ? interpolate(t, [0.36, 0.42, 0.76, 0.82], [0, 1, 1, 0], { extrapolateRight: "clamp" })
+    : 0;
+  const planeStart = hasPresentLeg ? JOURNEY_STOPS[presentIdx - 1] : JOURNEY_STOPS[0];
+  const planeEnd   = JOURNEY_STOPS[presentIdx];
+  const px = planeStart[0] + (planeEnd[0] - planeStart[0]) * planeT;
+  const py = planeStart[1] + (planeEnd[1] - planeStart[1]) * planeT;
+  const angle = Math.atan2(planeEnd[1] - planeStart[1], planeEnd[0] - planeStart[0]) * 180 / Math.PI;
+
+  // Present-segment dash-draw (animates as plane takes off)
+  const segDashOffset = hasPresentLeg
+    ? interpolate(t, [0.28, 0.52], [1200, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 1200;
+  const segOp = hasPresentLeg
+    ? interpolate(t, [0.26, 0.34, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" })
+    : 0;
+
+  const autoSubtitle = JOURNEY_LOCATIONS.slice(0, vc).map((L) => L.label).join(" · ");
+  const presentLoc = JOURNEY_LOCATIONS[presentIdx];
 
   return (
     <AbsoluteFill>
@@ -746,7 +1165,7 @@ const JourneyMapScene: React.FC<{
         position: "absolute", top: 120, left: 0, right: 0, textAlign: "center",
         fontFamily: SERIF_KR, fontSize: 26, color: INK, letterSpacing: "0.2em",
         opacity: subOp,
-      }}>{config.subtitle ?? "성모병원 · 분당 · 서울 · 뉴욕"}</div>
+      }}>{(config.subtitle && config.subtitle.trim()) || autoSubtitle}</div>
 
       {/* Map SVG */}
       <svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
@@ -760,34 +1179,72 @@ const JourneyMapScene: React.FC<{
           <text x={0} y={-44} fontFamily="EB Garamond" fontStyle="italic" fontSize={14} textAnchor="middle" fill="#3a2f22" stroke="none" opacity={0.8}>N</text>
         </g>
 
-        {/* Dotted path segments (3 segments, staggered draw) */}
-        {SEGMENTS.map((d, i) => {
-          const startT = [0.12, 0.38, 0.62][i];
-          const dashOffset = segProgress(startT, 0.20) * 1200;
-          const segOpacity = interpolate(t, [startT - 0.02, startT + 0.02, 0.92, 1.0], [0, 0.9, 0.9, 0], { extrapolateRight: "clamp" });
-          return (
-            <path key={i} d={d} fill="none" stroke={INK} strokeWidth={2.5}
-              strokeDasharray="6 10" strokeLinecap="round"
-              style={{ strokeDashoffset: dashOffset, opacity: segOpacity }} />
-          );
-        })}
+        {/* Future segments (pale preview of the road ahead) */}
+        {JOURNEY_SEGMENTS.slice(presentIdx).map((d, i) => (
+          <path key={`future-seg-${i}`} d={d} fill="none" stroke={INK} strokeWidth={1.4}
+                strokeDasharray="2 12" strokeLinecap="round" opacity={futureOp * 0.9} />
+        ))}
 
-        {/* Location dots + labels (4 locations) */}
-        {LOCATIONS.map((L, i) => {
-          const startT = [0.20, 0.45, 0.68, 0.88][i];
-          const op = locOp(startT);
+        {/* Past segments (solid-faded) */}
+        {JOURNEY_SEGMENTS.slice(0, Math.max(0, presentIdx - 1)).map((d, i) => (
+          <path key={`past-seg-${i}`} d={d} fill="none" stroke={INK} strokeWidth={2}
+                strokeDasharray="5 9" strokeLinecap="round" opacity={pastOp} />
+        ))}
+
+        {/* Present segment (animates as plane takes off) */}
+        {hasPresentLeg && (
+          <path d={JOURNEY_SEGMENTS[presentIdx - 1]} fill="none" stroke={INK} strokeWidth={2.5}
+                strokeDasharray="6 10" strokeLinecap="round"
+                style={{ strokeDashoffset: segDashOffset, opacity: segOp }} />
+        )}
+
+        {/* Future dots (pale preview) */}
+        {JOURNEY_LOCATIONS.slice(presentIdx + 1).map((L) => (
+          <g key={`future-loc-${L.label}`} opacity={futureOp}>
+            <circle cx={L.cx} cy={L.cy} r={6} stroke={INK} fill="none" strokeWidth={1.2} />
+            <circle cx={L.cx} cy={L.cy} r={3.5} fill={INK} />
+            <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'Nanum Pen Script', cursive" fontSize={30} fill={INK}>{L.label}</text>
+            <text x={L.cx + L.lx} y={L.cy + L.ly + 20} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={16} fill="#3a2f22">{L.year}</text>
+          </g>
+        ))}
+
+        {/* Past dots (solid, already traveled) */}
+        {JOURNEY_LOCATIONS.slice(0, presentIdx).map((L) => (
+          <g key={`past-loc-${L.label}`} opacity={pastOp}>
+            <circle cx={L.cx} cy={L.cy} r={14} fill={INK} opacity={0.12} />
+            <circle cx={L.cx} cy={L.cy} r={7} stroke={INK} fill="none" strokeWidth={1.6} />
+            <circle cx={L.cx} cy={L.cy} r={5} fill={INK} />
+            <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'Nanum Pen Script', cursive" fontSize={38} fill={INK}>{L.label}</text>
+            <text x={L.cx + L.lx} y={L.cy + L.ly + 22} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={20} fill="#3a2f22">{L.year}</text>
+          </g>
+        ))}
+
+        {/* Present dot — emphasized, grows, pulses.
+              Label/year cluster is pushed further from the dot than past/future
+              state so the enlarged glyphs clear the halo (r≈29 post-scale). */}
+        {(() => {
+          const dir = presentLoc.ly < 0 ? -1 : 1;
+          const labelY = presentLoc.cy + dir * 82;
+          const yearY  = labelY + 40;
           return (
-            <g key={i} style={{ opacity: op }}>
-              <circle cx={L.cx} cy={L.cy} r={18} fill={INK} opacity={0.12} />
-              <circle cx={L.cx} cy={L.cy} r={9} stroke={INK} fill="none" strokeWidth={2} />
-              <circle cx={L.cx} cy={L.cy} r={6} fill={INK} />
-              <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
-                fontFamily="'Nanum Pen Script', cursive" fontSize={44} fill={INK}>{L.label}</text>
-              <text x={L.cx + L.lx} y={L.cy + L.ly + 24} textAnchor={L.anchor as "start" | "middle" | "end"}
-                fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={22} fill="#3a2f22">{L.year}</text>
+            <g opacity={Math.min(1, presentOp * pulseOp)}
+               transform={`translate(${presentLoc.cx} ${presentLoc.cy}) scale(${presentScale * pulse}) translate(${-presentLoc.cx} ${-presentLoc.cy})`}>
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={26} fill={INK} opacity={0.16} />
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={13} stroke={INK} fill="none" strokeWidth={2.6} />
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={7.5} fill={INK} />
+              <text x={presentLoc.cx + presentLoc.lx} y={labelY}
+                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                    fontFamily="'Nanum Pen Script', cursive" fontSize={62} fill={INK}>{presentLoc.label}</text>
+              <text x={presentLoc.cx + presentLoc.lx} y={yearY}
+                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={30} fill="#3a2f22">{presentLoc.year}</text>
             </g>
           );
-        })}
+        })()}
 
         {/* Plane */}
         {planeVis > 0 && (
@@ -905,6 +1362,192 @@ const LetterInterludeScene: React.FC<{
 };
 
 // ─────────────────────────────────────────────
+// Chat Interlude Scene — messenger-style with typing animation
+// ─────────────────────────────────────────────
+
+const ChatInterludeScene: React.FC<{
+  config: ChatInterludeConfig;
+  dur: number;
+  overlayType: OverlayType;
+  particlesType: ParticleType;
+}> = ({ config, dur, overlayType, particlesType }) => {
+  const frame = useCurrentFrame();
+  const t = Math.max(0, Math.min(1, frame / dur));
+
+  // Background + overall fade
+  const bgOp = interpolate(t, [0, 0.06, 0.94, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+
+  // Header appears early, stays until end
+  const headerOp = interpolate(t, [0.04, 0.10, 0.94, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+
+  // Distribute messages across the bulk of the duration.
+  // Each message gets an equal slot; within its slot: 80% typing, 20% hold.
+  const msgs = config.messages ?? [];
+  const msgCount = Math.max(1, msgs.length);
+  const bandStart = 0.14;
+  const bandEnd = 0.92;
+  const perMsg = (bandEnd - bandStart) / msgCount;
+
+  // Cursor blink (for the active typing message).
+  const cursorOn = Math.floor(frame / 9) % 2 === 0;
+
+  return (
+    <AbsoluteFill>
+      <PaperBackground seed={13} />
+      {/* Subtle darken to lift bubbles off the paper */}
+      <AbsoluteFill style={{
+        background: "radial-gradient(1400px 900px at 50% 55%, rgba(42,36,32,0) 0%, rgba(42,36,32,0.12) 70%, rgba(42,36,32,0.22) 100%)",
+        opacity: bgOp,
+      }} />
+
+      {/* Header */}
+      {config.header && (
+        <div style={{
+          position: "absolute",
+          top: 96,
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
+          fontStyle: "italic",
+          fontSize: 34,
+          letterSpacing: "0.22em",
+          color: INK_SOFT,
+          opacity: headerOp,
+        }}>
+          <span style={{ padding: "0 18px" }}>— {config.header} —</span>
+        </div>
+      )}
+
+      {/* Message column */}
+      <div style={{
+        position: "absolute",
+        top: 200,
+        left: 260,
+        right: 260,
+        bottom: 140,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: 44,
+      }}>
+        {msgs.map((msg, i) => {
+          const mStart = bandStart + perMsg * i;
+          const mEnd = mStart + perMsg;
+          // Local progress inside this message's slot (0 → 1).
+          const localT = interpolate(t, [mStart, mEnd], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+          // Bubble rise-in at the very start of the slot.
+          const appear = interpolate(t, [mStart, mStart + 0.02], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+          const chars = Array.from(msg.text ?? "");
+          // Character-speed-based typing: target ~3 chars/sec (10 frames/char @ 30fps).
+          // Slower than caption typing because chat scenes hold attention longer and
+          // older guests need pace to follow along. Long messages cap at 90% of slot.
+          const framesPerChar = 10;
+          const slotFrames = Math.max(1, (mEnd - mStart) * dur);
+          const naturalTypeFraction = (chars.length * framesPerChar) / slotFrames;
+          const typeFraction = Math.min(0.90, naturalTypeFraction);
+          const typeProgress = interpolate(localT, [0, Math.max(0.001, typeFraction)], [0, chars.length], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
+          const visibleCount = Math.floor(typeProgress);
+          const isTyping = localT > 0 && localT < typeFraction && chars.length > 0;
+          const isEmpty = chars.length === 0;
+          const isRight = msg.side === "right";
+
+          return (
+            <div key={i} style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: isRight ? "flex-end" : "flex-start",
+              opacity: appear,
+              transform: `translateY(${(1 - appear) * 14}px)`,
+            }}>
+              {/* Speaker label */}
+              <div style={{
+                fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
+                fontSize: 22,
+                color: INK_SOFT,
+                marginBottom: 8,
+                padding: isRight ? "0 14px 0 0" : "0 0 0 14px",
+                letterSpacing: "0.08em",
+              }}>
+                {msg.speaker}
+              </div>
+              {/* Bubble */}
+              <div style={{
+                maxWidth: "74%",
+                padding: "22px 32px",
+                background: isRight
+                  ? "linear-gradient(135deg, #efd78a 0%, #dcb85c 100%)"   // 오른쪽 — 금빛
+                  : "rgba(255, 252, 240, 0.96)",                           // 왼쪽 — 크림
+                color: INK,
+                border: isRight
+                  ? "1px solid rgba(168,136,72,0.55)"
+                  : "1px solid rgba(58,42,24,0.18)",
+                borderRadius: 28,
+                borderTopRightRadius: isRight ? 8 : 28,
+                borderTopLeftRadius: isRight ? 28 : 8,
+                boxShadow: "0 6px 20px rgba(58,42,24,0.18), 0 1px 3px rgba(58,42,24,0.10)",
+                fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif",
+                fontSize: 38,
+                lineHeight: 1.48,
+                fontWeight: 500,
+                letterSpacing: "-0.005em",
+                wordBreak: "keep-all",
+              }}>
+                {isEmpty ? (
+                  // Typing indicator — three bouncing dots
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 6px" }}>
+                    {[0, 1, 2].map((di) => {
+                      const phase = (frame / 8 + di * 0.55) % 2;
+                      const dotY = phase < 1 ? -Math.sin(phase * Math.PI) * 10 : 0;
+                      const dotOp = phase < 1 ? 0.45 + Math.sin(phase * Math.PI) * 0.55 : 0.45;
+                      return (
+                        <div key={di} style={{
+                          width: 16, height: 16, borderRadius: "50%",
+                          background: INK,
+                          transform: `translateY(${dotY}px)`,
+                          opacity: dotOp,
+                        }} />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <>
+                    {chars.slice(0, visibleCount).join("")}
+                    {isTyping && cursorOn && (
+                      <span style={{
+                        display: "inline-block",
+                        width: 3,
+                        height: 36,
+                        background: INK,
+                        marginLeft: 6,
+                        verticalAlign: "text-bottom",
+                        opacity: 0.8,
+                      }} />
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <OverlayLayer type={overlayType} />
+      <ParticleLayer type={particlesType} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Polaroid Collage Scene (Claude Design P2-5)
 // ─────────────────────────────────────────────
 
@@ -917,7 +1560,8 @@ const CollageScene: React.FC<{
   const frame = useCurrentFrame();
   const t = Math.max(0, Math.min(1, frame / dur));
 
-  const LAYOUTS = [
+  // Default 7-slot scrapbook layout (dense)
+  const LAYOUTS_7 = [
     { left: 140,  top: 90,   w: 360, h: 380, rot: -6, tapeCorner: "top-30",     tapeColor: "#d9a8a0" },
     { left: 620,  top: 70,   w: 400, h: 420, rot:  4, tapeCorner: "top-right",  tapeColor: "#a8c9d4" },
     { left: 1180, top: 100,  w: 380, h: 400, rot: -8, tapeCorner: "top-left",   tapeColor: "#d4b870" },
@@ -926,6 +1570,40 @@ const CollageScene: React.FC<{
     { left: 260,  top: 820,  w: 320, h: 340, rot:  7, tapeCorner: "top-right",  tapeColor: "#b8a8c9" },
     { left: 1300, top: 540,  w: 400, h: 420, rot: -5, tapeCorner: "top-25",     tapeColor: "#d89a7a" },
   ];
+
+  // Count-specific layouts — for small collages we spread polaroids across the full canvas
+  // with breathing room and organic asymmetric rotations.
+  const LAYOUTS_BY_COUNT: Record<number, typeof LAYOUTS_7> = {
+    1: [
+      { left: 720, top: 260, w: 480, h: 560, rot: -2, tapeCorner: "top-30",    tapeColor: "#d9a8a0" },
+    ],
+    2: [
+      { left: 300, top: 240, w: 520, h: 580, rot: -5, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 1100, top: 280, w: 520, h: 580, rot:  3, tapeCorner: "top-left", tapeColor: "#a8c9d4" },
+    ],
+    3: [
+      { left: 180,  top: 230, w: 460, h: 530, rot: -7, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 730,  top: 170, w: 480, h: 560, rot:  3, tapeCorner: "top-30",    tapeColor: "#e8d9b8" },
+      { left: 1280, top: 250, w: 460, h: 530, rot: -5, tapeCorner: "top-left",  tapeColor: "#a8c9d4" },
+    ],
+    4: [
+      { left: 150,  top: 140, w: 420, h: 470, rot: -6, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 640,  top: 110, w: 440, h: 490, rot:  4, tapeCorner: "top-30",    tapeColor: "#a8c9d4" },
+      { left: 1150, top: 160, w: 420, h: 470, rot: -4, tapeCorner: "top-left",  tapeColor: "#d4b870" },
+      { left: 660,  top: 590, w: 480, h: 440, rot:  2, tapeCorner: "top-40",    tapeColor: "#e8d9b8" },
+    ],
+    5: [
+      { left: 100,  top: 150, w: 380, h: 430, rot: -7, tapeCorner: "top-right", tapeColor: "#d9a8a0" },
+      { left: 540,  top: 110, w: 420, h: 470, rot:  3, tapeCorner: "top-30",    tapeColor: "#a8c9d4" },
+      { left: 1040, top: 140, w: 400, h: 440, rot: -4, tapeCorner: "top-left",  tapeColor: "#d4b870" },
+      { left: 1480, top: 180, w: 380, h: 430, rot:  5, tapeCorner: "top-right", tapeColor: "#a8b898" },
+      { left: 700,  top: 610, w: 460, h: 440, rot: -2, tapeCorner: "top-40",    tapeColor: "#e8d9b8" },
+    ],
+    6: LAYOUTS_7.slice(0, 6),
+    7: LAYOUTS_7,
+  };
+
+  const LAYOUTS = LAYOUTS_BY_COUNT[Math.min(7, Math.max(1, config.slots.length))] ?? LAYOUTS_7;
 
   // Drop-in timing (from original 4s drop, staggered 0.2s)
   // Normalize: each polaroid starts at (i * 0.05) t and drops over 0.5 t
@@ -971,7 +1649,8 @@ const CollageScene: React.FC<{
             transform: `rotate(${L.rot}deg) translateY(${polaDropY(i)}px)`,
             transformOrigin: "center center",
             opacity: polaOpacity(i),
-            zIndex: i === 4 ? 3 : 1, // center largest on top
+            // Put the largest polaroid on top (in case of overlap)
+            zIndex: L.w * L.h === Math.max(...LAYOUTS.map((x) => x.w * x.h)) ? 3 : 1,
           }}>
             {/* Tape */}
             <div style={{
@@ -1009,6 +1688,40 @@ const CollageScene: React.FC<{
         );
       })}
 
+      {/* Scene-level bottom caption — scrim + handwritten text that fades with the scene */}
+      {config.caption?.trim() && (() => {
+        const capOpacity = Math.min(
+          interpolate(frame, [8, 30], [0, 1], { extrapolateRight: "clamp" }),
+          interpolate(frame, [dur - 22, dur], [1, 0], { extrapolateLeft: "clamp" }),
+        );
+        return (
+          <>
+            <div style={{
+              position: "absolute", left: 0, right: 0, bottom: 0, height: "30%",
+              background: "linear-gradient(to top, rgba(20,14,4,0.78) 0%, rgba(20,14,4,0.45) 45%, transparent 100%)",
+              pointerEvents: "none",
+              opacity: capOpacity,
+            }} />
+            <div style={{
+              position: "absolute", left: 0, right: 0, bottom: 60,
+              textAlign: "center",
+              fontFamily: SCRIPT_KR,
+              fontSize: 46, fontWeight: 700,
+              color: "#fbf4dc",
+              textShadow: "0 2px 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.7), 0 0 18px rgba(0,0,0,0.4)",
+              letterSpacing: 1.5,
+              lineHeight: 1.3,
+              padding: "0 160px",
+              whiteSpace: "pre-wrap",
+              wordBreak: "keep-all",
+              opacity: capOpacity,
+            }}>
+              {typedTextSlice(config.caption, frame, dur)}
+            </div>
+          </>
+        );
+      })()}
+
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
     </AbsoluteFill>
@@ -1035,7 +1748,8 @@ const PhotoScene: React.FC<{
 }> = ({ photo, dur, isFirst, isLast, cf, enter, exit, frameType, overlayType, particlesType, bg, kenBurnsAmount }) => {
   const frame = useCurrentFrame();
   const t = Math.min(1, Math.max(0, frame / dur));
-  const { scale, tx, ty } = kenBurns(photo.effect, t, photo.focalPoint.x, photo.focalPoint.y, kenBurnsAmount);
+  const effectiveKenBurns = photo.kenBurnsAmount ?? kenBurnsAmount;
+  const { scale, tx, ty } = kenBurns(photo.effect, t, photo.focalPoint.x, photo.focalPoint.y, effectiveKenBurns);
 
   const ent = isFirst ? { opacity: 1, clipPath: undefined, transform: "" } : enterEffect(enter, frame, cf, dur);
   const ext = isLast ? { opacity: 1, clipPath: undefined, transform: "" } : exitEffect(exit, frame, cf, dur);
@@ -1060,24 +1774,82 @@ const PhotoScene: React.FC<{
     }}>
       <BackgroundFor bg={bg} src={src} extraFilter={filterCSS !== "none" ? filterCSS : undefined} seed={hashSeed(photo.tag)} />
       {frameType === "none" ? (
-        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-          <Img src={src} style={{
-            maxWidth: "100%",
-            maxHeight: "100%",
-            width: "auto",
-            height: "auto",
-            objectFit: "contain",
-            transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
-            transformOrigin: "center center",
-            filter: filterCSS !== "none" ? filterCSS : undefined,
-            boxShadow: defaultShadow,
-            display: "block",
-          }} />
-        </AbsoluteFill>
+        photo.crop ? (
+          // Crop mode: outer clips to canvas. Mid wrapper is canvas-sized and carries
+          // the Ken Burns transform (scale/translate pivots from CANVAS center → zoom
+          // feels natural, not off-axis like before). Inner positioned box maps the
+          // crop rect onto canvas. Overlays (spotlight, annotation, popout) sit inside
+          // the inner box so they stay locked to image pixels under both crop offset +
+          // ken burns. objectFit: cover preserves natural aspect (no stretching like
+          // "fill"), at the cost of slight over-crop when crop aspect ≠ canvas aspect.
+          <AbsoluteFill style={{ overflow: "hidden" }}>
+            <AbsoluteFill style={{
+              transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
+              transformOrigin: "center center",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: `${-photo.crop.x / photo.crop.w * 100}%`,
+                top: `${-photo.crop.y / photo.crop.h * 100}%`,
+                width: `${100 / photo.crop.w}%`,
+                height: `${100 / photo.crop.h}%`,
+              }}>
+                <Img src={src} style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  filter: filterCSS !== "none" ? filterCSS : undefined,
+                  display: "block",
+                }} />
+                {photo.spotlights?.length > 0 && (
+                  <SpotlightOverlay spotlights={photo.spotlights} />
+                )}
+                {photo.annotations?.length ? (
+                  <AnnotationLayer annotations={photo.annotations} dur={dur} />
+                ) : null}
+                <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
+              </div>
+            </AbsoluteFill>
+          </AbsoluteFill>
+        ) : (
+          <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            {/* Wrapper sizes to the image (inline-block) and carries Ken Burns transform,
+                so the spotlight overlay, as an absolute child of the wrapper, covers ONLY
+                the image area — not the letterbox background. */}
+            <div style={{
+              position: "relative",
+              maxWidth: "100%",
+              maxHeight: "100%",
+              display: "inline-block",
+              lineHeight: 0,
+              transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`,
+              transformOrigin: "center center",
+              boxShadow: defaultShadow,
+            }}>
+              <Img src={src} style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+                filter: filterCSS !== "none" ? filterCSS : undefined,
+                display: "block",
+              }} />
+              {photo.spotlights?.length > 0 && (
+                <SpotlightOverlay spotlights={photo.spotlights} />
+              )}
+              {photo.annotations?.length && (
+                <AnnotationLayer annotations={photo.annotations} dur={dur} />
+              )}
+              <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
+            </div>
+          </AbsoluteFill>
+        )
       ) : (
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{
             ...getFrameStyle(frameType),
+            position: "relative",
             transform: `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)${frameType === "polaroid" ? " rotate(-1deg)" : ""}`,
             boxShadow: getFrameStyle(frameType).boxShadow,
           }}>
@@ -1087,11 +1859,15 @@ const PhotoScene: React.FC<{
               filter: filterCSS !== "none" ? filterCSS : undefined,
               display: "block",
             }} />
+            {photo.spotlights?.length > 0 && (
+              <SpotlightOverlay spotlights={photo.spotlights} />
+            )}
+            {photo.annotations?.length && (
+              <AnnotationLayer annotations={photo.annotations} dur={dur} />
+            )}
+            <PopoutLayer popouts={photo.popouts} src={src} dur={dur} />
           </div>
         </AbsoluteFill>
-      )}
-      {photo.spotlights?.length > 0 && (
-        <SpotlightOverlay spotlights={photo.spotlights} />
       )}
       {/* ★ 별표 사진에 따뜻한 골드 할로 비네트 (미묘한 강조) */}
       {photo.tag.startsWith("★") && (
@@ -1104,8 +1880,9 @@ const PhotoScene: React.FC<{
       )}
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
-      {photo.caption?.text && (
-        <CaptionOverlay text={photo.caption.text} position={photo.caption.position} dur={dur} />
+      <CaptionsLayer captions={resolveCaptions(photo)} dur={dur} />
+      {photo.eraIcon && ERA_ICONS[photo.eraIcon] && (
+        <EraIconCorner iconKey={photo.eraIcon} position={photo.eraIconPosition ?? "tr"} dur={dur} bg={bg} />
       )}
       {photo.eraIcon && ERA_ICONS[photo.eraIcon] && (
         <EraIconCorner iconKey={photo.eraIcon} position={photo.eraIconPosition ?? "tr"} dur={dur} bg={bg} />
@@ -1182,6 +1959,7 @@ const SplitScene: React.FC<{
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      position: "relative", // scope SpotlightOverlay's AbsoluteFill to the frame
     };
     // Deterministic washi tape selection per photo based on tag
     const tapes = [
@@ -1215,6 +1993,12 @@ const SplitScene: React.FC<{
       pointerEvents: "none",
       zIndex: 5,
     };
+    // Polaroid strip label stays separate (splitLabel / tag's first word). Captions
+    // render as scene-level canvas overlays (scrim/card/shadow) just like standard
+    // photos — so comments can live with a proper bottom scrim instead of squeezing
+    // into the tiny white strip area.
+    const leftLabel = left.splitLabel ?? left.tag.split(" ")[0];
+    const rightLabel = right.splitLabel ?? right.tag.split(" ")[0];
     const captionStyle: React.CSSProperties = {
       position: "absolute", bottom: 18, left: 0, right: 0,
       textAlign: "center",
@@ -1224,8 +2008,6 @@ const SplitScene: React.FC<{
       color: "rgba(40,25,10,0.92)",
       letterSpacing: 2,
     };
-    const leftLabel = left.splitLabel ?? left.tag.split(" ")[0];
-    const rightLabel = right.splitLabel ?? right.tag.split(" ")[0];
     return (
       <AbsoluteFill style={{ opacity }}>
         <PaperBackground seed={hashSeed(left.tag + right.tag)} />
@@ -1239,6 +2021,13 @@ const SplitScene: React.FC<{
                   width: "auto", height: "auto",
                   objectFit: "contain", display: "block",
                 }} />
+                {left.spotlights?.length > 0 && (
+                  <SpotlightOverlay spotlights={left.spotlights} />
+                )}
+                {left.annotations?.length ? (
+                  <AnnotationLayer annotations={left.annotations} dur={dur} />
+                ) : null}
+                <PopoutLayer popouts={left.popouts} src={srcOf(left)} dur={dur} />
               </div>
               <div style={captionStyle}>{leftLabel}</div>
             </div>
@@ -1250,6 +2039,13 @@ const SplitScene: React.FC<{
                   width: "auto", height: "auto",
                   objectFit: "contain", display: "block",
                 }} />
+                {right.spotlights?.length > 0 && (
+                  <SpotlightOverlay spotlights={right.spotlights} />
+                )}
+                {right.annotations?.length ? (
+                  <AnnotationLayer annotations={right.annotations} dur={dur} />
+                ) : null}
+                <PopoutLayer popouts={right.popouts} src={srcOf(right)} dur={dur} />
               </div>
               <div style={captionStyle}>{rightLabel}</div>
             </div>
@@ -1257,9 +2053,13 @@ const SplitScene: React.FC<{
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
-        {left.caption?.text && (
-          <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
-        )}
+        {/* Canvas-level captions from both photos (merged so scrim renders once). */}
+        {(() => {
+          const leftCaps = resolveCaptions(left);
+          const rightCaps = resolveCaptions(right);
+          const all = [...leftCaps, ...rightCaps];
+          return all.length > 0 ? <CaptionsLayer captions={all} dur={dur} /> : null;
+        })()}
       </AbsoluteFill>
     );
   }
@@ -1267,8 +2067,10 @@ const SplitScene: React.FC<{
   // ─── Cameo variant: two circular portraits side-by-side on cream paper ───
   if (style === "cameo") {
     const scale = 1 + 0.02 * t;
-    const leftKen = kenBurns(left.effect, t, left.focalPoint.x, left.focalPoint.y, kenBurnsAmount);
-    const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, kenBurnsAmount);
+    const leftAmt  = left.kenBurnsAmount  ?? kenBurnsAmount;
+    const rightAmt = right.kenBurnsAmount ?? kenBurnsAmount;
+    const leftKen = kenBurns(left.effect, t, left.focalPoint.x, left.focalPoint.y, leftAmt);
+    const rightKen = kenBurns(right.effect, t, right.focalPoint.x, right.focalPoint.y, rightAmt);
     const cameoStyle: React.CSSProperties = {
       width: 420, height: 420,
       borderRadius: "50%",
@@ -1276,6 +2078,7 @@ const SplitScene: React.FC<{
       border: `6px solid ${GOLD_SOFT}`,
       boxShadow: "0 16px 56px rgba(60,40,15,0.4), inset 0 0 0 1px rgba(255,255,255,0.5)",
       transform: `scale(${scale})`,
+      position: "relative", // scope SpotlightOverlay's AbsoluteFill to the cameo
     };
     const nameStyle: React.CSSProperties = {
       marginTop: 24, textAlign: "center",
@@ -1300,6 +2103,12 @@ const SplitScene: React.FC<{
                 width: "100%", height: "100%", objectFit: "cover",
                 transform: `scale(${leftKen.scale}) translate(${leftKen.tx * 100}%, ${leftKen.ty * 100}%)`,
               }} />
+              {left.spotlights?.length > 0 && (
+                <SpotlightOverlay spotlights={left.spotlights} />
+              )}
+              {left.annotations?.length ? (
+                <AnnotationLayer annotations={left.annotations} dur={dur} />
+              ) : null}
             </div>
             <div style={nameStyle}>{leftLabel}</div>
           </div>
@@ -1309,14 +2118,20 @@ const SplitScene: React.FC<{
                 width: "100%", height: "100%", objectFit: "cover",
                 transform: `scale(${rightKen.scale}) translate(${rightKen.tx * 100}%, ${rightKen.ty * 100}%)`,
               }} />
+              {right.spotlights?.length > 0 && (
+                <SpotlightOverlay spotlights={right.spotlights} />
+              )}
+              {right.annotations?.length ? (
+                <AnnotationLayer annotations={right.annotations} dur={dur} />
+              ) : null}
             </div>
             <div style={nameStyle}>{rightLabel}</div>
           </div>
         </AbsoluteFill>
         <OverlayLayer type={overlayType} />
         <ParticleLayer type={particlesType} />
-        {left.caption?.text && (
-          <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+        {resolveCaptions(left).length > 0 && (
+          <CaptionsLayer captions={resolveCaptions(left)} dur={dur} />
         )}
       </AbsoluteFill>
     );
@@ -1332,13 +2147,29 @@ const SplitScene: React.FC<{
 
   return (
     <AbsoluteFill style={{ opacity, backgroundColor: "#000", display: "flex", flexDirection: "row" }}>
-      <div style={half}><Img src={srcOf(left)} style={img} /></div>
+      <div style={half}>
+        <Img src={srcOf(left)} style={img} />
+        {left.spotlights?.length > 0 && (
+          <SpotlightOverlay spotlights={left.spotlights} />
+        )}
+        {left.annotations?.length ? (
+          <AnnotationLayer annotations={left.annotations} dur={dur} />
+        ) : null}
+      </div>
       <div style={{ width: gap, background: "#000" }} />
-      <div style={half}><Img src={srcOf(right)} style={img} /></div>
+      <div style={half}>
+        <Img src={srcOf(right)} style={img} />
+        {right.spotlights?.length > 0 && (
+          <SpotlightOverlay spotlights={right.spotlights} />
+        )}
+        {right.annotations?.length ? (
+          <AnnotationLayer annotations={right.annotations} dur={dur} />
+        ) : null}
+      </div>
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
-      {left.caption?.text && (
-        <CaptionOverlay text={left.caption.text} position={left.caption.position} dur={dur} />
+      {resolveCaptions(left).length > 0 && (
+        <CaptionsLayer captions={resolveCaptions(left)} dur={dur} />
       )}
     </AbsoluteFill>
   );
@@ -1361,13 +2192,13 @@ const EndingScene: React.FC<{
   // Calligraphy-style ending (Claude Design P1-1).
   // Per-character wipe reveal with staggered delays.
   // Timing (seconds, at 30fps):
-  //   0.50s → 1st bride char
-  //   1.10s → 2nd bride char
-  //   1.70s → 3rd bride char
+  //   0.50s → 1st groom char
+  //   1.10s → 2nd groom char
+  //   1.70s → 3rd groom char
   //   2.60s → heart
-  //   3.20s → 1st groom char
-  //   3.80s → 2nd groom char
-  //   4.40s → 3rd groom char
+  //   3.20s → 1st bride char
+  //   3.80s → 2nd bride char
+  //   4.40s → 3rd bride char
   //   4.70s → date caption
   //   6.00s → message (new addition)
 
@@ -1409,9 +2240,9 @@ const EndingScene: React.FC<{
         <AbsoluteFill style={{ backgroundColor: BG_DARK }} />
       )}
 
-      {/* Centered names row with heart between */}
-      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 120 }}>
-        {/* Bride name */}
+      {/* Centered names row with heart between — nudged up to leave breathing room below */}
+      <AbsoluteFill style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 120, paddingBottom: 160 }}>
+        {/* Groom name */}
         <div style={{
           fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
           fontSize: 240,
@@ -1420,7 +2251,7 @@ const EndingScene: React.FC<{
           display: "flex",
           textShadow: "0 0 0.5px rgba(26, 21, 16, 0.3)",
         }}>
-          {brideChars.map((c, i) => {
+          {groomChars.map((c, i) => {
             const startFrame = Math.round((0.50 + i * 0.60) * 30);
             const clipRight = charReveal(startFrame);
             return (
@@ -1442,7 +2273,7 @@ const EndingScene: React.FC<{
           transform: `scale(${heartScale})`,
         }}>♥</div>
 
-        {/* Groom name */}
+        {/* Bride name */}
         <div style={{
           fontFamily: "'Nanum Brush Script', 'Nanum Pen Script', cursive",
           fontSize: 240,
@@ -1451,7 +2282,7 @@ const EndingScene: React.FC<{
           display: "flex",
           textShadow: "0 0 0.5px rgba(26, 21, 16, 0.3)",
         }}>
-          {groomChars.map((c, i) => {
+          {brideChars.map((c, i) => {
             const startFrame = Math.round((3.20 + i * 0.60) * 30);
             const clipRight = charReveal(startFrame);
             return (
@@ -1469,7 +2300,7 @@ const EndingScene: React.FC<{
       <div style={{
         position: "absolute",
         left: "50%",
-        top: "62%",
+        top: "55%",
         transform: "translateX(-50%)",
         width: 240, height: 60,
         opacity: Math.min(fadeAt(5.2, 0.55), fadeOut),
@@ -1492,14 +2323,14 @@ const EndingScene: React.FC<{
         </svg>
       </div>
 
-      {/* Date caption, bottom center */}
+      {/* Date caption, positioned below the names/sprig cluster (not pinned to bottom) */}
       <div style={{
         position: "absolute",
-        left: 0, right: 0, bottom: 140,
+        left: 0, right: 0, top: "61%",
         textAlign: "center",
         fontFamily: SERIF,
         fontWeight: 300,
-        fontSize: 34,
+        fontSize: 46,
         letterSpacing: "0.42em",
         color: onPaper ? INK : "white",
         opacity: Math.min(fadeAt(5.5, 0.9), fadeOut),
@@ -1510,13 +2341,13 @@ const EndingScene: React.FC<{
       {/* Thank-you message */}
       <div style={{
         position: "absolute",
-        left: 0, right: 0, bottom: 70,
+        left: 0, right: 0, top: "68%",
         textAlign: "center",
         fontFamily: SERIF_KR,
-        fontSize: 26,
+        fontSize: 54,
         letterSpacing: 6,
-        color: onPaper ? "rgba(58,42,24,0.7)" : "rgba(255,255,255,0.75)",
-        opacity: Math.min(fadeAt(6.8), fadeOut),
+        color: onPaper ? "rgba(58,42,24,0.8)" : "rgba(255,255,255,0.8)",
+        opacity: Math.min(fadeAt(5.8), fadeOut),
       }}>
         {ending.message}
       </div>
@@ -1545,14 +2376,90 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
       config.journeyMaps ?? [],
       config.letterInterludes ?? [],
       config.collages ?? [],
+      config.chatInterludes ?? [],
     ),
-    [photos, tcf, ef, fps, config.moments, config.yearMarkers, config.journeyMaps, config.letterInterludes, config.collages]
+    [photos, tcf, ef, fps, config.moments, config.yearMarkers, config.journeyMaps, config.letterInterludes, config.collages, config.chatInterludes]
   );
 
   let cursor = 0;
 
+  // ── BGM: two-track auto crossfade with master fade in/out ──
+  // Track A plays from start; at trackBStartSec we crossfade into Track B which
+  // plays until video end. Volumes are envelopes that combine fade-in (start),
+  // crossfade (mid), and fade-out (end). Each Audio is wrapped in a Sequence so
+  // its volume callback receives a LOCAL frame, simplifying the math.
+  const audio = config.audio;
+  const totalF = timeline.reduce((s, it) => s + it.durationInFrames, 0)
+    - cf * Math.max(0, timeline.length - 1);
+  const audioElems: React.ReactNode[] = [];
+  if (audio?.trackA || audio?.trackB) {
+    const masterVol = audio?.volume ?? 0.30;
+    const fadeInF  = Math.max(1, Math.round((audio?.fadeInSec  ?? 1.5) * fps));
+    const fadeOutF = Math.max(1, Math.round((audio?.fadeOutSec ?? 2.5) * fps));
+    const xfF      = Math.max(1, Math.round((audio?.crossfadeSec ?? 6) * fps));
+    const xfHalf   = Math.round(xfF / 2);
+    const transitionF = audio?.trackBStartSec != null
+      ? Math.round(audio.trackBStartSec * fps)
+      : Math.round(totalF * 0.65);
+    const trackBSeqStart = Math.max(0, transitionF - xfHalf);
+    const trackBLocalDur = Math.max(1, totalF - trackBSeqStart);
+    // Equal-power crossfade curves keep perceived combined loudness ~constant
+    // through the transition (linear crossfade dips ~30% at midpoint, sounds odd).
+    // cosCurve: 1 → 0  (track A fading out)
+    // sinCurve: 0 → 1  (track B fading in)
+    const cosCurve = (t: number) => Math.cos(Math.max(0, Math.min(1, t)) * Math.PI / 2);
+    const sinCurve = (t: number) => Math.sin(Math.max(0, Math.min(1, t)) * Math.PI / 2);
+
+    if (audio?.trackA) {
+      const xfStart = transitionF - xfHalf;
+      const xfEnd   = transitionF + xfHalf;
+      const aSeqDur = audio.trackB ? Math.min(totalF, xfEnd) : totalF;
+      const volA = (f: number) => {
+        const fadeIn = Math.min(1, f / fadeInF);
+        let fadeOut = 1;
+        if (audio.trackB) {
+          if (f >= xfEnd) fadeOut = 0;
+          else if (f >= xfStart) fadeOut = cosCurve((f - xfStart) / Math.max(1, xfEnd - xfStart));
+        } else {
+          // No track B → fade out at video end
+          const remain = totalF - f;
+          fadeOut = Math.min(1, remain / fadeOutF);
+        }
+        return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
+      };
+      audioElems.push(
+        <Sequence key="bgm-a" from={0} durationInFrames={Math.max(1, aSeqDur)}>
+          <Audio
+            src={staticFile(audio.trackA)}
+            volume={volA}
+            startFrom={Math.round((audio.trackAOffsetSec ?? 0) * fps)}
+          />
+        </Sequence>
+      );
+    }
+    if (audio?.trackB) {
+      const volB = (f: number) => {
+        // Equal-power fade in over the crossfade window starting at sequence frame 0.
+        const fadeIn = sinCurve(f / xfF);
+        const remain = trackBLocalDur - f;
+        const fadeOut = Math.min(1, remain / fadeOutF);
+        return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
+      };
+      audioElems.push(
+        <Sequence key="bgm-b" from={trackBSeqStart} durationInFrames={trackBLocalDur}>
+          <Audio
+            src={staticFile(audio.trackB)}
+            volume={volB}
+            startFrom={Math.round((audio.trackBOffsetSec ?? 0) * fps)}
+          />
+        </Sequence>
+      );
+    }
+  }
+
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
+      {audioElems}
       {timeline.map((item, i) => {
         const from = cursor;
         const isFirst = i === 0;
@@ -1628,6 +2535,14 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
             {item.kind === "letter" && (
               <LetterInterludeScene
                 config={item.letter}
+                dur={item.durationInFrames}
+                overlayType={config.overlay}
+                particlesType={config.particles}
+              />
+            )}
+            {item.kind === "chat" && (
+              <ChatInterludeScene
+                config={item.chat}
                 dur={item.durationInFrames}
                 overlayType={config.overlay}
                 particlesType={config.particles}
