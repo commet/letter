@@ -2501,13 +2501,30 @@ export const App: React.FC = () => {
   const movePhoto = useCallback((idx: number, dir: -1 | 1) => {
     setConfig((c) => {
       const arr = [...c.photos];
-      const target = idx + dir;
-      if (target < 0 || target >= arr.length) return c;
-      // Allow cross-act moves — the act field is a label, not a structural boundary.
-      // If dragging into another act makes sense for the narrative, let the user do it.
-      // (They can also change the photo's `act` via its dropdown if they want it
-      // associated with the destination act's title card.)
-      [arr[idx], arr[target]] = [arr[target], arr[idx]];
+      const myAct = arr[idx]?.act;
+      if (myAct === undefined) return c;
+      // Find the nearest neighbor with the SAME act in the requested direction.
+      // Plain idx±1 swap fails when a photo was appended to the end of the global
+      // array but actually belongs to an earlier act (e.g. user uploads to act 2
+      // → photo lands at index 50; act-2 photos sit at 13–25; the photo never
+      // moves "up within act 2" because the up-swap target is an act-5 photo).
+      let neighbor = -1;
+      if (dir === -1) {
+        for (let j = idx - 1; j >= 0; j--) {
+          if (arr[j].act === myAct) { neighbor = j; break; }
+        }
+      } else {
+        for (let j = idx + 1; j < arr.length; j++) {
+          if (arr[j].act === myAct) { neighbor = j; break; }
+        }
+      }
+      if (neighbor < 0) return c;
+      const [moved] = arr.splice(idx, 1);
+      // After splice, neighbor's index is `neighbor` if dir=-1 (neighbor was before idx,
+      // unchanged), or `neighbor - 1` if dir=1 (was after idx, shifted down). Inserting
+      // BEFORE neighbor (dir=-1) at index `neighbor` and AFTER neighbor (dir=1) at index
+      // `(neighbor - 1) + 1 = neighbor` happen to land at the same expression.
+      arr.splice(neighbor, 0, moved);
       return { ...c, photos: arr };
     });
   }, []);
@@ -2547,7 +2564,19 @@ export const App: React.FC = () => {
             filter: "none",
             spotlights: [],
           };
-          setConfig((c) => ({ ...c, photos: [...c.photos, newPhoto] }));
+          setConfig((c) => {
+            // Insert at the end of the target act's run (so the new photo lives among
+            // its act peers, not at the bottom of the global array). Falls back to
+            // global append if no other photo of this act exists yet.
+            let lastIdxOfAct = -1;
+            for (let i = 0; i < c.photos.length; i++) {
+              if (c.photos[i].act === act) lastIdxOfAct = i;
+            }
+            if (lastIdxOfAct < 0) return { ...c, photos: [...c.photos, newPhoto] };
+            const photos = [...c.photos];
+            photos.splice(lastIdxOfAct + 1, 0, newPhoto);
+            return { ...c, photos };
+          });
         }
       }
     };
