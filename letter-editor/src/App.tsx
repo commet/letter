@@ -3761,34 +3761,6 @@ export const App: React.FC = () => {
                               </div>
                             </div>
                           ))}
-                          {/* Era icon selector for THIS photo */}
-                          <div style={{ marginTop: 8, display: "flex", gap: 4, alignItems: "center" }}>
-                            <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 60 }}>시대 심볼</span>
-                            <select className="select select-sm" value={photo.eraIcon ?? ""}
-                              onChange={(e) => updatePhoto(idx, { eraIcon: e.target.value || undefined })}
-                              style={{ flex: 2 }}>
-                              <option value="">없음</option>
-                              {Object.keys(ERA_ICONS).map((k) => (
-                                <option key={k} value={k}>{ERA_ICON_LABELS[k] ?? k}</option>
-                              ))}
-                            </select>
-                            <select className="select select-sm" value={photo.eraIconPosition ?? "tr"}
-                              onChange={(e) => updatePhoto(idx, { eraIconPosition: e.target.value as "tl" | "tr" | "bl" | "br" })}
-                              style={{ flex: 1 }}
-                              disabled={!photo.eraIcon}>
-                              <option value="tl">↖</option>
-                              <option value="tr">↗</option>
-                              <option value="bl">↙</option>
-                              <option value="br">↘</option>
-                            </select>
-                          </div>
-                          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
-                            <button className="btn btn-xs btn-moment-add" onClick={() => addMomentAfter(idx)} title="이 사진 다음에 '이때' 모먼트 카드 삽입" style={{ flex: 1, minWidth: 80 }}>+ 모먼트</button>
-                            <button className="btn btn-xs btn-moment-add" onClick={() => addYearMarkerAfter(idx)} title="연도 마커 삽입" style={{ flex: 1, minWidth: 80 }}>+ 연도</button>
-                            <button className="btn btn-xs btn-moment-add" onClick={() => addJourneyMapAfter(idx)} title="여정 지도 삽입" style={{ flex: 1, minWidth: 80 }}>+ 지도</button>
-                            <button className="btn btn-xs btn-moment-add" onClick={() => addLetterAfter(idx)} title="편지 인터루드 삽입" style={{ flex: 1, minWidth: 80 }}>+ 편지</button>
-                            <button className="btn btn-xs btn-moment-add" onClick={() => addCollageAfter(idx)} title="폴라로이드 콜라주 삽입" style={{ flex: 1, minWidth: 80 }}>+ 콜라주</button>
-                          </div>
                         </div>
                       </div>
                       );
