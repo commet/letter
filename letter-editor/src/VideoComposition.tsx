@@ -540,7 +540,12 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
   const xT = align === "left" ? "0" : align === "right" ? "-100%" : "-50%";
   const yT = isBubble ? "-50%" : (cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%");
   const translate = `translate(${xT}, ${yT})`;
-  const maxWidthPct = cap.maxWidthPct ?? (isBubble ? 38 : 95);
+  // Bubble width: minWidth keeps short messages chunky/balanced; maxWidth caps how wide
+  // a long bubble can grow before it has to wrap. Without minWidth, slki's long line
+  // and yechan's short line ended up wildly different widths even though both speakers
+  // share the same chat column.
+  const maxWidthPct = cap.maxWidthPct ?? (isBubble ? 42 : 95);
+  const minWidthPct = isBubble ? 26 : undefined;
 
   // Window timing — used for typing for non-bubbles, and for the pop-in scale envelope for bubbles.
   const fromFrame = (cap.fromT ?? 0) * dur;
@@ -613,6 +618,7 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       transform: isBubble ? `${translate} scale(${popScale})` : translate,
       transformOrigin: "center center",
       maxWidth: `${maxWidthPct}%`,
+      minWidth: minWidthPct !== undefined ? `${minWidthPct}%` : undefined,
       textAlign: align,
       fontFamily: font.fontFamily,
       fontStyle: isBubble ? "normal" : font.fontStyle,
@@ -1529,8 +1535,7 @@ const ChatInterludeScene: React.FC<{
         gap: 44,
       }}>
         {msgs.map((msg, i) => {
-          const mStart = bandStart + perMsg * i;
-          const mEnd = mStart + perMsg;
+          const { mStart, mEnd, typeFraction } = slotBounds[i];
           // Local progress inside this message's slot (0 → 1).
           const localT = interpolate(t, [mStart, mEnd], [0, 1], {
             extrapolateLeft: "clamp",
@@ -1542,13 +1547,6 @@ const ChatInterludeScene: React.FC<{
             extrapolateRight: "clamp",
           });
           const chars = Array.from(msg.text ?? "");
-          // Character-speed-based typing: target ~3 chars/sec (10 frames/char @ 30fps).
-          // Slower than caption typing because chat scenes hold attention longer and
-          // older guests need pace to follow along. Long messages cap at 90% of slot.
-          const framesPerChar = 10;
-          const slotFrames = Math.max(1, (mEnd - mStart) * dur);
-          const naturalTypeFraction = (chars.length * framesPerChar) / slotFrames;
-          const typeFraction = Math.min(0.90, naturalTypeFraction);
           const typeProgress = interpolate(localT, [0, Math.max(0.001, typeFraction)], [0, chars.length], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
