@@ -986,7 +986,7 @@ const ImageEditorModal: React.FC<{
                           fontSize: Math.max(10, (cap.fontSize ?? 40) * captionPreviewScale),
                           color: isBubble ? bubbleText! : (cap.color ?? "#f5ecd7"),
                           textAlign: align,
-                          maxWidth: `${cap.maxWidthPct ?? (isBubble ? 46 : 95)}%`,
+                          maxWidth: `${cap.maxWidthPct ?? (isBubble ? 52 : 95)}%`,
                           minWidth: isBubble ? "30%" : undefined,
                           border: isSelected ? "2px solid var(--gold, #a88848)" : (isBubble ? undefined : "1px dashed rgba(255,255,255,0.35)"),
                           outline: isSelected && isBubble ? "2px solid var(--gold, #a88848)" : undefined,
@@ -1825,6 +1825,20 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
                   title="이미지 위에서 드래그해서 자유 배치">
                   📌 드래그 편집
                 </button>
+                {/* Per-bubble width: lets a long line stay on one row without forcing a wrap.
+                    Default (52%) already covers most lines; slide up to 80% for extra-long. */}
+                <label style={{ flex: "2 1 100%", display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-muted)" }}>
+                  <span style={{ minWidth: 60 }}>가로: {cap.maxWidthPct ?? 52}%</span>
+                  <input type="range" className="slider" min={28} max={80} step={1}
+                    value={cap.maxWidthPct ?? 52}
+                    onChange={(e) => onUpdate(photoIdx, cap.id, { maxWidthPct: parseInt(e.target.value, 10) })}
+                    style={{ flex: 1 }} />
+                  {cap.maxWidthPct !== undefined && (
+                    <button className="btn btn-xs"
+                      onClick={() => onUpdate(photoIdx, cap.id, { maxWidthPct: undefined })}
+                      title="기본값으로" style={{ padding: "1px 6px" }}>↺</button>
+                  )}
+                </label>
               </div>
             ) : (
               <div style={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
