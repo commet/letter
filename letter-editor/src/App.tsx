@@ -939,9 +939,9 @@ const ImageEditorModal: React.FC<{
                     const boxStyle: React.CSSProperties =
                       isBubble ? {
                         background: bubbleBg!,
-                        border: "1.5px solid rgba(0,0,0,0.10)",
-                        padding: `${14 * captionPreviewScale}px ${26 * captionPreviewScale}px`,
-                        borderRadius: 26 * captionPreviewScale,
+                        border: "2px solid rgba(0,0,0,0.10)",
+                        padding: `${20 * captionPreviewScale}px ${36 * captionPreviewScale}px`,
+                        borderRadius: 44 * captionPreviewScale,
                         boxShadow: "0 8px 22px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18)",
                       } :
                       kind === "card" ? {
@@ -987,14 +987,15 @@ const ImageEditorModal: React.FC<{
                         {isBubble && (
                           <div style={{
                             position: "absolute",
-                            bottom: -10 * captionPreviewScale,
-                            width: 18 * captionPreviewScale,
-                            height: 14 * captionPreviewScale,
+                            bottom: -22 * captionPreviewScale,
+                            width: 38 * captionPreviewScale,
+                            height: 30 * captionPreviewScale,
                             background: bubbleBg!,
-                            [bubbleSide]: 24 * captionPreviewScale,
+                            [bubbleSide]: 36 * captionPreviewScale,
                             clipPath: bubbleSide === "left"
-                              ? "polygon(0% 0%, 100% 0%, 30% 100%)"
-                              : "polygon(0% 0%, 100% 0%, 70% 100%)",
+                              ? "polygon(0% 0%, 100% 0%, 0% 100%)"
+                              : "polygon(0% 0%, 100% 0%, 100% 100%)",
+                            filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.18))",
                           } as React.CSSProperties} aria-hidden />
                         )}
                       </div>
@@ -1964,7 +1965,8 @@ const CommentsDrawer: React.FC<{
   authorName: string;
   addComment: (input: NewCommentInput) => Promise<Comment | null>;
   toggleResolved: (id: string, resolved: boolean) => Promise<boolean>;
-}> = ({ open, onClose, comments, tab, setTab, draft, setDraft, currentPhotoTag, authorName, addComment, toggleResolved }) => {
+  onJumpToPhoto?: (tag: string) => void;
+}> = ({ open, onClose, comments, tab, setTab, draft, setDraft, currentPhotoTag, authorName, addComment, toggleResolved, onJumpToPhoto }) => {
   const [anchorChoice, setAnchorChoice] = useState<"photo" | "general">("photo");
 
   const visible = useMemo(() => {
@@ -2026,7 +2028,18 @@ const CommentsDrawer: React.FC<{
                 {new Date(c.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
               {c.anchor_type === "photo" && c.anchor_id && (
-                <span className="comment-anchor">📷 {c.anchor_id}</span>
+                onJumpToPhoto ? (
+                  <button
+                    type="button"
+                    className="comment-anchor comment-anchor--clickable"
+                    onClick={() => onJumpToPhoto(c.anchor_id!)}
+                    title="이 사진으로 이동"
+                  >
+                    📷 {c.anchor_id}
+                  </button>
+                ) : (
+                  <span className="comment-anchor">📷 {c.anchor_id}</span>
+                )
               )}
               {c.anchor_type === "general" && (
                 <span className="comment-anchor comment-anchor--general">전체</span>
@@ -2805,6 +2818,15 @@ export const App: React.FC = () => {
         authorName={identity.name}
         addComment={addComment}
         toggleResolved={toggleResolved}
+        onJumpToPhoto={(tag) => {
+          const idx = config.photos.findIndex((p) => p.tag === tag);
+          if (idx < 0) return;
+          const frame = getPhotoStartFrame(idx, config);
+          const player = playerRef.current;
+          if (!player) return;
+          player.pause();
+          player.seekTo(frame);
+        }}
       />
 
       <div className="main">

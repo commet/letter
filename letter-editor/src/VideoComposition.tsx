@@ -32,6 +32,7 @@ import {
   PopoutRegion,
   CAPTION_FONT_STACK,
   resolveCaptionBgKind,
+  resolveCaptionPosition,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
@@ -523,11 +524,14 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
   const frame = useCurrentFrame();
   const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
   const align: "left" | "center" | "right" = cap.align ?? "center";
-  const xPct = Math.max(0, Math.min(1, cap.x)) * 100;
-  const yPct = Math.max(0, Math.min(1, cap.y)) * 100;
 
   const kind = resolveCaptionBgKind(cap);
   const isBubble = kind === "bubble-yellow" || kind === "bubble-purple";
+
+  // For bubble auto-upgrade, snap legacy bottom-band positions to the bubble preset.
+  const pos = isBubble ? resolveCaptionPosition(cap) : { x: cap.x, y: cap.y };
+  const xPct = Math.max(0, Math.min(1, pos.x)) * 100;
+  const yPct = Math.max(0, Math.min(1, pos.y)) * 100;
 
   // Vertical anchor depends on y position so multi-line text doesn't collide
   // with stacked captions below: bottom-anchor in lower band (text grows up),
@@ -551,9 +555,9 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
     const pal = BUBBLE_PALETTE[kind as "bubble-yellow" | "bubble-purple"];
     boxStyle = {
       background: pal.bg,
-      border: `1.5px solid ${pal.border}`,
-      padding: "14px 26px",
-      borderRadius: 26,
+      border: `2px solid ${pal.border}`,
+      padding: "20px 36px",
+      borderRadius: 44,  // pillowy, comic-bubble feel
       boxShadow: BUBBLE_SHADOW,
     };
     // Pop-in: scale 0.78 → 1 with a touch of overshoot baked into the eased fade window.
@@ -563,20 +567,23 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       [0.78, 1.06, 1.0],
       { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
     );
-    // Tail: 14×11px triangle clipped from a small div, positioned just below the bubble.
-    // Side determines which corner the tail drops from.
+    // Tail: a chunky 36×30 triangle that hangs fully below the bubble, anchored toward the
+    // speaker's side (bottom-left for 슬기·yellow, bottom-right for 예찬·purple). Right-triangle
+    // shape with the 90° corner at the side closest to the bubble corner — reads unambiguously
+    // as "this bubble belongs to that side of the canvas".
     const tailSide = pal.tailSide;
     const tailStyle: React.CSSProperties = {
       position: "absolute",
-      bottom: -10,
-      width: 18,
-      height: 14,
+      bottom: -22,
+      width: 38,
+      height: 30,
       background: pal.bg,
-      [tailSide]: 24,
-      // Triangle pointing down: top-left + top-right + (left or right) bottom corner
+      [tailSide]: 36,
       clipPath: tailSide === "left"
-        ? "polygon(0% 0%, 100% 0%, 30% 100%)"
-        : "polygon(0% 0%, 100% 0%, 70% 100%)",
+        ? "polygon(0% 0%, 100% 0%, 0% 100%)"   // 90° corner at top-left, point hanging off bottom-left
+        : "polygon(0% 0%, 100% 0%, 100% 100%)", // 90° corner at top-right, point hanging off bottom-right
+      // soft drop-shadow on the tail so it visually matches the bubble's body shadow
+      filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.18))",
     };
     tail = <div style={tailStyle} aria-hidden />;
   } else if (kind === "card") {

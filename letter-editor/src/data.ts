@@ -74,12 +74,38 @@ export type CaptionBackground = {
 };
 
 // Shared between renderer and editor so the preview stays WYSIWYG.
+// Render-time auto-upgrade: any caption whose speaker is "슬기" / "예찬" is treated as a
+// speech-bubble regardless of saved bg.kind. Survives stale DB state, peer broadcasts that
+// pre-date the bubble migration, and any other sync race that would otherwise leave the
+// caption rendering as a card/scrim subtitle.
 export const resolveCaptionBgKind = (
-  cap: { bg?: CaptionBackground }
+  cap: { bg?: CaptionBackground; speaker?: string }
 ): CaptionBgKind => {
-  if (cap.bg?.kind) return cap.bg.kind;
+  const k = cap.bg?.kind;
+  if (k === "bubble-yellow" || k === "bubble-purple") return k;
+  if (cap.speaker === "슬기") return "bubble-yellow";
+  if (cap.speaker === "예찬") return "bubble-purple";
+  if (k) return k;
   if (cap.bg?.color) return "card";  // legacy rows with only { color }
   return "scrim-bottom";
+};
+
+// Speaker captions whose stored x/y is the legacy bottom-band default get re-anchored
+// to the bubble preset position (slki = top-left, yechan = top-right). User-dragged
+// positions outside that band are respected. Returned x/y are in normalized 0-1 coords.
+export const resolveCaptionPosition = (
+  cap: { speaker?: string; x: number; y: number; bg?: CaptionBackground }
+): { x: number; y: number } => {
+  // If bg is explicitly saved as a bubble already, the saved x/y is authoritative
+  // (means a real edit was persisted at some point).
+  const k = cap.bg?.kind;
+  if (k === "bubble-yellow" || k === "bubble-purple") return { x: cap.x, y: cap.y };
+  if (cap.speaker !== "슬기" && cap.speaker !== "예찬") return { x: cap.x, y: cap.y };
+  // Auto-upgrade case: only re-anchor if the saved position looks like the legacy
+  // bottom-band default (y in lower 30%, x near horizontal center).
+  const looksLegacy = cap.y >= 0.7 && Math.abs(cap.x - 0.5) < 0.15;
+  if (!looksLegacy) return { x: cap.x, y: cap.y };
+  return cap.speaker === "슬기" ? { x: 0.20, y: 0.20 } : { x: 0.80, y: 0.20 };
 };
 
 export const CAPTION_FONT_STACK: Record<CaptionFont, { fontFamily: string; fontStyle: "normal" | "italic"; letterSpacing: string }> = {
