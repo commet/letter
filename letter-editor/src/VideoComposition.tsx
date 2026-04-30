@@ -2070,17 +2070,15 @@ const SplitScene: React.FC<{
       backgroundSize: "100% 100%",
       backgroundRepeat: "no-repeat",
       padding: "20px 20px 70px 20px",
-      // Triple-stacked shadow for clear "lift" off the cream paper background:
-      //   1px sharp — defines the card edge against close-toned paper
-      //   8-18px close lift — gives sense of physical thickness
-      //   30-72px ambient drop — pushes the card visibly above the page
+      // Aggressive 4-stack shadow on a neutral-black base (warm shadows blend into
+      // the cream paper bg, neutral shadows actually contrast). The outline rim
+      // (1.5px black @20%) replaces the timid hairline border for a sharp edge.
       boxShadow: [
-        "0 1px 2px rgba(0,0,0,0.22)",
-        "0 10px 22px rgba(40,25,10,0.40)",
-        "0 30px 72px rgba(40,25,10,0.55)",
+        "0 0 0 1.5px rgba(0,0,0,0.20)",         // sharp rim — defines card edge unambiguously
+        "0 3px 6px rgba(0,0,0,0.32)",           // close-tight — feels like the card has thickness
+        "0 14px 28px rgba(0,0,0,0.38)",         // medium — clear lift off page
+        "0 48px 96px rgba(15,10,0,0.55)",       // ambient floor — deep penumbra showing real elevation
       ].join(", "),
-      // Hairline border so the white edge reads even when the paper underneath is also light.
-      border: "1px solid rgba(40,25,10,0.10)",
       width: "44%",
       position: "absolute",
     };
