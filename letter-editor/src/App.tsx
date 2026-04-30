@@ -949,7 +949,7 @@ const ImageEditorModal: React.FC<{
 
                     // Bubble palette must match BUBBLE_PALETTE in VideoComposition.tsx.
                     const bubbleBg     = kind === "bubble-yellow" ? "#FFE27A" : kind === "bubble-purple" ? "#C7A8EA" : null;
-                    const bubbleText   = kind === "bubble-yellow" ? "#2A2010" : kind === "bubble-purple" ? "#2A1B40" : null;
+                    const bubbleText   = kind === "bubble-yellow" ? "#1A0F00" : kind === "bubble-purple" ? "#180830" : null;
                     const bubbleSide: "left" | "right" = kind === "bubble-yellow" ? "left" : "right";
 
                     const boxStyle: React.CSSProperties =
@@ -983,6 +983,8 @@ const ImageEditorModal: React.FC<{
                           fontStyle: isBubble ? "normal" : font.fontStyle,
                           letterSpacing: isBubble ? "0.01em" : font.letterSpacing,
                           fontWeight: isBubble ? 400 : undefined,
+                          WebkitTextStroke: isBubble ? "0.55px currentColor" : undefined,
+                          paintOrder: isBubble ? "stroke fill" as const : undefined,
                           fontSize: Math.max(10, (cap.fontSize ?? 40) * captionPreviewScale),
                           color: isBubble ? bubbleText! : (cap.color ?? "#f5ecd7"),
                           textAlign: align,

@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import {
   AbsoluteFill,
   Audio,
+  Easing,
   Img,
   Sequence,
   interpolate,
@@ -502,10 +503,15 @@ const typedTextSlice = (
 const computeCaptionOpacity = (cap: CaptionEntry, frame: number, dur: number): number => {
   const hasWindow = cap.fromT !== undefined || cap.toT !== undefined;
   if (hasWindow) {
+    const kind = resolveCaptionBgKind(cap);
+    const isBubble = kind === "bubble-yellow" || kind === "bubble-purple";
+    // Bubbles fade in slowly (20 frames ≈ 0.67s) so they don't snap into existence —
+    // pairs with the settle-in scale to read as elegant arrival.
+    const inFrames = isBubble ? 20 : 8;
     const fromFrame = (cap.fromT ?? 0) * dur;
     const toFrame   = (cap.toT   ?? 1) * dur;
-    const inP  = interpolate(frame, [fromFrame, fromFrame + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-    const outP = interpolate(frame, [toFrame - 12, toFrame],    [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+    const inP  = interpolate(frame, [fromFrame, fromFrame + inFrames], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+    const outP = interpolate(frame, [toFrame - 12, toFrame],          [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
     return Math.max(0, Math.min(inP, outP));
   }
   const fadeIn  = interpolate(frame, [8, 30],         [0, 1], { extrapolateRight: "clamp" });
@@ -513,12 +519,14 @@ const computeCaptionOpacity = (cap: CaptionEntry, frame: number, dur: number): n
   return Math.max(0, Math.min(fadeIn, fadeOut));
 };
 
-// Speech-bubble palette. Tuned for AA-readable text on warm/cool tones over arbitrary photo backgrounds.
+// Speech-bubble palette. Text colors pushed deep so single-weight Gowun Dodum stays
+// readable without fake-bold; the small WebkitTextStroke at the call site adds the
+// rest of the visual weight.
 const BUBBLE_PALETTE: Record<"bubble-yellow" | "bubble-purple", {
   bg: string; border: string; text: string; tailSide: "left" | "right";
 }> = {
-  "bubble-yellow": { bg: "#FFE27A", border: "rgba(0,0,0,0.10)", text: "#2A2010", tailSide: "left"  },  // 슬기 (왼쪽)
-  "bubble-purple": { bg: "#C7A8EA", border: "rgba(0,0,0,0.10)", text: "#2A1B40", tailSide: "right" },  // 예찬 (오른쪽)
+  "bubble-yellow": { bg: "#FFE27A", border: "rgba(0,0,0,0.10)", text: "#1A0F00", tailSide: "left"  },  // 슬기 (왼쪽)
+  "bubble-purple": { bg: "#C7A8EA", border: "rgba(0,0,0,0.10)", text: "#180830", tailSide: "right" },  // 예찬 (오른쪽)
 };
 const BUBBLE_SHADOW = "0 8px 22px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18)";
 
@@ -567,13 +575,18 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       borderRadius: 48,  // pillowy, comic-bubble feel
       boxShadow: BUBBLE_SHADOW,
     };
-    // Pop-in: gentle, drawn-out swell — 0.86 → 1.04 → 1.0 over 22 frames (~0.73s).
-    // Slow enough to feel deliberate; tiny overshoot keeps it alive without bouncing.
+    // Settle-in (no overshoot, no bounce): 0.96 → 1.00 over 28 frames (~0.93s)
+    // with cubic ease-out. The scale change is subtle (4%) and the curve has no
+    // overshoot, so the bubble *arrives* rather than *pops*. Reads as elegant.
     popScale = interpolate(
       frame,
-      [fromFrame, fromFrame + 12, fromFrame + 22],
-      [0.86, 1.04, 1.0],
-      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+      [fromFrame, fromFrame + 28],
+      [0.96, 1.0],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: Easing.out(Easing.cubic),
+      },
     );
     // Tail: a long, unmistakable 60×56 triangle. Most of its length hangs BELOW the bubble
     // body so it reads as a clear speech-bubble tail (not a tiny notch). Right-triangle
@@ -626,8 +639,11 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       fontFamily: isBubble ? BUBBLE_FONT : font.fontFamily,
       fontStyle: isBubble ? "normal" : font.fontStyle,
       letterSpacing: isBubble ? "0.01em" : font.letterSpacing,
-      // Gowun Dodum ships at single 400 weight — keep weight default for clean render.
+      // Gowun Dodum ships at single 400 weight; the 0.55px stroke below adds visual
+      // weight cleanly (cleaner than synthesized fake-bold which mangles 한글).
       fontWeight: isBubble ? 400 : undefined,
+      WebkitTextStroke: isBubble ? "0.55px currentColor" : undefined,
+      paintOrder: isBubble ? "stroke fill" : undefined,
       fontSize: cap.fontSize ?? 40,
       color: textColor,
       whiteSpace: "pre-wrap",
@@ -2054,7 +2070,17 @@ const SplitScene: React.FC<{
       backgroundSize: "100% 100%",
       backgroundRepeat: "no-repeat",
       padding: "20px 20px 70px 20px",
-      boxShadow: "0 20px 60px rgba(60,40,15,0.4), 0 4px 12px rgba(60,40,15,0.25)",
+      // Triple-stacked shadow for clear "lift" off the cream paper background:
+      //   1px sharp — defines the card edge against close-toned paper
+      //   8-18px close lift — gives sense of physical thickness
+      //   30-72px ambient drop — pushes the card visibly above the page
+      boxShadow: [
+        "0 1px 2px rgba(0,0,0,0.22)",
+        "0 10px 22px rgba(40,25,10,0.40)",
+        "0 30px 72px rgba(40,25,10,0.55)",
+      ].join(", "),
+      // Hairline border so the white edge reads even when the paper underneath is also light.
+      border: "1px solid rgba(40,25,10,0.10)",
       width: "44%",
       position: "absolute",
     };
