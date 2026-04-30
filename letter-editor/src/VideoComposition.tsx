@@ -565,11 +565,12 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       borderRadius: 44,  // pillowy, comic-bubble feel
       boxShadow: BUBBLE_SHADOW,
     };
-    // Pop-in: scale 0.78 → 1 with a touch of overshoot baked into the eased fade window.
+    // Pop-in: gentler, slower swell — 0.86 → 1.04 → 1.0 over 18 frames (~0.6s).
+    // Smaller starting scale gap and overshoot reads as graceful, not bouncy.
     popScale = interpolate(
       frame,
-      [fromFrame, fromFrame + 7, fromFrame + 12],
-      [0.78, 1.06, 1.0],
+      [fromFrame, fromFrame + 10, fromFrame + 18],
+      [0.86, 1.04, 1.0],
       { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
     );
     // Tail: a long, unmistakable 60×56 triangle. Most of its length hangs BELOW the bubble

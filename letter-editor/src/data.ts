@@ -94,8 +94,10 @@ export const resolveCaptionBgKind = (
 // a chat conversation:
 //   - Position: stacked vertically per-speaker (slki on the left column, yechan on the right).
 //                The Nth bubble of the same speaker sits below the (N-1)th one.
-//   - Timing:   each bubble pops in ~0.6s after the previous in the array, in array order
-//                (so add captions in conversation order = chat sequence).
+//   - Timing:   bubbles are spread proportionally across the scene so a long
+//                multi-exchange dialogue doesn't bunch all bubbles into the first 2s
+//                of a 30s photo. Per-bubble gap is clamped to a 1.3-3.0s conversation
+//                rhythm — anything tighter feels rushed ("boom-boom"), looser drags.
 // User-dragged positions outside the auto-stack range are respected verbatim. Non-bubble
 // captions are returned unchanged. `durFrames` enables timing override; omit for editor
 // preview (positions still resolve, timing left as-is).
@@ -103,6 +105,12 @@ export const enrichCaptionsForRender = <T extends {
   speaker?: string; x: number; y: number; bg?: CaptionBackground;
   fromT?: number; toT?: number;
 }>(caps: readonly T[], durFrames?: number): T[] => {
+  const isBubbleAt = (j: number) => {
+    const k = resolveCaptionBgKind(caps[j]);
+    return k === "bubble-yellow" || k === "bubble-purple";
+  };
+  const totalBubbles = caps.reduce((n, _, j) => n + (isBubbleAt(j) ? 1 : 0), 0);
+
   return caps.map((cap, i) => {
     const k = resolveCaptionBgKind(cap);
     const isBubble = k === "bubble-yellow" || k === "bubble-purple";
@@ -111,9 +119,7 @@ export const enrichCaptionsForRender = <T extends {
     // Stack index: how many earlier bubble captions share this speaker.
     let stackIdx = 0;
     for (let j = 0; j < i; j++) {
-      const ek = resolveCaptionBgKind(caps[j]);
-      const eIsBubble = ek === "bubble-yellow" || ek === "bubble-purple";
-      if (eIsBubble && caps[j].speaker === cap.speaker) stackIdx++;
+      if (isBubbleAt(j) && caps[j].speaker === cap.speaker) stackIdx++;
     }
 
     const defaultX = cap.speaker === "슬기" ? 0.20 : cap.speaker === "예찬" ? 0.80 : 0.5;
@@ -130,16 +136,22 @@ export const enrichCaptionsForRender = <T extends {
     const x = snap ? defaultX : cap.x;
     const y = snap ? defaultY : cap.y;
 
-    // Chat-sequence timing — each bubble appears 18 frames (0.6s @ 30fps) after the
-    // previous, with an 8-frame head-delay. Capped at 85% of scene so even late
-    // bubbles still get a couple seconds of read time.
+    // Chat-sequence timing — distribute bubbles through ~87% of the scene so they
+    // don't bunch up at the start of long dialogue scenes. Gap clamped to
+    // [1.33s, 3.0s] so quick chat scenes stay snappy and long ones stay graceful.
     let fromT = cap.fromT;
     let toT = cap.toT;
     if (durFrames !== undefined) {
-      const initFrames = 8;
-      const gapFrames = 18;
       const D = Math.max(60, durFrames);
-      fromT = Math.min(0.85, (initFrames + i * gapFrames) / D);
+      const bubbleIdx = caps.slice(0, i).reduce((n, _, j) => n + (isBubbleAt(j) ? 1 : 0), 0);
+      const headFrames = 14;       // ~0.5s of stillness before first bubble
+      const tailFrac = 0.13;       // last 13% kept clear so final bubble reads
+      const usable = Math.max(1, D * (1 - tailFrac) - headFrames);
+      const naturalGap = totalBubbles > 1 ? usable / (totalBubbles - 1) : 0;
+      const minGap = 40;           // 1.33s — quickest before it feels rushed
+      const maxGap = 90;           // 3.0s  — slowest before it feels dead
+      const gap = Math.max(minGap, Math.min(maxGap, naturalGap));
+      fromT = Math.min(0.92, (headFrames + bubbleIdx * gap) / D);
       toT = 0.97;
     }
 
