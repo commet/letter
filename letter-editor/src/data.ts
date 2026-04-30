@@ -90,19 +90,73 @@ export const resolveCaptionBgKind = (
   return "scrim-bottom";
 };
 
-// Speaker captions whose stored x/y is the legacy bottom-band default get re-anchored
-// to the bubble preset position (slki = top-left, yechan = top-right). User-dragged
-// positions outside that band are respected. Returned x/y are in normalized 0-1 coords.
+// Auto-resolve caption layout + timing for rendering. Bubble captions are arranged like
+// a chat conversation:
+//   - Position: stacked vertically per-speaker (slki on the left column, yechan on the right).
+//                The Nth bubble of the same speaker sits below the (N-1)th one.
+//   - Timing:   each bubble pops in ~0.6s after the previous in the array, in array order
+//                (so add captions in conversation order = chat sequence).
+// User-dragged positions outside the auto-stack range are respected verbatim. Non-bubble
+// captions are returned unchanged. `durFrames` enables timing override; omit for editor
+// preview (positions still resolve, timing left as-is).
+export const enrichCaptionsForRender = <T extends {
+  speaker?: string; x: number; y: number; bg?: CaptionBackground;
+  fromT?: number; toT?: number;
+}>(caps: readonly T[], durFrames?: number): T[] => {
+  return caps.map((cap, i) => {
+    const k = resolveCaptionBgKind(cap);
+    const isBubble = k === "bubble-yellow" || k === "bubble-purple";
+    if (!isBubble) return cap;
+
+    // Stack index: how many earlier bubble captions share this speaker.
+    let stackIdx = 0;
+    for (let j = 0; j < i; j++) {
+      const ek = resolveCaptionBgKind(caps[j]);
+      const eIsBubble = ek === "bubble-yellow" || ek === "bubble-purple";
+      if (eIsBubble && caps[j].speaker === cap.speaker) stackIdx++;
+    }
+
+    const defaultX = cap.speaker === "슬기" ? 0.20 : cap.speaker === "예찬" ? 0.80 : 0.5;
+    const defaultY = Math.min(0.85, 0.20 + stackIdx * 0.16);
+
+    // Snap when saved position is at a known auto-target (current stack slot, or the
+    // legacy "all bubbles at y=0.20" from the early migration, or the legacy bottom band).
+    const dx = Math.abs(cap.x - defaultX);
+    const isAtThisSnap   = dx < 0.04 && Math.abs(cap.y - defaultY) < 0.04;
+    const isAtFirstSnap  = dx < 0.04 && Math.abs(cap.y - 0.20) < 0.04;
+    const isLegacyBottom = cap.y >= 0.7 && Math.abs(cap.x - 0.5) < 0.15;
+    const snap = isAtThisSnap || isAtFirstSnap || isLegacyBottom;
+
+    const x = snap ? defaultX : cap.x;
+    const y = snap ? defaultY : cap.y;
+
+    // Chat-sequence timing — each bubble appears 18 frames (0.6s @ 30fps) after the
+    // previous, with an 8-frame head-delay. Capped at 85% of scene so even late
+    // bubbles still get a couple seconds of read time.
+    let fromT = cap.fromT;
+    let toT = cap.toT;
+    if (durFrames !== undefined) {
+      const initFrames = 8;
+      const gapFrames = 18;
+      const D = Math.max(60, durFrames);
+      fromT = Math.min(0.85, (initFrames + i * gapFrames) / D);
+      toT = 0.97;
+    }
+
+    return { ...cap, x, y, fromT, toT };
+  });
+};
+
+// Position-only resolver kept for callers that need a single cap's position without the
+// surrounding array context (e.g. drag-edit modal that only knows about one cap at click time).
+// For the conversation auto-stack to apply correctly, prefer enrichCaptionsForRender at the
+// layer level. This single-cap version snaps only based on legacy-bottom heuristics.
 export const resolveCaptionPosition = (
   cap: { speaker?: string; x: number; y: number; bg?: CaptionBackground }
 ): { x: number; y: number } => {
-  // If bg is explicitly saved as a bubble already, the saved x/y is authoritative
-  // (means a real edit was persisted at some point).
   const k = cap.bg?.kind;
   if (k === "bubble-yellow" || k === "bubble-purple") return { x: cap.x, y: cap.y };
   if (cap.speaker !== "슬기" && cap.speaker !== "예찬") return { x: cap.x, y: cap.y };
-  // Auto-upgrade case: only re-anchor if the saved position looks like the legacy
-  // bottom-band default (y in lower 30%, x near horizontal center).
   const looksLegacy = cap.y >= 0.7 && Math.abs(cap.x - 0.5) < 0.15;
   if (!looksLegacy) return { x: cap.x, y: cap.y };
   return cap.speaker === "슬기" ? { x: 0.20, y: 0.20 } : { x: 0.80, y: 0.20 };

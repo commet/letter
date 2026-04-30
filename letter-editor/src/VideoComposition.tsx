@@ -32,7 +32,7 @@ import {
   PopoutRegion,
   CAPTION_FONT_STACK,
   resolveCaptionBgKind,
-  resolveCaptionPosition,
+  enrichCaptionsForRender,
   FILTER_CSS,
   buildTimeline,
 } from "./data";
@@ -528,10 +528,10 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
   const kind = resolveCaptionBgKind(cap);
   const isBubble = kind === "bubble-yellow" || kind === "bubble-purple";
 
-  // For bubble auto-upgrade, snap legacy bottom-band positions to the bubble preset.
-  const pos = isBubble ? resolveCaptionPosition(cap) : { x: cap.x, y: cap.y };
-  const xPct = Math.max(0, Math.min(1, pos.x)) * 100;
-  const yPct = Math.max(0, Math.min(1, pos.y)) * 100;
+  // CaptionsLayer pre-enriches caps (auto-stacked positions + chat-sequence timing for bubbles),
+  // so we can read cap.x / cap.y / cap.fromT / cap.toT directly here.
+  const xPct = Math.max(0, Math.min(1, cap.x)) * 100;
+  const yPct = Math.max(0, Math.min(1, cap.y)) * 100;
 
   // Vertical anchor depends on y position so multi-line text doesn't collide
   // with stacked captions below: bottom-anchor in lower band (text grows up),
@@ -653,10 +653,15 @@ const CaptionsLayer: React.FC<{
   const frame = useCurrentFrame();
   if (!captions.length) return null;
 
+  // Pre-enrich for bubble auto-stack + chat-sequence timing. For non-bubble caps this is a
+  // pass-through; for bubbles, x/y get re-anchored per same-speaker stack and fromT/toT
+  // get rewritten so each bubble pops in ~0.6s after the previous (chat feel).
+  const enriched = enrichCaptionsForRender(captions, dur);
+
   // Compute opacity per caption (windowed or scene-wide). Then derive scrim opacities
   // as the max of the captions that use them, so a windowed caption's scrim only
   // shows while that caption is visible.
-  const items = captions.map((c) => ({
+  const items = enriched.map((c) => ({
     cap: c,
     opacity: computeCaptionOpacity(c, frame, dur),
     kind: resolveCaptionBgKind(c),
@@ -1446,13 +1451,39 @@ const ChatInterludeScene: React.FC<{
   // Header appears early, stays until end
   const headerOp = interpolate(t, [0.04, 0.10, 0.94, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" });
 
-  // Distribute messages across the bulk of the duration.
-  // Each message gets an equal slot; within its slot: 80% typing, 20% hold.
+  // Sequence messages back-to-back. Each message's slot = typing time (proportional
+  // to char count) + a fixed hold. The hold is the consistent inter-bubble gap so
+  // the rhythm doesn't sag when a short message is followed by a long one. If the
+  // natural sequence overflows the band, all slots scale down uniformly to fit.
   const msgs = config.messages ?? [];
-  const msgCount = Math.max(1, msgs.length);
   const bandStart = 0.14;
   const bandEnd = 0.92;
-  const perMsg = (bandEnd - bandStart) / msgCount;
+  const bandFrames = Math.max(1, (bandEnd - bandStart) * dur);
+  const framesPerChar = 10;     // ~3 chars/sec, matches old pace
+  const minTypingFrames = 18;   // floor for very short messages
+  const holdFrames = 18;        // ~0.6s @ 30fps fixed gap before next bubble
+
+  const naturalSlots = msgs.map((m) => {
+    const chars = Array.from(m.text ?? "");
+    const typing = Math.max(minTypingFrames, chars.length * framesPerChar);
+    return { typing, slot: typing + holdFrames };
+  });
+  const totalNatural = naturalSlots.reduce((s, x) => s + x.slot, 0) || 1;
+  const seqScale = totalNatural > bandFrames ? bandFrames / totalNatural : 1;
+
+  const slotBounds: { mStart: number; mEnd: number; typeFraction: number }[] = [];
+  {
+    let cursor = 0;
+    for (const ns of naturalSlots) {
+      const slotF = ns.slot * seqScale;
+      slotBounds.push({
+        mStart: bandStart + cursor / dur,
+        mEnd: bandStart + (cursor + slotF) / dur,
+        typeFraction: ns.typing / ns.slot,
+      });
+      cursor += slotF;
+    }
+  }
 
   // Cursor blink (for the active typing message).
   const cursorOn = Math.floor(frame / 9) % 2 === 0;
