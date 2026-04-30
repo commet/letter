@@ -1611,6 +1611,24 @@ const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
 // purple top-right for 예찬). This covers legacy captions originally saved as `card` (the old
 // `+ 텍스트 추가` default), as `scrim-bottom`, or with no bg at all. Captions already in a
 // bubble are left untouched, so re-running is a no-op.
+// Hard-remove the stale "바다를 사이에 두고" chat (legacy `chat-4`). It was deleted
+// from defaults but lingers in Supabase saved configs and keeps surfacing whenever
+// the user's manual deletion fails to persist (debounce window, peer broadcast, etc).
+// This migration runs on every load — once it strips the row and the migrated
+// config is force-saved, the chat is gone for good.
+const STALE_CHAT_IDS = new Set(["chat-4"]);
+const STALE_CHAT_HEADER_SUBSTR = "바다를 사이에 두고";
+const migrateRemoveStaleChats = (cfg: VideoConfig): VideoConfig => {
+  const chats = cfg.chatInterludes ?? [];
+  const cleaned = chats.filter((c) => {
+    if (STALE_CHAT_IDS.has(c.id)) return false;
+    if (c.header && c.header.includes(STALE_CHAT_HEADER_SUBSTR)) return false;
+    return true;
+  });
+  if (cleaned.length === chats.length) return cfg;
+  return { ...cfg, chatInterludes: cleaned };
+};
+
 // Migrate saved configs that pin BGM track-B to an absolute timestamp
 // (legacy `trackBStartSec`) over to the act-anchored `trackBStartAct: 2`.
 // The Supabase-saved config takes priority over data.ts defaults, so without
@@ -2251,7 +2269,9 @@ export const App: React.FC = () => {
         // Migrate legacy speaker captions → bubbles, and legacy trackBStartSec → trackBStartAct.
         // Pin remoteAppliedConfigRef to the pre-migration `saved` so the migrated config differs
         // from it; this allows the auto-save effect to fire and persist the migration.
-        const migrated = migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved));
+        const migrated = migrateRemoveStaleChats(
+          migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved))
+        );
         remoteAppliedConfigRef.current = saved;
         setConfig(migrated);
         // If migration actually changed something, persist immediately so peers and future
