@@ -51,12 +51,18 @@ export type CaptionFont =
 export type CaptionAlign = "left" | "center" | "right";
 
 // Visual treatment behind caption text.
-//   none          — plain text, no shadow, no bg. Only if caption is on an already-safe area.
-//   shadow        — heavy text shadow only. Good on mid-contrast photos.
-//   scrim-bottom  — gradient darken across bottom ~38% of frame. Default for captions at y ≥ 0.5.
-//   scrim-top     — gradient darken across top ~38% of frame. For captions at y < 0.5.
-//   card          — solid/translucent box behind text (uses color/padding/radius/blur).
-export type CaptionBgKind = "none" | "shadow" | "scrim-bottom" | "scrim-top" | "card";
+//   none           — plain text, no shadow, no bg. Only if caption is on an already-safe area.
+//   shadow         — heavy text shadow only. Good on mid-contrast photos.
+//   scrim-bottom   — gradient darken across bottom ~38% of frame. Default for captions at y ≥ 0.5.
+//   scrim-top      — gradient darken across top ~38% of frame. For captions at y < 0.5.
+//   card           — solid/translucent box behind text (uses color/padding/radius/blur).
+//   bubble-yellow  — speech bubble, yellow, tail at bottom-left (슬기 — left side of canvas).
+//   bubble-purple  — speech bubble, purple, tail at bottom-right (예찬 — right side of canvas).
+// Bubble kinds skip typing animation (text appears all at once with the fade-in envelope)
+// and hide the speaker prefix — color + tail direction encode who's speaking.
+export type CaptionBgKind =
+  | "none" | "shadow" | "scrim-bottom" | "scrim-top" | "card"
+  | "bubble-yellow" | "bubble-purple";
 
 export type CaptionBackground = {
   kind?: CaptionBgKind;  // default resolves to "scrim-bottom" at render. Legacy rows with just { color } are treated as "card".

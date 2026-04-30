@@ -510,37 +510,94 @@ const computeCaptionOpacity = (cap: CaptionEntry, frame: number, dur: number): n
   return Math.max(0, Math.min(fadeIn, fadeOut));
 };
 
+// Speech-bubble palette. Tuned for AA-readable text on warm/cool tones over arbitrary photo backgrounds.
+const BUBBLE_PALETTE: Record<"bubble-yellow" | "bubble-purple", {
+  bg: string; border: string; text: string; tailSide: "left" | "right";
+}> = {
+  "bubble-yellow": { bg: "#FFE27A", border: "rgba(0,0,0,0.10)", text: "#2A2010", tailSide: "left"  },  // 슬기 (왼쪽)
+  "bubble-purple": { bg: "#C7A8EA", border: "rgba(0,0,0,0.10)", text: "#2A1B40", tailSide: "right" },  // 예찬 (오른쪽)
+};
+const BUBBLE_SHADOW = "0 8px 22px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18)";
+
 const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }> = ({ cap, dur, opacity }) => {
   const frame = useCurrentFrame();
   const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
   const align: "left" | "center" | "right" = cap.align ?? "center";
   const xPct = Math.max(0, Math.min(1, cap.x)) * 100;
   const yPct = Math.max(0, Math.min(1, cap.y)) * 100;
+
+  const kind = resolveCaptionBgKind(cap);
+  const isBubble = kind === "bubble-yellow" || kind === "bubble-purple";
+
   // Vertical anchor depends on y position so multi-line text doesn't collide
   // with stacked captions below: bottom-anchor in lower band (text grows up),
   // top-anchor in upper band (text grows down), center otherwise.
+  // Bubbles always center-anchor on their (x,y) so drag positions read intuitively.
   const xT = align === "left" ? "0" : align === "right" ? "-100%" : "-50%";
-  const yT = cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%";
+  const yT = isBubble ? "-50%" : (cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%");
   const translate = `translate(${xT}, ${yT})`;
-  const maxWidthPct = cap.maxWidthPct ?? 95;
+  const maxWidthPct = cap.maxWidthPct ?? (isBubble ? 38 : 95);
 
-  const kind = resolveCaptionBgKind(cap);
-  const boxStyle: React.CSSProperties =
-    kind === "card" ? {
+  // Window timing — used for typing for non-bubbles, and for the pop-in scale envelope for bubbles.
+  const fromFrame = (cap.fromT ?? 0) * dur;
+  const toFrame   = (cap.toT   ?? 1) * dur;
+  const windowDur = Math.max(1, toFrame - fromFrame);
+
+  let boxStyle: React.CSSProperties;
+  let tail: React.ReactNode = null;
+  let popScale = 1;
+
+  if (isBubble) {
+    const pal = BUBBLE_PALETTE[kind as "bubble-yellow" | "bubble-purple"];
+    boxStyle = {
+      background: pal.bg,
+      border: `1.5px solid ${pal.border}`,
+      padding: "14px 26px",
+      borderRadius: 26,
+      boxShadow: BUBBLE_SHADOW,
+    };
+    // Pop-in: scale 0.78 → 1 with a touch of overshoot baked into the eased fade window.
+    popScale = interpolate(
+      frame,
+      [fromFrame, fromFrame + 7, fromFrame + 12],
+      [0.78, 1.06, 1.0],
+      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+    );
+    // Tail: 14×11px triangle clipped from a small div, positioned just below the bubble.
+    // Side determines which corner the tail drops from.
+    const tailSide = pal.tailSide;
+    const tailStyle: React.CSSProperties = {
+      position: "absolute",
+      bottom: -10,
+      width: 18,
+      height: 14,
+      background: pal.bg,
+      [tailSide]: 24,
+      // Triangle pointing down: top-left + top-right + (left or right) bottom corner
+      clipPath: tailSide === "left"
+        ? "polygon(0% 0%, 100% 0%, 30% 100%)"
+        : "polygon(0% 0%, 100% 0%, 70% 100%)",
+    };
+    tail = <div style={tailStyle} aria-hidden />;
+  } else if (kind === "card") {
+    boxStyle = {
       background: cap.bg?.color ?? "rgba(15,12,8,0.55)",
       padding: `${cap.bg?.paddingY ?? 10}px ${cap.bg?.paddingX ?? 22}px`,
       borderRadius: cap.bg?.radius ?? 4,
       backdropFilter: cap.bg?.blur ? "blur(3px)" : undefined,
       WebkitBackdropFilter: cap.bg?.blur ? "blur(3px)" : undefined,
-    } :
-    kind === "none" ? {} :
-    { textShadow: CAPTION_TEXT_SHADOW };  // shadow / scrim-bottom / scrim-top
+    };
+  } else if (kind === "none") {
+    boxStyle = {};
+  } else {
+    boxStyle = { textShadow: CAPTION_TEXT_SHADOW };  // shadow / scrim-bottom / scrim-top
+  }
 
-  // Typing window matches the caption's visible window (or the whole scene if not windowed).
-  const fromFrame = (cap.fromT ?? 0) * dur;
-  const toFrame   = (cap.toT   ?? 1) * dur;
-  const windowDur = Math.max(1, toFrame - fromFrame);
-  const typed = typedTextSlice(cap.text, frame, windowDur, fromFrame);
+  // Bubbles render text in one go (no typing). Other kinds keep the character-by-character reveal.
+  const text = isBubble ? cap.text : typedTextSlice(cap.text, frame, windowDur, fromFrame);
+  const textColor = isBubble
+    ? BUBBLE_PALETTE[kind as "bubble-yellow" | "bubble-purple"].text
+    : (cap.color ?? "#f5ecd7");
 
   if (opacity <= 0) return null;
   return (
@@ -548,23 +605,27 @@ const CaptionItem: React.FC<{ cap: CaptionEntry; dur: number; opacity: number }>
       position: "absolute",
       left: `${xPct}%`,
       top: `${yPct}%`,
-      transform: translate,
+      transform: isBubble ? `${translate} scale(${popScale})` : translate,
+      transformOrigin: "center center",
       maxWidth: `${maxWidthPct}%`,
       textAlign: align,
       fontFamily: font.fontFamily,
-      fontStyle: font.fontStyle,
-      letterSpacing: font.letterSpacing,
+      fontStyle: isBubble ? "normal" : font.fontStyle,
+      letterSpacing: isBubble ? "0.02em" : font.letterSpacing,
+      fontWeight: isBubble ? 600 : undefined,
       fontSize: cap.fontSize ?? 40,
-      color: cap.color ?? "#f5ecd7",
+      color: textColor,
       whiteSpace: "pre-wrap",
       lineHeight: 1.35,
       opacity,
       ...boxStyle,
     }}>
-      {cap.speaker ? (
+      {/* Bubbles encode the speaker via color + tail direction, so the speaker prefix is suppressed. */}
+      {!isBubble && cap.speaker ? (
         <span style={{ fontWeight: 600, marginRight: 10, opacity: 0.95 }}>{cap.speaker}:</span>
       ) : null}
-      <span>{typed}</span>
+      <span>{text}</span>
+      {tail}
     </div>
   );
 };

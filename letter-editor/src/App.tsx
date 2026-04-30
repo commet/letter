@@ -919,16 +919,31 @@ const ImageEditorModal: React.FC<{
                   {captions.map((cap) => {
                     const font = CAPTION_FONT_STACK[cap.fontFamily ?? "serif"];
                     const align = cap.align ?? "center";
-                    // Match renderer: bottom-anchor for low y (text grows up), top-anchor
-                    // for high y (text grows down), center for middle. Prevents multi-line
-                    // wrapping from colliding with the next caption stacked below.
+                    const kind = resolveCaptionBgKind(cap);
+                    const isBubble = kind === "bubble-yellow" || kind === "bubble-purple";
+                    // Match renderer: bubbles always center-anchor; non-bubbles use band-aware anchor.
                     const xT = align === "left" ? "0" : align === "right" ? "-100%" : "-50%";
-                    const yT = cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%";
+                    const yT = isBubble ? "-50%" : (cap.y > 0.55 ? "-100%" : cap.y < 0.25 ? "0" : "-50%");
                     const translate = `translate(${xT}, ${yT})`;
                     const isSelected = selectedCaption === cap.id;
-                    const kind = resolveCaptionBgKind(cap);
-                    const preview = `${cap.speaker ? cap.speaker + ": " : ""}${cap.text || "텍스트"}`;
+                    // Bubbles encode speaker via color + tail, so the prefix is omitted (matches renderer).
+                    const preview = isBubble
+                      ? (cap.text || "텍스트")
+                      : `${cap.speaker ? cap.speaker + ": " : ""}${cap.text || "텍스트"}`;
+
+                    // Bubble palette must match BUBBLE_PALETTE in VideoComposition.tsx.
+                    const bubbleBg     = kind === "bubble-yellow" ? "#FFE27A" : kind === "bubble-purple" ? "#C7A8EA" : null;
+                    const bubbleText   = kind === "bubble-yellow" ? "#2A2010" : kind === "bubble-purple" ? "#2A1B40" : null;
+                    const bubbleSide: "left" | "right" = kind === "bubble-yellow" ? "left" : "right";
+
                     const boxStyle: React.CSSProperties =
+                      isBubble ? {
+                        background: bubbleBg!,
+                        border: "1.5px solid rgba(0,0,0,0.10)",
+                        padding: `${14 * captionPreviewScale}px ${26 * captionPreviewScale}px`,
+                        borderRadius: 26 * captionPreviewScale,
+                        boxShadow: "0 8px 22px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18)",
+                      } :
                       kind === "card" ? {
                         padding: `${(cap.bg?.paddingY ?? 10) * captionPreviewScale}px ${(cap.bg?.paddingX ?? 22) * captionPreviewScale}px`,
                         background: cap.bg?.color ?? "rgba(15,12,8,0.55)",
@@ -949,13 +964,16 @@ const ImageEditorModal: React.FC<{
                           top: `${cap.y * 100}%`,
                           transform: translate,
                           fontFamily: font.fontFamily,
-                          fontStyle: font.fontStyle,
-                          letterSpacing: font.letterSpacing,
+                          fontStyle: isBubble ? "normal" : font.fontStyle,
+                          letterSpacing: isBubble ? "0.02em" : font.letterSpacing,
+                          fontWeight: isBubble ? 600 : undefined,
                           fontSize: Math.max(10, (cap.fontSize ?? 40) * captionPreviewScale),
-                          color: cap.color ?? "#f5ecd7",
+                          color: isBubble ? bubbleText! : (cap.color ?? "#f5ecd7"),
                           textAlign: align,
-                          maxWidth: `${cap.maxWidthPct ?? 95}%`,
-                          border: isSelected ? "2px solid var(--gold, #a88848)" : "1px dashed rgba(255,255,255,0.35)",
+                          maxWidth: `${cap.maxWidthPct ?? (isBubble ? 38 : 95)}%`,
+                          border: isSelected ? "2px solid var(--gold, #a88848)" : (isBubble ? undefined : "1px dashed rgba(255,255,255,0.35)"),
+                          outline: isSelected && isBubble ? "2px solid var(--gold, #a88848)" : undefined,
+                          outlineOffset: isSelected && isBubble ? 4 : undefined,
                           whiteSpace: "pre-wrap",
                           cursor: "grab",
                           touchAction: "none",
@@ -966,6 +984,19 @@ const ImageEditorModal: React.FC<{
                         title="드래그해서 위치 이동"
                       >
                         {preview}
+                        {isBubble && (
+                          <div style={{
+                            position: "absolute",
+                            bottom: -10 * captionPreviewScale,
+                            width: 18 * captionPreviewScale,
+                            height: 14 * captionPreviewScale,
+                            background: bubbleBg!,
+                            [bubbleSide]: 24 * captionPreviewScale,
+                            clipPath: bubbleSide === "left"
+                              ? "polygon(0% 0%, 100% 0%, 30% 100%)"
+                              : "polygon(0% 0%, 100% 0%, 70% 100%)",
+                          } as React.CSSProperties} aria-hidden />
+                        )}
                       </div>
                     );
                   })}
@@ -1557,6 +1588,36 @@ const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
 // Used by mutations so "edit the legacy caption" never silently drops the write.
 // The legacy id is deterministic so React keys stay stable across renders
 // (a random id would remount inputs and kill focus mid-typing).
+// One-time migration: legacy speaker captions ("슬기" / "예찬" with no explicit bg.kind)
+// → speech-bubble structure (yellow at top-left for 슬기, purple at top-right for 예찬).
+// Idempotent: once a caption has bg.kind set to a bubble (or anything else explicit), we leave it alone.
+// Captions with explicit non-bubble bg.kind (e.g., user manually picked "스크림 하단") are also left alone.
+const migrateLegacyCaptionsToBubbles = (cfg: VideoConfig): VideoConfig => {
+  let changed = false;
+  const photos = cfg.photos.map((p) => {
+    if (!p.captions || p.captions.length === 0) return p;
+    let photoChanged = false;
+    const captions = p.captions.map((cap) => {
+      if (cap.bg?.kind) return cap; // user already picked a bg explicitly — respect
+      if (cap.speaker !== "슬기" && cap.speaker !== "예찬") return cap;
+      photoChanged = true;
+      changed = true;
+      const isSlki = cap.speaker === "슬기";
+      return {
+        ...cap,
+        x: isSlki ? 0.20 : 0.80,
+        y: 0.20,
+        align: "center" as const,
+        bg: { kind: isSlki ? ("bubble-yellow" as const) : ("bubble-purple" as const) },
+        fontFamily: cap.fontFamily ?? ("sans-kr" as const),
+        fontSize: cap.fontSize ?? 36,
+      };
+    });
+    return photoChanged ? { ...p, captions } : p;
+  });
+  return changed ? { ...cfg, photos } : cfg;
+};
+
 const materializeCaptions = (p: PhotoEntry): CaptionEntry[] => {
   if (p.captions && p.captions.length > 0) return p.captions;
   if (p.caption) {
@@ -1602,10 +1663,13 @@ const CAPTION_POSITION_PRESETS: { label: string; x: number; y: number; align: Ca
   { label: "↘", x: 0.94, y: 0.92, align: "right"  },
 ];
 
-// Ordered most-readable-first. First two (scrim-bottom / scrim-top) are the new defaults —
-// a gradient darkens the edge of the photo so captions stay legible on any background.
+// Ordered most-readable-first. First two (scrim-bottom / scrim-top) are the legacy defaults.
+// Bubble kinds skip typing animation — text appears all at once and the speaker prefix is hidden
+// (color + tail direction encode who's speaking).
 const CAPTION_BG_PRESETS: { label: string; bg: CaptionBackground }[] = [
-  { label: "스크림 하단 (기본)", bg: { kind: "scrim-bottom" } },
+  { label: "말풍선 노랑 (슬기·왼쪽)",  bg: { kind: "bubble-yellow" } },
+  { label: "말풍선 보라 (예찬·오른쪽)", bg: { kind: "bubble-purple" } },
+  { label: "스크림 하단",        bg: { kind: "scrim-bottom" } },
   { label: "스크림 상단",        bg: { kind: "scrim-top" } },
   { label: "어두운 카드",        bg: { kind: "card", color: "rgba(15,12,8,0.55)", paddingX: 22, paddingY: 10, radius: 4, blur: true } },
   { label: "크림 카드",          bg: { kind: "card", color: "rgba(245,236,215,0.92)", paddingX: 22, paddingY: 10, radius: 4 } },
@@ -1714,14 +1778,19 @@ const CaptionsEditor = React.memo<CaptionsEditorProps>(({ photoIdx, captions, on
       {CAPTION_SPEAKER_PRESETS.length > 0 && (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>빠른 시작:</span>
+          {/* 말풍선 대화: 슬기 (노랑·왼쪽) + 예찬 (보라·오른쪽). 위치는 얼굴을 피하기 좋은 상단 1/5 지점. */}
           <button className="btn btn-xs" onClick={() => {
-            onAdd(photoIdx, { speaker: "예찬", y: 0.86, align: "center" });
-            onAdd(photoIdx, { speaker: "슬기", y: 0.92, align: "center" });
-          }}>예찬 / 슬기</button>
-          <button className="btn btn-xs" onClick={() => {
-            onAdd(photoIdx, { speaker: "슬기", y: 0.86, align: "center" });
-            onAdd(photoIdx, { speaker: "예찬", y: 0.92, align: "center" });
-          }}>슬기 / 예찬</button>
+            onAdd(photoIdx, {
+              speaker: "슬기", x: 0.20, y: 0.20, align: "center",
+              bg: { kind: "bubble-yellow" }, fontFamily: "sans-kr", fontSize: 36,
+            });
+            onAdd(photoIdx, {
+              speaker: "예찬", x: 0.80, y: 0.20, align: "center",
+              bg: { kind: "bubble-purple" }, fontFamily: "sans-kr", fontSize: 36,
+            });
+          }} title="슬기 노랑 말풍선 + 예찬 보라 말풍선. 드래그 편집으로 얼굴 피해 미세조정 가능.">
+            💬 대화 말풍선 (슬기 / 예찬)
+          </button>
         </div>
       )}
     </div>
@@ -2106,12 +2175,12 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadConfig().then((saved) => {
       if (saved) {
-        // Mark the loaded config as "remote-applied" so the broadcast effect
-        // skips sending it. Without this, each tab that opens would immediately
-        // broadcast its freshly-loaded (potentially stale) config and wipe any
-        // unsaved edits other peers are currently typing.
+        // Migrate legacy speaker captions → bubbles. Pin remoteAppliedConfigRef to the
+        // pre-migration `saved` so the migrated config differs from it; this allows the
+        // auto-save effect to fire (~2s later) and persist the migration to Supabase.
+        const migrated = migrateLegacyCaptionsToBubbles(saved);
         remoteAppliedConfigRef.current = saved;
-        setConfig(saved);
+        setConfig(migrated);
       }
       setLoading(false);
     });
