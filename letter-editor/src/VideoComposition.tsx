@@ -814,6 +814,7 @@ const TitleCardScene: React.FC<{
   const frame = useCurrentFrame();
   const title = titles[act] ?? { chapter: "", kr: "" };
   const { chapter, kr } = title;
+  const subtitle = title.subtitle ?? "";
   const effectiveVariant: TitleVariant = title.variant ?? variant;
 
   const fadeIn = interpolate(frame, [0, 18], [0, 1], { extrapolateRight: "clamp" });
@@ -876,16 +877,29 @@ const TitleCardScene: React.FC<{
               );
             })}
           </div>
+          {/* Subtitle — Korean serif italic, narrative tagline. Appears just after kr glyphs. */}
+          {subtitle && (
+            <div style={{
+              marginTop: 8,
+              fontFamily: SERIF_KR, fontStyle: "italic", fontWeight: 400,
+              fontSize: 32, letterSpacing: "0.12em",
+              color: "rgba(60, 45, 25, 0.78)",
+              opacity: interpolate(frame, [26 + chars.length * 3 + 6, 26 + chars.length * 3 + 22], [0, 1], { extrapolateRight: "clamp" }),
+              transform: `translateY(${interpolate(frame, [26 + chars.length * 3 + 6, 26 + chars.length * 3 + 22], [6, 0], { extrapolateRight: "clamp" })}px)`,
+            }}>
+              {subtitle}
+            </div>
+          )}
           {/* Year — italic Cormorant, very small, appears last */}
           {title.year && (
             <div style={{
               marginTop: 4,
               fontFamily: "'EB Garamond', 'Cormorant Garamond', serif",
               fontStyle: "italic", fontWeight: 400,
-              fontSize: 28, letterSpacing: "0.18em",
-              color: "rgba(60, 45, 25, 0.72)",
-              opacity: interpolate(frame, [26 + chars.length * 3 + 10, 26 + chars.length * 3 + 28], [0, 1], { extrapolateRight: "clamp" }),
-              transform: `translateY(${interpolate(frame, [26 + chars.length * 3 + 10, 26 + chars.length * 3 + 28], [6, 0], { extrapolateRight: "clamp" })}px)`,
+              fontSize: 26, letterSpacing: "0.18em",
+              color: "rgba(60, 45, 25, 0.62)",
+              opacity: interpolate(frame, [26 + chars.length * 3 + 18, 26 + chars.length * 3 + 36], [0, 1], { extrapolateRight: "clamp" }),
+              transform: `translateY(${interpolate(frame, [26 + chars.length * 3 + 18, 26 + chars.length * 3 + 36], [6, 0], { extrapolateRight: "clamp" })}px)`,
             }}>
               {title.year}
             </div>
@@ -926,6 +940,16 @@ const TitleCardScene: React.FC<{
             );
           })}
         </div>
+        {subtitle && (
+          <div style={{
+            color: "rgba(255, 240, 200, 0.78)",
+            fontFamily: SERIF_KR, fontStyle: "italic", fontSize: 30, letterSpacing: 4,
+            opacity: interpolate(frame, [26 + chars.length * 3 + 6, 26 + chars.length * 3 + 22], [0, 1], { extrapolateRight: "clamp" }),
+            transform: `translateY(${interpolate(frame, [26 + chars.length * 3 + 6, 26 + chars.length * 3 + 22], [6, 0], { extrapolateRight: "clamp" })}px)`,
+          }}>
+            {subtitle}
+          </div>
+        )}
       </div>
       <OverlayLayer type={overlayType} />
       <ParticleLayer type={particlesType} />
@@ -1136,12 +1160,14 @@ const YearMarkerScene: React.FC<{
 
 // Journey map locations (5 points, shared across all Act maps).
 // Coordinates tuned for balanced layout on 1920×1080 with smooth catmull-rom curves.
+// `subtitle` is the narrative tagline — same one used in actTitles and chat headers
+// so the act card / chat header / journey map share one story arc.
 const JOURNEY_LOCATIONS = [
-  { cx: 260,  cy: 490, label: "성모병원",    year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
-  { cx: 540,  cy: 660, label: "분당",        year: "1997 —",      anchor: "middle", lx:  0,  ly:  58 },
-  { cx: 880,  cy: 380, label: "청춘",        year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
-  { cx: 1300, cy: 590, label: "뉴욕 · 서울", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
-  { cx: 1650, cy: 380, label: "여기, 오늘",  year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
+  { cx: 260,  cy: 490, label: "성모병원",    subtitle: "각자의 시작",        year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
+  { cx: 540,  cy: 660, label: "분당",        subtitle: "함께의 시작",        year: "1997 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 880,  cy: 380, label: "청춘",        subtitle: "같이, 또 따로",      year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
+  { cx: 1300, cy: 590, label: "뉴욕 · 서울", subtitle: "바다를 사이에 두고", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 1650, cy: 380, label: "여기, 오늘",  subtitle: "다시 마주 보다",     year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
 ];
 
 // Smooth cubic beziers between consecutive points — catmull-rom-derived control points.
@@ -1303,8 +1329,10 @@ const JourneyMapScene: React.FC<{
             <circle cx={L.cx} cy={L.cy} r={3.5} fill={INK} />
             <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
                   fontFamily="'Nanum Pen Script', cursive" fontSize={30} fill={INK}>{L.label}</text>
-            <text x={L.cx + L.lx} y={L.cy + L.ly + 20} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={16} fill="#3a2f22">{L.year}</text>
+            <text x={L.cx + L.lx} y={L.cy + L.ly + 19} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily={SERIF_KR} fontStyle="italic" fontSize={14} fill="rgba(58,42,24,0.72)">{L.subtitle}</text>
+            <text x={L.cx + L.lx} y={L.cy + L.ly + 36} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={15} fill="#3a2f22">{L.year}</text>
           </g>
         ))}
 
@@ -1317,17 +1345,20 @@ const JourneyMapScene: React.FC<{
             <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
                   fontFamily="'Nanum Pen Script', cursive" fontSize={38} fill={INK}>{L.label}</text>
             <text x={L.cx + L.lx} y={L.cy + L.ly + 22} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={20} fill="#3a2f22">{L.year}</text>
+                  fontFamily={SERIF_KR} fontStyle="italic" fontSize={16} fill="rgba(58,42,24,0.78)">{L.subtitle}</text>
+            <text x={L.cx + L.lx} y={L.cy + L.ly + 42} textAnchor={L.anchor as "start" | "middle" | "end"}
+                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={18} fill="#3a2f22">{L.year}</text>
           </g>
         ))}
 
         {/* Present dot — emphasized, grows, pulses.
-              Label/year cluster is pushed further from the dot than past/future
+              Label / subtitle / year cluster is pushed further from the dot than past/future
               state so the enlarged glyphs clear the halo (r≈29 post-scale). */}
         {(() => {
           const dir = presentLoc.ly < 0 ? -1 : 1;
           const labelY = presentLoc.cy + dir * 82;
-          const yearY  = labelY + 40;
+          const subtitleY = labelY + 32;
+          const yearY  = subtitleY + 32;
           return (
             <g opacity={Math.min(1, presentOp * pulseOp)}
                transform={`translate(${presentLoc.cx} ${presentLoc.cy}) scale(${presentScale * pulse}) translate(${-presentLoc.cx} ${-presentLoc.cy})`}>
@@ -1337,9 +1368,12 @@ const JourneyMapScene: React.FC<{
               <text x={presentLoc.cx + presentLoc.lx} y={labelY}
                     textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
                     fontFamily="'Nanum Pen Script', cursive" fontSize={62} fill={INK}>{presentLoc.label}</text>
+              <text x={presentLoc.cx + presentLoc.lx} y={subtitleY}
+                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                    fontFamily={SERIF_KR} fontStyle="italic" fontSize={26} fill="rgba(58,42,24,0.85)">{presentLoc.subtitle}</text>
               <text x={presentLoc.cx + presentLoc.lx} y={yearY}
                     textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
-                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={30} fill="#3a2f22">{presentLoc.year}</text>
+                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={26} fill="#3a2f22">{presentLoc.year}</text>
             </g>
           );
         })()}
