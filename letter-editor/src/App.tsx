@@ -39,6 +39,7 @@ import {
   computeTotalFrames,
   getPhotoIndexAtFrame,
   getPhotoStartFrame,
+  computeChatDurationSec,
 } from "./data";
 import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OUTLINE_COLOR, ARROW_PRESETS, type ArrowPreset } from "./arrow";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
@@ -1613,6 +1614,25 @@ const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
 // purple top-right for 예찬). This covers legacy captions originally saved as `card` (the old
 // `+ 텍스트 추가` default), as `scrim-bottom`, or with no bg at all. Captions already in a
 // bubble are left untouched, so re-running is a no-op.
+// Auto-fit chat durationSec on load. Legacy default was 22s, which left long static
+// "frozen bubbles" tails on short/empty chats. Recomputes via computeChatDurationSec
+// (header pad + natural typing/hold sequence + tail pad). Idempotent — once applied
+// and saved, future loads are no-ops unless messages change.
+const migrateChatAutoDuration = (cfg: VideoConfig): VideoConfig => {
+  const chats = cfg.chatInterludes;
+  if (!chats || chats.length === 0) return cfg;
+  let changed = false;
+  const next = chats.map((ch) => {
+    const fitted = computeChatDurationSec(ch.messages);
+    // Only update when delta is meaningful (>0.3s) so floating-point noise from
+    // re-saves doesn't pile up rewrites.
+    if (Math.abs((ch.durationSec ?? 0) - fitted) < 0.3) return ch;
+    changed = true;
+    return { ...ch, durationSec: fitted };
+  });
+  return changed ? { ...cfg, chatInterludes: next } : cfg;
+};
+
 // Hard-remove stale "유학/카투사" chats (legacy chat-4 + a duplicate with random id).
 // They were deleted from defaults but lingered in Supabase saved configs and kept
 // surfacing whenever a manual delete failed to persist (debounce / peer broadcast /
@@ -2290,8 +2310,10 @@ export const App: React.FC = () => {
         // Migrate legacy speaker captions → bubbles, and legacy trackBStartSec → trackBStartAct.
         // Pin remoteAppliedConfigRef to the pre-migration `saved` so the migrated config differs
         // from it; this allows the auto-save effect to fire and persist the migration.
-        const migrated = migrateRemoveStaleChats(
-          migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved))
+        const migrated = migrateChatAutoDuration(
+          migrateRemoveStaleChats(
+            migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved))
+          )
         );
         remoteAppliedConfigRef.current = saved;
         setConfig(migrated);
@@ -2770,18 +2792,26 @@ export const App: React.FC = () => {
 
   // ── Chat interlude ───────────────────────────
   const addChatAfter = (photoIdx: number) => {
+    const messages: ChatMessage[] = [
+      { speaker: "예찬", side: "left", text: "" },
+      { speaker: "슬기", side: "right", text: "" },
+    ];
     const newChat: ChatInterlude = {
       id: `ci${Date.now()}`,
       afterPhotoIndex: photoIdx,
       header: "",
-      messages: [
-        { speaker: "예찬", side: "left", text: "" },
-        { speaker: "슬기", side: "right", text: "" },
-      ],
-      durationSec: 12.0,
+      messages,
+      durationSec: computeChatDurationSec(messages),
     };
     setConfig((c) => ({ ...c, chatInterludes: [...(c.chatInterludes ?? []), newChat] }));
   };
+  // Auto-fit durationSec to message content. Any time messages change (add/remove/edit text),
+  // we recompute so the scene length tracks content length + breathing room. User-typed
+  // override via the durationSec input still applies — but only until the next message edit.
+  const fitChatDuration = (ch: ChatInterlude): ChatInterlude => ({
+    ...ch,
+    durationSec: computeChatDurationSec(ch.messages),
+  });
   const updateChat = (id: string, patch: Partial<Pick<ChatInterlude, "header" | "durationSec" | "afterPhotoIndex">>) => {
     setConfig((c) => ({
       ...c,
@@ -2795,7 +2825,7 @@ export const App: React.FC = () => {
     setConfig((c) => ({
       ...c,
       chatInterludes: (c.chatInterludes ?? []).map((ch) => ch.id === id
-        ? { ...ch, messages: [...ch.messages, { speaker: "", side: "left", text: "" }] }
+        ? fitChatDuration({ ...ch, messages: [...ch.messages, { speaker: "", side: "left", text: "" }] })
         : ch),
     }));
   };
@@ -2804,10 +2834,12 @@ export const App: React.FC = () => {
       ...c,
       chatInterludes: (c.chatInterludes ?? []).map((ch) => {
         if (ch.id !== id) return ch;
-        return {
+        const next = {
           ...ch,
           messages: ch.messages.map((m, i) => i === msgIdx ? { ...m, ...patch } : m),
         };
+        // Only refit when the text changed — speaker/side edits don't affect timing.
+        return patch.text !== undefined ? fitChatDuration(next) : next;
       }),
     }));
   };
@@ -2816,7 +2848,7 @@ export const App: React.FC = () => {
       ...c,
       chatInterludes: (c.chatInterludes ?? []).map((ch) => {
         if (ch.id !== id) return ch;
-        return { ...ch, messages: ch.messages.filter((_, i) => i !== msgIdx) };
+        return fitChatDuration({ ...ch, messages: ch.messages.filter((_, i) => i !== msgIdx) });
       }),
     }));
   };

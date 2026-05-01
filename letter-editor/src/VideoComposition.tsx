@@ -36,6 +36,7 @@ import {
   enrichCaptionsForRender,
   FILTER_CSS,
   buildTimeline,
+  CHAT_TIMING,
 } from "./data";
 import { ERA_ICONS } from "./eraIcons";
 import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OUTLINE_COLOR } from "./arrow";
@@ -1479,15 +1480,19 @@ const ChatInterludeScene: React.FC<{
 
   // Sequence messages back-to-back. Each message's slot = typing time (proportional
   // to char count) + a fixed hold. The hold is the consistent inter-bubble gap so
-  // the rhythm doesn't sag when a short message is followed by a long one. If the
-  // natural sequence overflows the band, all slots scale down uniformly to fit.
+  // the rhythm doesn't sag when a short message is followed by a long one. The band
+  // is fixed-padding (header pad at front, tail pad at back) instead of fractional,
+  // so a scene of any length keeps the same breathing room — and the editor's
+  // computeChatDurationSec gives us a dur that fits the natural sequence exactly.
   const msgs = config.messages ?? [];
-  const bandStart = 0.14;
-  const bandEnd = 0.92;
-  const bandFrames = Math.max(1, (bandEnd - bandStart) * dur);
-  const framesPerChar = 10;     // ~3 chars/sec, matches old pace
-  const minTypingFrames = 18;   // floor for very short messages
-  const holdFrames = 18;        // ~0.6s @ 30fps fixed gap before next bubble
+  const headerFadeFrames = Math.round(CHAT_TIMING.headerFadeSec * CHAT_TIMING.fps);
+  const tailFadeFrames = Math.round(CHAT_TIMING.tailFadeSec * CHAT_TIMING.fps);
+  const bandStart = headerFadeFrames / Math.max(1, dur);
+  const bandEnd = Math.max(bandStart + 0.01, (dur - tailFadeFrames) / Math.max(1, dur));
+  const bandFrames = Math.max(1, dur - headerFadeFrames - tailFadeFrames);
+  const framesPerChar = CHAT_TIMING.framesPerChar;
+  const minTypingFrames = CHAT_TIMING.minTypingFrames;
+  const holdFrames = CHAT_TIMING.holdFrames;
 
   const naturalSlots = msgs.map((m) => {
     const chars = Array.from(m.text ?? "");

@@ -397,6 +397,34 @@ export type ChatInterlude = {
   durationSec?: number;         // default 12.0
 };
 
+// Auto-fit chat scene duration: header pad + per-message (typing + hold) + tail pad.
+// Constants stay in lockstep with the renderer (`framesPerChar`, `holdFrames`,
+// `headerFadeFrames`, `tailFadeFrames`) so what the editor schedules matches what
+// plays back. Used by the live editor (recompute on message edit) and by the
+// load-time migration that fixes legacy oversized durations.
+export const CHAT_TIMING = {
+  fps: 30,
+  framesPerChar: 10,        // ~3 chars/sec — matches older guests' reading pace
+  minTypingFrames: 18,
+  holdFrames: 18,           // 0.6s rest after typing finishes (= inter-bubble gap)
+  headerFadeSec: 1.0,
+  tailFadeSec: 1.5,
+  minDurSec: 4.0,
+};
+
+export function computeChatDurationSec(messages: ChatMessage[] | undefined): number {
+  const t = CHAT_TIMING;
+  const msgs = messages ?? [];
+  if (msgs.length === 0) return t.minDurSec;
+  const naturalFrames = msgs.reduce((sum, m) => {
+    const chars = Array.from(m.text ?? "").length;
+    const typing = Math.max(t.minTypingFrames, chars * t.framesPerChar);
+    return sum + typing + t.holdFrames;
+  }, 0);
+  const naturalSec = naturalFrames / t.fps;
+  return Math.max(t.minDurSec, t.headerFadeSec + naturalSec + t.tailFadeSec);
+}
+
 // P2-5 Polaroid Collage (7 photo slots on kraft paper)
 export type CollageSlot = {
   file: string;            // photo URL
