@@ -1038,8 +1038,8 @@ export const defaultConfig: VideoConfig = {
   audio: {
     trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26) — Act I
     trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49) — Act II 분당부터 끝까지
-    trackBStartAct: 2,                   // Act II (분당) 타이틀카드에 크로스페이드 센터 정렬
-    crossfadeSec: 10,                    // 두 곡 사이 더 부드러운 오버랩 (was 6)
+    trackBStartSec: 166,                 // 2:46 (xfStart 2:40 = BGM-1 풀볼륨 보장)
+    crossfadeSec: 12,                    // 12s 오버랩: 160~172s
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)

@@ -1704,18 +1704,21 @@ const migrateRemoveStaleChats = (cfg: VideoConfig): VideoConfig => {
   return { ...cfg, chatInterludes: cleaned };
 };
 
-// Migrate saved configs that pin BGM track-B to an absolute timestamp
-// (legacy `trackBStartSec`) over to the act-anchored `trackBStartAct: 2`.
-// The Supabase-saved config takes priority over data.ts defaults, so without
-// this the new act-anchor never takes effect for users who saved before the
-// change. Re-running is a no-op once trackBStartAct is set.
-const migrateAudioToActAnchor = (cfg: VideoConfig): VideoConfig => {
+// Migrate BGM track-B anchor to an ABSOLUTE timestamp (trackBStartSec). Earlier
+// versions used trackBStartAct: 2 (anchored to Act II title-card frame), but as
+// scenes lengthened/shortened the BGM transition kept drifting. Fixed timestamp
+// keeps it stable. 166s = 2:46 with crossfadeSec=12 → xfStart 160s (2:40), so
+// BGM 1 plays at full volume until 2:40 exactly, then 12s natural crossfade.
+// Idempotent — once trackBStartSec is set and trackBStartAct stripped, no-op.
+const migrateAudioToFixedTime = (cfg: VideoConfig): VideoConfig => {
   const a = cfg.audio;
   if (!a) return cfg;
-  if (a.trackBStartAct != null) return cfg;
-  if (!a.trackB) return cfg;
-  const { trackBStartSec, ...rest } = a;
-  return { ...cfg, audio: { ...rest, trackBStartAct: 2 } };
+  if (a.trackBStartAct == null && a.trackBStartSec != null) return cfg;
+  const { trackBStartAct, ...rest } = a;
+  return {
+    ...cfg,
+    audio: { ...rest, trackBStartSec: a.trackBStartSec ?? 166 },
+  };
 };
 
 const migrateLegacyCaptionsToBubbles = (cfg: VideoConfig): VideoConfig => {
@@ -2361,7 +2364,7 @@ export const App: React.FC = () => {
         const migrated = migratePhotoCaptionTimings(
           migrateChatAutoDuration(
             migrateRemoveStaleChats(
-              migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved))
+              migrateAudioToFixedTime(migrateLegacyCaptionsToBubbles(saved))
             )
           )
         );
