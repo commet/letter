@@ -1717,7 +1717,7 @@ const migrateAudioToFixedTime = (cfg: VideoConfig): VideoConfig => {
   const { trackBStartAct, ...rest } = a;
   return {
     ...cfg,
-    audio: { ...rest, trackBStartSec: a.trackBStartSec ?? 166 },
+    audio: { ...rest, trackBStartSec: a.trackBStartSec ?? 164 },
   };
 };
 

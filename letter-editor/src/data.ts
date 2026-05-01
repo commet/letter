@@ -325,6 +325,9 @@ export type ActTitle = {
   kr: string;
   variant?: TitleVariant; // overrides global titleVariant
   year?: string;          // small italic date line under the chapter (e.g., "1988 · 1993")
+  subtitle?: string;      // narrative tagline between kr and year (e.g., "각자의 시작").
+                          // Renders as a small Korean serif italic line so all 3 layers
+                          // (act card / chat header / journey map) share one story arc.
 };
 
 export type EndingConfig = {
@@ -1018,12 +1021,14 @@ const defaultPhotos: PhotoEntry[] = [
   P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn", { eraIcon: "linked-rings" }),
 ];
 
+// Unified naming: place/time main + narrative subtitle + year. Same beat appears
+// in chatInterlude headers and journey map labels so all 3 layers tell one arc.
 const defaultActTitles: Record<number, ActTitle> = {
-  1: { chapter: "Act I",   kr: "그때의 우리",          year: "1988 · 1993" },
-  2: { chapter: "Act II",  kr: "분당",                 year: "1997 — " },
-  3: { chapter: "Act III", kr: "청춘",                 year: "2008 — 2015" },
-  4: { chapter: "Act IV",  kr: "바다를 사이에 두고",   year: "2016 — 2025" },
-  5: { chapter: "Act V",   kr: "그리고, 오늘",         year: "2026" },
+  1: { chapter: "Act I",   kr: "성모병원",     subtitle: "각자의 시작",         year: "1988 · 1993" },
+  2: { chapter: "Act II",  kr: "분당",         subtitle: "함께의 시작",         year: "1997 — " },
+  3: { chapter: "Act III", kr: "청춘",         subtitle: "같이, 또 따로",       year: "2008 — 2015" },
+  4: { chapter: "Act IV",  kr: "뉴욕 · 서울",  subtitle: "바다를 사이에 두고",  year: "2016 — 2025" },
+  5: { chapter: "Act V",   kr: "여기, 오늘",   subtitle: "다시 마주 보다",      year: "2026" },
 };
 
 export const defaultConfig: VideoConfig = {
@@ -1038,8 +1043,8 @@ export const defaultConfig: VideoConfig = {
   audio: {
     trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26) — Act I
     trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49) — Act II 분당부터 끝까지
-    trackBStartSec: 166,                 // 2:46 (xfStart 2:40 = BGM-1 풀볼륨 보장)
-    crossfadeSec: 12,                    // 12s 오버랩: 160~172s
+    trackBStartSec: 164,                 // 2:44 (xfStart 2:38 — BGM-1 단조 진입 직전부터 페이드)
+    crossfadeSec: 12,                    // 12s 오버랩: 158~170s
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)
@@ -1078,7 +1083,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-1",
       afterPhotoIndex: -1,   // jm-1 여정 지도 직후, 성모병원 폴라로이드 페어 직전
-      header: "성모병원 · 1988",
+      header: "성모병원 · 각자의 시작 · 1988",
       messages: [
         {
           speaker: "예찬",
@@ -1096,7 +1101,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-2",
       afterPhotoIndex: 11,   // Act II 타이틀 + jm-2 여정 지도 직후, 경복궁 직전
-      header: "분당 · 1997",
+      header: "분당 · 함께의 시작 · 1997",
       messages: [
         {
           speaker: "예찬",
@@ -1114,7 +1119,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-3",
       afterPhotoIndex: 25,   // Act III 타이틀 + jm-3 여정 지도 직후, 여행 식사 1 직전
-      header: "청춘 · 2008 — 2015",
+      header: "청춘 · 같이, 또 따로 · 2008 — 2015",
       // 이번에는 슬기가 먼저 — 서사는 추후 결정. 현재 둘 다 공백(... 인디케이터 표시됨).
       messages: [
         {
@@ -1135,7 +1140,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-5",
       afterPhotoIndex: 49,   // Act V 타이틀 + m-5 모먼트 + jm-5 (Here, Today) 직후, 두 사람 1 직전
-      header: "그리고, 오늘 · 2026",
+      header: "여기, 오늘 · 다시 마주 보다 · 2026",
       // 서사 미정 — 다섯 Act 모두 슬기 답변은 추후 채움.
       messages: [
         {
