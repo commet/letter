@@ -1028,7 +1028,7 @@ const defaultActTitles: Record<number, ActTitle> = {
   2: { chapter: "Act II",  kr: "분당",         subtitle: "함께의 시작",         year: "1997 — " },
   3: { chapter: "Act III", kr: "청춘",         subtitle: "같이, 또 따로",       year: "2008 — 2015" },
   4: { chapter: "Act IV",  kr: "뉴욕 · 서울",  subtitle: "바다를 사이에 두고",  year: "2016 — 2025" },
-  5: { chapter: "Act V",   kr: "여기, 오늘",   subtitle: "다시 마주 보다",      year: "2026" },
+  5: { chapter: "Act V",   kr: "여기, 오늘",                                    year: "2026" },
 };
 
 export const defaultConfig: VideoConfig = {
@@ -1140,7 +1140,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-5",
       afterPhotoIndex: 49,   // Act V 타이틀 + m-5 모먼트 + jm-5 (Here, Today) 직후, 두 사람 1 직전
-      header: "여기, 오늘 · 다시 마주 보다 · 2026",
+      header: "여기, 오늘 · 2026",
       // 서사 미정 — 다섯 Act 모두 슬기 답변은 추후 채움.
       messages: [
         {

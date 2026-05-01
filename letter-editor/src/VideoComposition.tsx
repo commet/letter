@@ -1167,7 +1167,7 @@ const JOURNEY_LOCATIONS = [
   { cx: 540,  cy: 660, label: "분당",        subtitle: "함께의 시작",        year: "1997 —",      anchor: "middle", lx:  0,  ly:  58 },
   { cx: 880,  cy: 380, label: "청춘",        subtitle: "같이, 또 따로",      year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
   { cx: 1300, cy: 590, label: "뉴욕 · 서울", subtitle: "바다를 사이에 두고", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
-  { cx: 1650, cy: 380, label: "여기, 오늘",  subtitle: "다시 마주 보다",     year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
+  { cx: 1650, cy: 380, label: "여기, 오늘",  subtitle: "",                   year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
 ];
 
 // Smooth cubic beziers between consecutive points — catmull-rom-derived control points.
@@ -1323,42 +1323,55 @@ const JourneyMapScene: React.FC<{
         )}
 
         {/* Future dots (pale preview) */}
-        {JOURNEY_LOCATIONS.slice(presentIdx + 1).map((L) => (
-          <g key={`future-loc-${L.label}`} opacity={futureOp}>
-            <circle cx={L.cx} cy={L.cy} r={6} stroke={INK} fill="none" strokeWidth={1.2} />
-            <circle cx={L.cx} cy={L.cy} r={3.5} fill={INK} />
-            <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily="'Nanum Pen Script', cursive" fontSize={30} fill={INK}>{L.label}</text>
-            <text x={L.cx + L.lx} y={L.cy + L.ly + 19} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily={SERIF_KR} fontStyle="italic" fontSize={14} fill="rgba(58,42,24,0.72)">{L.subtitle}</text>
-            <text x={L.cx + L.lx} y={L.cy + L.ly + 36} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={15} fill="#3a2f22">{L.year}</text>
-          </g>
-        ))}
+        {JOURNEY_LOCATIONS.slice(presentIdx + 1).map((L) => {
+          const hasSub = !!L.subtitle;
+          const yearOffset = hasSub ? 36 : 19;
+          return (
+            <g key={`future-loc-${L.label}`} opacity={futureOp}>
+              <circle cx={L.cx} cy={L.cy} r={6} stroke={INK} fill="none" strokeWidth={1.2} />
+              <circle cx={L.cx} cy={L.cy} r={3.5} fill={INK} />
+              <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
+                    fontFamily="'Nanum Pen Script', cursive" fontSize={30} fill={INK}>{L.label}</text>
+              {hasSub && (
+                <text x={L.cx + L.lx} y={L.cy + L.ly + 19} textAnchor={L.anchor as "start" | "middle" | "end"}
+                      fontFamily={SERIF_KR} fontStyle="italic" fontSize={14} fill="rgba(58,42,24,0.72)">{L.subtitle}</text>
+              )}
+              <text x={L.cx + L.lx} y={L.cy + L.ly + yearOffset} textAnchor={L.anchor as "start" | "middle" | "end"}
+                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={15} fill="#3a2f22">{L.year}</text>
+            </g>
+          );
+        })}
 
         {/* Past dots (solid, already traveled) */}
-        {JOURNEY_LOCATIONS.slice(0, presentIdx).map((L) => (
-          <g key={`past-loc-${L.label}`} opacity={pastOp}>
-            <circle cx={L.cx} cy={L.cy} r={14} fill={INK} opacity={0.12} />
-            <circle cx={L.cx} cy={L.cy} r={7} stroke={INK} fill="none" strokeWidth={1.6} />
-            <circle cx={L.cx} cy={L.cy} r={5} fill={INK} />
-            <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily="'Nanum Pen Script', cursive" fontSize={38} fill={INK}>{L.label}</text>
-            <text x={L.cx + L.lx} y={L.cy + L.ly + 22} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily={SERIF_KR} fontStyle="italic" fontSize={16} fill="rgba(58,42,24,0.78)">{L.subtitle}</text>
-            <text x={L.cx + L.lx} y={L.cy + L.ly + 42} textAnchor={L.anchor as "start" | "middle" | "end"}
-                  fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={18} fill="#3a2f22">{L.year}</text>
-          </g>
-        ))}
+        {JOURNEY_LOCATIONS.slice(0, presentIdx).map((L) => {
+          const hasSub = !!L.subtitle;
+          const yearOffset = hasSub ? 42 : 22;
+          return (
+            <g key={`past-loc-${L.label}`} opacity={pastOp}>
+              <circle cx={L.cx} cy={L.cy} r={14} fill={INK} opacity={0.12} />
+              <circle cx={L.cx} cy={L.cy} r={7} stroke={INK} fill="none" strokeWidth={1.6} />
+              <circle cx={L.cx} cy={L.cy} r={5} fill={INK} />
+              <text x={L.cx + L.lx} y={L.cy + L.ly} textAnchor={L.anchor as "start" | "middle" | "end"}
+                    fontFamily="'Nanum Pen Script', cursive" fontSize={38} fill={INK}>{L.label}</text>
+              {hasSub && (
+                <text x={L.cx + L.lx} y={L.cy + L.ly + 22} textAnchor={L.anchor as "start" | "middle" | "end"}
+                      fontFamily={SERIF_KR} fontStyle="italic" fontSize={16} fill="rgba(58,42,24,0.78)">{L.subtitle}</text>
+              )}
+              <text x={L.cx + L.lx} y={L.cy + L.ly + yearOffset} textAnchor={L.anchor as "start" | "middle" | "end"}
+                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={18} fill="#3a2f22">{L.year}</text>
+            </g>
+          );
+        })}
 
         {/* Present dot — emphasized, grows, pulses.
               Label / subtitle / year cluster is pushed further from the dot than past/future
               state so the enlarged glyphs clear the halo (r≈29 post-scale). */}
         {(() => {
           const dir = presentLoc.ly < 0 ? -1 : 1;
+          const hasSub = !!presentLoc.subtitle;
           const labelY = presentLoc.cy + dir * 82;
           const subtitleY = labelY + 32;
-          const yearY  = subtitleY + 32;
+          const yearY  = hasSub ? subtitleY + 32 : labelY + 40;
           return (
             <g opacity={Math.min(1, presentOp * pulseOp)}
                transform={`translate(${presentLoc.cx} ${presentLoc.cy}) scale(${presentScale * pulse}) translate(${-presentLoc.cx} ${-presentLoc.cy})`}>
@@ -1368,9 +1381,11 @@ const JourneyMapScene: React.FC<{
               <text x={presentLoc.cx + presentLoc.lx} y={labelY}
                     textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
                     fontFamily="'Nanum Pen Script', cursive" fontSize={62} fill={INK}>{presentLoc.label}</text>
-              <text x={presentLoc.cx + presentLoc.lx} y={subtitleY}
-                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
-                    fontFamily={SERIF_KR} fontStyle="italic" fontSize={26} fill="rgba(58,42,24,0.85)">{presentLoc.subtitle}</text>
+              {hasSub && (
+                <text x={presentLoc.cx + presentLoc.lx} y={subtitleY}
+                      textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                      fontFamily={SERIF_KR} fontStyle="italic" fontSize={26} fill="rgba(58,42,24,0.85)">{presentLoc.subtitle}</text>
+              )}
               <text x={presentLoc.cx + presentLoc.lx} y={yearY}
                     textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
                     fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={26} fill="#3a2f22">{presentLoc.year}</text>
