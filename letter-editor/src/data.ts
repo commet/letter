@@ -423,6 +423,10 @@ export type AudioConfig = {
   trackB?: string;
   trackBStartSec?: number;  // composition seconds — center of crossfade
   trackBStartAct?: number;  // align crossfade center to start of this Act's title card
+  trackBStartActOffsetSec?: number; // shift the act-anchored crossfade center by N seconds
+                                    //   (positive = transition later, negative = earlier).
+                                    //   Lets you keep track A playing past the Act anchor without
+                                    //   abandoning the act-anchored semantics.
   crossfadeSec?: number;    // crossfade duration (default 4)
   volume?: number;          // master volume 0-1 (default 0.30)
   fadeInSec?: number;       // fade in at video start (default 1.5)

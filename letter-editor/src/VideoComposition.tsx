@@ -2531,6 +2531,8 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     const xfHalf   = Math.round(xfF / 2);
     // If trackBStartAct is set, anchor the crossfade center to the Act's title card
     // start frame in the timeline (sequence-of-items minus crossfade overlap).
+    // trackBStartActOffsetSec lets the user push the transition past the anchor
+    // without abandoning the "anchored to act" semantics (e.g. extend track A).
     let actAnchorF: number | null = null;
     if (audio?.trackBStartAct != null) {
       let cur = 0;
@@ -2540,6 +2542,9 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
           break;
         }
         cur += it.durationInFrames - cf;
+      }
+      if (actAnchorF != null && audio.trackBStartActOffsetSec) {
+        actAnchorF += Math.round(audio.trackBStartActOffsetSec * fps);
       }
     }
     const transitionF = actAnchorF != null

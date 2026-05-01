@@ -3059,12 +3059,23 @@ export const App: React.FC = () => {
                           value={a.volume ?? 0.30}
                           onChange={(e) => updateAudio({ volume: parseFloat(e.target.value) })} />
                       </label>
-                      <label className="slider-label" style={{ width: "100%" }}>
-                        <span>전환 시점: {fmt(a.trackBStartSec ?? 250)} ({(a.trackBStartSec ?? 250).toFixed(0)}s / {fmt(totalSec)})</span>
-                        <input type="range" className="slider" min={0} max={totalSec} step={1}
-                          value={a.trackBStartSec ?? 250}
-                          onChange={(e) => updateAudio({ trackBStartSec: parseFloat(e.target.value) })} />
-                      </label>
+                      {a.trackBStartAct != null ? (
+                        // Act-anchored mode: expose the offset slider, not the absolute trackBStartSec
+                        // (which is overridden by the act anchor at render time and would just confuse).
+                        <label className="slider-label" style={{ width: "100%" }}>
+                          <span>Act {a.trackBStartAct} 기준 오프셋: {(a.trackBStartActOffsetSec ?? 0) >= 0 ? "+" : ""}{(a.trackBStartActOffsetSec ?? 0).toFixed(0)}s ({a.trackBStartActOffsetSec != null && a.trackBStartActOffsetSec > 0 ? "1번 더 길게" : a.trackBStartActOffsetSec != null && a.trackBStartActOffsetSec < 0 ? "더 일찍 전환" : "Act 시작에 정렬"})</span>
+                          <input type="range" className="slider" min={-30} max={120} step={1}
+                            value={a.trackBStartActOffsetSec ?? 0}
+                            onChange={(e) => updateAudio({ trackBStartActOffsetSec: parseFloat(e.target.value) })} />
+                        </label>
+                      ) : (
+                        <label className="slider-label" style={{ width: "100%" }}>
+                          <span>전환 시점: {fmt(a.trackBStartSec ?? 250)} ({(a.trackBStartSec ?? 250).toFixed(0)}s / {fmt(totalSec)})</span>
+                          <input type="range" className="slider" min={0} max={totalSec} step={1}
+                            value={a.trackBStartSec ?? 250}
+                            onChange={(e) => updateAudio({ trackBStartSec: parseFloat(e.target.value) })} />
+                        </label>
+                      )}
                       <label className="slider-label" style={{ width: "100%" }}>
                         <span>크로스페이드: {(a.crossfadeSec ?? 4).toFixed(1)}s</span>
                         <input type="range" className="slider" min={0.5} max={16} step={0.1}
