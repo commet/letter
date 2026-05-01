@@ -1021,14 +1021,15 @@ const defaultPhotos: PhotoEntry[] = [
   P("★ 마지막",                   5, `${S}/060.jpg`, D.last, "zoomIn", { eraIcon: "linked-rings" }),
 ];
 
-// Unified naming: place/time main + narrative subtitle + year. Same beat appears
-// in chatInterlude headers and journey map labels so all 3 layers tell one arc.
+// Narrative-first titles: tagline IS the title. Place names dropped — the story arc
+// (각자의 시작 → 함께의 시작 → 같이, 또 따로 → 바다 사이 → 여기, 오늘) carries the meaning;
+// "성모병원·분당·서울" felt incidental. Same titles repeat in chat headers and journey map.
 const defaultActTitles: Record<number, ActTitle> = {
-  1: { chapter: "Act I",   kr: "성모병원",     subtitle: "각자의 시작",         year: "1988 · 1993" },
-  2: { chapter: "Act II",  kr: "분당",         subtitle: "함께의 시작",         year: "1997 — " },
-  3: { chapter: "Act III", kr: "청춘",         subtitle: "같이, 또 따로",       year: "2008 — 2015" },
-  4: { chapter: "Act IV",  kr: "뉴욕 · 서울",  subtitle: "바다를 사이에 두고",  year: "2016 — 2025" },
-  5: { chapter: "Act V",   kr: "여기, 오늘",                                    year: "2026" },
+  1: { chapter: "Act I",   kr: "각자의 시작",         year: "1988 · 1993" },
+  2: { chapter: "Act II",  kr: "함께의 시작",         year: "1994 — " },
+  3: { chapter: "Act III", kr: "같이, 또 따로",       year: "2008 — 2015" },
+  4: { chapter: "Act IV",  kr: "바다를 사이에 두고",  year: "2016 — 2025" },
+  5: { chapter: "Act V",   kr: "여기, 오늘",          year: "2026" },
 };
 
 export const defaultConfig: VideoConfig = {
@@ -1083,7 +1084,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-1",
       afterPhotoIndex: -1,   // jm-1 여정 지도 직후, 성모병원 폴라로이드 페어 직전
-      header: "성모병원 · 각자의 시작 · 1988",
+      header: "각자의 시작 · 1988",
       messages: [
         {
           speaker: "예찬",
@@ -1101,7 +1102,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-2",
       afterPhotoIndex: 11,   // Act II 타이틀 + jm-2 여정 지도 직후, 경복궁 직전
-      header: "분당 · 함께의 시작 · 1997",
+      header: "함께의 시작 · 1994",
       messages: [
         {
           speaker: "예찬",
@@ -1119,7 +1120,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-3",
       afterPhotoIndex: 25,   // Act III 타이틀 + jm-3 여정 지도 직후, 여행 식사 1 직전
-      header: "청춘 · 같이, 또 따로 · 2008 — 2015",
+      header: "같이, 또 따로 · 2008 — 2015",
       // 이번에는 슬기가 먼저 — 서사는 추후 결정. 현재 둘 다 공백(... 인디케이터 표시됨).
       messages: [
         {

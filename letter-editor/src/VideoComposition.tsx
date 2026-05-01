@@ -1160,14 +1160,14 @@ const YearMarkerScene: React.FC<{
 
 // Journey map locations (5 points, shared across all Act maps).
 // Coordinates tuned for balanced layout on 1920×1080 with smooth catmull-rom curves.
-// `subtitle` is the narrative tagline — same one used in actTitles and chat headers
-// so the act card / chat header / journey map share one story arc.
+// Labels are the narrative arc — same wording as actTitles and chat headers.
+// `subtitle` field kept (rendered if non-empty) for future flexibility.
 const JOURNEY_LOCATIONS = [
-  { cx: 260,  cy: 490, label: "성모병원",    subtitle: "각자의 시작",        year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
-  { cx: 540,  cy: 660, label: "분당",        subtitle: "함께의 시작",        year: "1997 —",      anchor: "middle", lx:  0,  ly:  58 },
-  { cx: 880,  cy: 380, label: "청춘",        subtitle: "같이, 또 따로",      year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
-  { cx: 1300, cy: 590, label: "뉴욕 · 서울", subtitle: "바다를 사이에 두고", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
-  { cx: 1650, cy: 380, label: "여기, 오늘",  subtitle: "",                   year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
+  { cx: 260,  cy: 490, label: "각자의 시작",        subtitle: "", year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
+  { cx: 540,  cy: 660, label: "함께의 시작",        subtitle: "", year: "1994 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 880,  cy: 380, label: "같이, 또 따로",      subtitle: "", year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
+  { cx: 1300, cy: 590, label: "바다를 사이에 두고", subtitle: "", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
+  { cx: 1650, cy: 380, label: "여기, 오늘",         subtitle: "", year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
 ];
 
 // Smooth cubic beziers between consecutive points — catmull-rom-derived control points.
