@@ -40,6 +40,8 @@ import {
   getPhotoIndexAtFrame,
   getPhotoStartFrame,
   computeChatDurationSec,
+  computeSceneDurationSec,
+  repackCaptions,
 } from "./data";
 import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OUTLINE_COLOR, ARROW_PRESETS, type ArrowPreset } from "./arrow";
 import { loadConfig, saveConfig, uploadPhoto, aiEditConfig } from "./supabase";
@@ -1614,6 +1616,52 @@ const _legacyMaterializeCache = new WeakMap<object, CaptionEntry[]>();
 // purple top-right for 예찬). This covers legacy captions originally saved as `card` (the old
 // `+ 텍스트 추가` default), as `scrim-bottom`, or with no bg at all. Captions already in a
 // bubble are left untouched, so re-running is a no-op.
+// Auto-fit photo durationSec + caption fromT/toT on load. Legacy formula treated
+// two-speaker scenes as serial (over-allocating dur ~2x) and never re-shifted fromT
+// when dur grew, leaving captions stuck near the back. Recomputes via the
+// speaker-aware parallel-stream model. Idempotent — once applied, subsequent loads
+// are no-ops unless captions change.
+const migratePhotoCaptionTimings = (cfg: VideoConfig): VideoConfig => {
+  const photos = cfg.photos;
+  if (!photos || photos.length === 0) return cfg;
+  let changed = false;
+  const out = [...photos];
+  for (let i = 0; i < out.length; i++) {
+    const p = out[i];
+    const isLeft = !!p.splitPair && i + 1 < out.length;
+    const isRight = i > 0 && !!out[i - 1]?.splitPair;
+    if (isRight) continue;
+    const partner = isLeft ? out[i + 1] : null;
+    const ownCaps = p.captions ?? [];
+    const partnerCaps = partner?.captions ?? [];
+    const allCaps = [...ownCaps, ...partnerCaps];
+    if (allCaps.length === 0) continue;
+    const newDur = Math.round(computeSceneDurationSec(allCaps, p.durationSec) * 10) / 10;
+    const repacked = repackCaptions(allCaps, newDur);
+    const ownLen = ownCaps.length;
+    const newOwn = repacked.slice(0, ownLen);
+    const newPartner = repacked.slice(ownLen);
+    // Only mark changed if dur or any fromT/toT actually differs (>0.005 to ignore
+    // float noise) — keeps the migration silent for already-fitted photos.
+    const durDelta = Math.abs((p.durationSec ?? 0) - newDur) > 0.05;
+    const ownChanged = newOwn.some((c, j) => {
+      const o = ownCaps[j];
+      return Math.abs((c.fromT ?? 0) - (o.fromT ?? 0)) > 0.005
+        || Math.abs((c.toT ?? 1) - (o.toT ?? 1)) > 0.005;
+    });
+    const partnerChanged = newPartner.some((c, j) => {
+      const o = partnerCaps[j];
+      return Math.abs((c.fromT ?? 0) - (o.fromT ?? 0)) > 0.005
+        || Math.abs((c.toT ?? 1) - (o.toT ?? 1)) > 0.005;
+    });
+    if (!durDelta && !ownChanged && !partnerChanged) continue;
+    changed = true;
+    out[i] = { ...p, durationSec: newDur, captions: newOwn };
+    if (partner) out[i + 1] = { ...partner, captions: newPartner };
+  }
+  return changed ? { ...cfg, photos: out } : cfg;
+};
+
 // Auto-fit chat durationSec on load. Legacy default was 22s, which left long static
 // "frozen bubbles" tails on short/empty chats. Recomputes via computeChatDurationSec
 // (header pad + natural typing/hold sequence + tail pad). Idempotent — once applied
@@ -2310,9 +2358,11 @@ export const App: React.FC = () => {
         // Migrate legacy speaker captions → bubbles, and legacy trackBStartSec → trackBStartAct.
         // Pin remoteAppliedConfigRef to the pre-migration `saved` so the migrated config differs
         // from it; this allows the auto-save effect to fire and persist the migration.
-        const migrated = migrateChatAutoDuration(
-          migrateRemoveStaleChats(
-            migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved))
+        const migrated = migratePhotoCaptionTimings(
+          migrateChatAutoDuration(
+            migrateRemoveStaleChats(
+              migrateAudioToActAnchor(migrateLegacyCaptionsToBubbles(saved))
+            )
           )
         );
         remoteAppliedConfigRef.current = saved;
@@ -2392,50 +2442,63 @@ export const App: React.FC = () => {
 
   // ── updaters ────────────────────────────────
 
-  // Auto-fit photo durationSec to caption length so typing animation has enough room.
-  // Target ~3.75 Korean chars/sec typing (matches typedTextSlice's 8 fpc @ 30fps) so
-  // guests of all ages can follow live. Formula tuned to give comfortable hold + fade.
-  //   pair-left : dur ≥ 0.35 × max(L,R)자 + 4       (each caption gets ~43% of scene)
-  //   single    : dur ≥ 0.28 × max_cap_len자 + 4    (caption uses most of scene)
-  // Only BUMPS upward — if user has already set a longer dur we respect it, and we
-  // never shrink after caption is shortened/deleted (they can manually dial down).
-  const maxCaptionLen = (photo: PhotoEntry | undefined): number => {
-    if (!photo) return 0;
-    let m = 0;
-    for (const c of photo.captions ?? []) m = Math.max(m, (c.text ?? "").length);
-    if (photo.caption?.text) m = Math.max(m, photo.caption.text.length);
-    return m;
+  // Auto-fit photo durationSec AND repack caption fromT/toT based on actual content.
+  // Captions group by speaker (slki vs yechan etc) → each speaker forms a SEQUENTIAL
+  // stream while different speakers run in PARALLEL (left/right bubbles). Scene dur =
+  // max stream length + front/tail padding. Then every caption's fromT is re-derived
+  // so its stream's bubbles type back-to-back from the start; toT pinned to (dur-tail).
+  //
+  // This replaces the legacy "0.22 × totalLen + 4" formula which over-allocated for
+  // two-speaker scenes (treated parallel streams as serial), AND fixes stale fromTs
+  // that were captured at add-time and never re-shifted when dur grew.
+  //
+  // Always re-fits (replaces dur, never just bumps). User's manual dur input is
+  // overwritten on the next caption edit — they can shorten by trimming text instead.
+  const fitPhoto = (
+    p: PhotoEntry,
+    partner?: PhotoEntry | null,
+  ): { photo: PhotoEntry; partner?: PhotoEntry | null; sceneDur: number } => {
+    const ownCaps = p.captions ?? [];
+    const partnerCaps = partner?.captions ?? [];
+    const allCaps = [...ownCaps, ...partnerCaps];
+    if (allCaps.length === 0) {
+      return { photo: p, partner, sceneDur: p.durationSec };
+    }
+    const sceneDur = Math.round(computeSceneDurationSec(allCaps, p.durationSec) * 10) / 10;
+    // Repack across the combined list, then split back to each photo. Speakers
+    // group across photos so cross-photo streams (slki on LEFT photo, yechan on
+    // RIGHT photo) line up correctly.
+    const repacked = repackCaptions(allCaps, sceneDur);
+    const ownLen = ownCaps.length;
+    const newOwn = repacked.slice(0, ownLen);
+    const newPartner = repacked.slice(ownLen);
+    return {
+      photo: { ...p, durationSec: sceneDur, captions: newOwn },
+      partner: partner
+        ? { ...partner, captions: newPartner }
+        : partner,
+      sceneDur,
+    };
   };
 
   const withEnforcedDurs = useCallback((photos: PhotoEntry[]): PhotoEntry[] => {
-    return photos.map((p, i) => {
-      const isLeft  = !!p.splitPair && i + 1 < photos.length;
-      const isRight = i > 0 && !!photos[i - 1]?.splitPair;
-      if (isRight) return p; // right-of-pair dur is ignored by renderer
-      const ownMax = maxCaptionLen(p);
-      let requiredDur = 0;
+    const out = [...photos];
+    for (let i = 0; i < out.length; i++) {
+      const p = out[i];
+      const isLeft = !!p.splitPair && i + 1 < out.length;
+      const isRight = i > 0 && !!out[i - 1]?.splitPair;
+      if (isRight) continue; // right-of-pair dur is ignored; LEFT iteration handles its caps
       if (isLeft) {
-        // Stay-and-stack model: LEFT cap stays visible while RIGHT cap types in below.
-        // Both have to fit sequentially within the scene, so dur scales with SUM of caps.
-        const partnerSum = (photos[i + 1]?.captions ?? []).reduce(
-          (s, c) => s + (c.text ?? "").length, 0,
-        ) + ((photos[i + 1]?.caption?.text ?? "").length);
-        const ownSum = (p.captions ?? []).reduce(
-          (s, c) => s + (c.text ?? "").length, 0,
-        ) + ((p.caption?.text ?? "").length);
-        const totalLen = ownSum + partnerSum;
-        if (totalLen > 0) requiredDur = 0.22 * totalLen + 4;
-      } else if (ownMax > 0) {
-        const ownSum = (p.captions ?? []).reduce(
-          (s, c) => s + (c.text ?? "").length, 0,
-        ) + ((p.caption?.text ?? "").length);
-        requiredDur = 0.20 * ownSum + 4;
+        const right = out[i + 1] ?? null;
+        const fitted = fitPhoto(p, right);
+        out[i] = fitted.photo;
+        if (fitted.partner) out[i + 1] = fitted.partner;
+      } else {
+        const fitted = fitPhoto(p, null);
+        out[i] = fitted.photo;
       }
-      if (requiredDur > 0 && p.durationSec < requiredDur) {
-        return { ...p, durationSec: Math.round(requiredDur * 10) / 10 };
-      }
-      return p;
-    });
+    }
+    return out;
   }, []);
 
   const updatePhoto = useCallback((idx: number, patch: Partial<PhotoEntry>) => {

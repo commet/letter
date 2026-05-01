@@ -412,6 +412,82 @@ export const CHAT_TIMING = {
   minDurSec: 4.0,
 };
 
+// Photo-caption auto-fit timing. Speaker captions appear as left-side / right-side
+// bubbles that type in PARALLEL (different speakers can be visible simultaneously),
+// while two captions from the same speaker run SEQUENTIALLY (one stacks under the
+// previous). Old auto-fit summed all chars and treated everything as sequential,
+// which over-allocated dur by ~2x for two-speaker scenes. New model groups by
+// speaker → max stream length determines dur.
+//   head    : initial type-in offset before the first character renders
+//   rate    : frames per character (~3.75 Korean chars/sec at 30fps)
+//   buffer  : breath between two same-speaker bubbles
+//   frontPadSec: empty front before first caption types
+//   tailPadSec: tail breath after the last caption finishes typing
+export const PHOTO_CAPTION_TIMING = {
+  fps: 30,
+  head: 6,
+  rate: 8,
+  buffer: 18,
+  frontPadSec: 1.0,
+  tailPadSec: 1.5,
+  minDurSec: 4.0,
+};
+
+function captionsBySpeaker(caps: CaptionEntry[]): Map<string, CaptionEntry[]> {
+  const map = new Map<string, CaptionEntry[]>();
+  for (const cap of caps) {
+    const key = cap.speaker || "";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(cap);
+  }
+  return map;
+}
+
+function streamFrames(caps: CaptionEntry[]): number {
+  const t = PHOTO_CAPTION_TIMING;
+  let frames = 0;
+  for (let i = 0; i < caps.length; i++) {
+    frames += t.head + t.rate * (caps[i].text?.length ?? 0);
+    if (i < caps.length - 1) frames += t.buffer;
+  }
+  return frames;
+}
+
+// Natural scene duration for any caption set. For a pair scene, pass LEFT's caps +
+// RIGHT's caps combined (caller's responsibility) so cross-photo speaker grouping
+// works. For a single, just its own caps.
+export function computeSceneDurationSec(allCaps: CaptionEntry[], fallback?: number): number {
+  const t = PHOTO_CAPTION_TIMING;
+  if (allCaps.length === 0) return Math.max(t.minDurSec, fallback ?? t.minDurSec);
+  const streams = captionsBySpeaker(allCaps);
+  let maxFrames = 0;
+  for (const caps of streams.values()) maxFrames = Math.max(maxFrames, streamFrames(caps));
+  const naturalSec = maxFrames / t.fps;
+  return Math.max(t.minDurSec, t.frontPadSec + naturalSec + t.tailPadSec);
+}
+
+// Recompute fromT/toT for every caption so each speaker's bubbles type back-to-back
+// starting at frontPad, with toT = end-of-scene minus tailPad. Captions across
+// speakers run in parallel timelines — each gets its own cursor. Returns a new
+// array preserving input order; cap.speaker stays untouched.
+export function repackCaptions(caps: CaptionEntry[], durSec: number): CaptionEntry[] {
+  const t = PHOTO_CAPTION_TIMING;
+  if (caps.length === 0 || durSec <= 0) return caps;
+  const D = durSec * t.fps;
+  const startFrame = t.frontPadSec * t.fps;
+  const tailFrame = D - t.tailPadSec * t.fps;
+  const toTFrac = Math.max(0.6, Math.min(0.97, tailFrame / D));
+  const cursors = new Map<string, number>();
+  return caps.map((cap) => {
+    const key = cap.speaker || "";
+    const cursor = cursors.get(key) ?? startFrame;
+    const fromT = Math.max(0, Math.min(toTFrac - 0.02, cursor / D));
+    const advance = t.head + t.rate * (cap.text?.length ?? 0) + t.buffer;
+    cursors.set(key, cursor + advance);
+    return { ...cap, fromT, toT: toTFrac };
+  });
+}
+
 export function computeChatDurationSec(messages: ChatMessage[] | undefined): number {
   const t = CHAT_TIMING;
   const msgs = messages ?? [];
