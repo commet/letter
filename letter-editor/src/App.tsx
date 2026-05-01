@@ -3443,7 +3443,7 @@ export const App: React.FC = () => {
                           <div className="photo-controls">
                             <label className="slider-label">
                               <span>{photo.durationSec.toFixed(1)}초</span>
-                              <input type="range" className="slider" min={0.3} max={25} step={0.1} value={photo.durationSec}
+                              <input type="range" className="slider" min={0.3} max={40} step={0.1} value={photo.durationSec}
                                 onChange={(e) => updatePhoto(idx, { durationSec: parseFloat(e.target.value) })} />
                             </label>
                           </div>
