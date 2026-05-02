@@ -1082,6 +1082,7 @@ export const defaultConfig: VideoConfig = {
     crossfadeSec: 8,                     // A 페이드아웃 8s [3:00~3:08] — 길게 빼서 확 안 줄어들게
     trackBGapSec: 0,                     // 휴지 제거 — A 끝나자마자 B 합류
     trackBFadeInSec: 1,                  // B 페이드인 1s [3:08~3:09]
+    trackBOffsetSec: 1.0,                // bgm-2.mp3 첫 1초가 파일 자체 묵음 — 스킵해서 실제 음악부터 재생
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)
