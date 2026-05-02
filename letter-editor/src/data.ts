@@ -407,7 +407,7 @@ export type ChatInterlude = {
 // load-time migration that fixes legacy oversized durations.
 export const CHAT_TIMING = {
   fps: 30,
-  framesPerChar: 7,         // ~4.3 chars/sec — slightly faster than 3 cps; still readable for older guests
+  framesPerChar: 5,         // 6 chars/sec — natural chatting pace, still readable for older guests
   minTypingFrames: 18,
   holdFrames: 18,           // 0.6s rest after typing finishes (= inter-bubble gap)
   headerFadeSec: 1.0,
