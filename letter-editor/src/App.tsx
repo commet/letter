@@ -3735,36 +3735,6 @@ export const App: React.FC = () => {
                               </div>
                             </div>
                           ))}
-                          {/* Collage editor */}
-                          {(config.collages ?? []).filter((c) => c.afterPhotoIndex === idx).map((col) => (
-                            <div key={col.id} className="moment-editor" style={{ borderColor: "#7a3a5a" }}>
-                              <div className="moment-editor-header">
-                                <span className="moment-editor-label" style={{ color: "#b05a80" }}>폴라로이드 콜라주 ({col.slots.length}장)</span>
-                                <button className="btn-icon btn-icon--danger" onClick={() => deleteCollage(col.id)}>&#10005;</button>
-                              </div>
-                              {col.slots.map((slot, si) => (
-                                <div key={si} style={{ display: "flex", gap: 4 }}>
-                                  <input className="input input-sm" placeholder={`사진 ${si+1} URL`} value={slot.file}
-                                    onChange={(e) => updateCollageSlot(col.id, si, { file: e.target.value })}
-                                    style={{ flex: 3 }} />
-                                  <input className="input input-sm" placeholder="캡션" value={slot.caption ?? ""}
-                                    onChange={(e) => updateCollageSlot(col.id, si, { caption: e.target.value })}
-                                    style={{ flex: 2 }} />
-                                </div>
-                              ))}
-                              <textarea className="input input-sm" placeholder="하단 씬 캡션 (선택) — 박스 아래에 손글씨체로 표시"
-                                rows={2}
-                                value={col.caption ?? ""}
-                                onChange={(e) => updateCollage(col.id, { caption: e.target.value })}
-                                style={{ resize: "vertical", marginTop: 4 }} />
-                              <div style={{ display: "flex", gap: 4 }}>
-                                <input className="input input-sm" type="number" step="0.5" min="3" max="12"
-                                  value={col.durationSec ?? 6.0}
-                                  onChange={(e) => updateCollage(col.id, { durationSec: parseFloat(e.target.value) })}
-                                  style={{ flex: 1 }} title="지속(초)" />
-                              </div>
-                            </div>
-                          ))}
                           {/* Era icon selector for THIS photo */}
                           <div style={{ marginTop: 8, display: "flex", gap: 4, alignItems: "center" }}>
                             <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 60 }}>시대 심볼</span>
@@ -3881,6 +3851,11 @@ export const App: React.FC = () => {
                                     style={{ flex: 2 }} />
                                 </div>
                               ))}
+                              <textarea className="input input-sm" placeholder="하단 씬 캡션 (선택) — 박스 아래에 손글씨체로 표시"
+                                rows={2}
+                                value={col.caption ?? ""}
+                                onChange={(e) => updateCollage(col.id, { caption: e.target.value })}
+                                style={{ resize: "vertical", marginTop: 4 }} />
                               <div style={{ display: "flex", gap: 4 }}>
                                 <input className="input input-sm" type="number" step="0.5" min="3" max="12"
                                   value={col.durationSec ?? 6.0}
