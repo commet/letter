@@ -2691,13 +2691,11 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     }
     if (audio?.trackB) {
       const volB = (f: number) => {
-        // Sequence-local frame: f=0 is when track B begins (= transitionF + gapF).
-        // Smoothstep curve sin²(t·π/2) = (1-cos(π·t))/2 — zero slope at t=0 so
-        // the rise is barely perceptible at first, avoiding the "sudden onset"
-        // of a plain sinCurve which has slope π/2 at t=0.
-        const t = Math.min(1, f / bFadeInF);
-        const s = sinCurve(t);
-        const fadeIn = s * s;
+        // Linear ramp — earlier s² smoothstep made B inaudible for the first half
+        // of the fade window (e.g. 14% volume at t=0.25), creating a perceived
+        // silence even with gap=0. Linear keeps B meaningfully audible from the
+        // first frame at the cost of a slightly more abrupt onset.
+        const fadeIn = Math.min(1, f / bFadeInF);
         const remain = trackBLocalDur - f;
         const fadeOut = Math.min(1, remain / fadeOutF);
         return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
