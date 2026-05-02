@@ -1213,23 +1213,26 @@ const JourneyMapScene: React.FC<{
   const presentEmphasizeStart = hasPresentLeg ? 0.72 : 0.10;
   const presentEmphasizeEnd   = hasPresentLeg ? 0.85 : 0.28;
 
-  // Opacity lerps from the "pre" state (futureOp for Act 2+, 0 for Act 1) to full baseFade.
-  // For Act 1 the emphasis window (0.10→0.28) overlaps the base fade window, so we use
-  // a shorter 4-stop ramp. For Act 2+ the emphasis lives far later so we use the 6-stop ramp.
-  const presentPreOp = hasPresentLeg ? futureOp : 0;
-  const presentOp = hasPresentLeg
+  // Present location renders in two phases for Act 2+:
+  //   • previewOp: future-styled small dot during the pre-emphasis window so it
+  //     reads as part of the road ahead (matching other future dots).
+  //   • emphasizedOp: large halo+ring crossfades in during the emphasis window.
+  // Previously a single large rendering held at futureOp opacity from 0.22 onward,
+  // so the destination "popped" visually before the plane even took off.
+  const previewOp = hasPresentLeg
     ? interpolate(
         t,
-        [0.08, 0.22, presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
-        [0, presentPreOp, presentPreOp, baseFade, baseFade, 0],
+        [0.08, 0.22, presentEmphasizeStart, presentEmphasizeEnd],
+        [0, futureOp, futureOp, 0],
         { extrapolateRight: "clamp" },
       )
-    : interpolate(
-        t,
-        [presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
-        [0, baseFade, baseFade, 0],
-        { extrapolateRight: "clamp" },
-      );
+    : 0;
+  const emphasizedOp = interpolate(
+    t,
+    [presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
+    [0, baseFade, baseFade, 0],
+    { extrapolateRight: "clamp" },
+  );
 
   // Scale grows into emphasis
   const presentScale = interpolate(
@@ -1363,9 +1366,32 @@ const JourneyMapScene: React.FC<{
           );
         })}
 
-        {/* Present dot — emphasized, grows, pulses.
-              Label / subtitle / year cluster is pushed further from the dot than past/future
-              state so the enlarged glyphs clear the halo (r≈29 post-scale). */}
+        {/* Present location.
+              Pre-emphasis (Act 2+ only): future-styled small dot, blends into the
+              road ahead so the destination doesn't "pop" before the plane lifts off.
+              Emphasis: large halo+ring with enlarged label/year cluster pushed away
+              from the dot so glyphs clear the halo (r≈29 post-scale). */}
+        {hasPresentLeg && previewOp > 0 && (() => {
+          const hasSub = !!presentLoc.subtitle;
+          const yearOffset = hasSub ? 36 : 19;
+          return (
+            <g opacity={previewOp}>
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={6} stroke={INK} fill="none" strokeWidth={1.2} />
+              <circle cx={presentLoc.cx} cy={presentLoc.cy} r={3.5} fill={INK} />
+              <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly}
+                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                    fontFamily="'Nanum Pen Script', cursive" fontSize={30} fill={INK}>{presentLoc.label}</text>
+              {hasSub && (
+                <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly + 19}
+                      textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                      fontFamily={SERIF_KR} fontStyle="italic" fontSize={14} fill="rgba(58,42,24,0.72)">{presentLoc.subtitle}</text>
+              )}
+              <text x={presentLoc.cx + presentLoc.lx} y={presentLoc.cy + presentLoc.ly + yearOffset}
+                    textAnchor={presentLoc.anchor as "start" | "middle" | "end"}
+                    fontFamily="'EB Garamond', serif" fontStyle="italic" fontSize={15} fill="#3a2f22">{presentLoc.year}</text>
+            </g>
+          );
+        })()}
         {(() => {
           const dir = presentLoc.ly < 0 ? -1 : 1;
           const hasSub = !!presentLoc.subtitle;
@@ -1373,7 +1399,7 @@ const JourneyMapScene: React.FC<{
           const subtitleY = labelY + 32;
           const yearY  = hasSub ? subtitleY + 32 : labelY + 40;
           return (
-            <g opacity={Math.min(1, presentOp * pulseOp)}
+            <g opacity={Math.min(1, emphasizedOp * pulseOp)}
                transform={`translate(${presentLoc.cx} ${presentLoc.cy}) scale(${presentScale * pulse}) translate(${-presentLoc.cx} ${-presentLoc.cy})`}>
               <circle cx={presentLoc.cx} cy={presentLoc.cy} r={26} fill={INK} opacity={0.16} />
               <circle cx={presentLoc.cx} cy={presentLoc.cy} r={13} stroke={INK} fill="none" strokeWidth={2.6} />
@@ -1652,10 +1678,10 @@ const ChatInterludeScene: React.FC<{
               {/* Speaker label */}
               <div style={{
                 fontFamily: "'Noto Sans KR', 'Pretendard', sans-serif",
-                fontWeight: 500,
-                fontSize: 22,
+                fontWeight: 600,
+                fontSize: 32,
                 color: INK_SOFT,
-                marginBottom: 8,
+                marginBottom: 10,
                 padding: isRight ? "0 14px 0 0" : "0 0 0 14px",
                 letterSpacing: "0.04em",
               }}>

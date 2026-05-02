@@ -433,7 +433,7 @@ export const PHOTO_CAPTION_TIMING = {
   rate: 8,
   buffer: 18,
   frontPadSec: 1.0,
-  tailPadSec: 1.5,
+  tailPadSec: 2.5,           // 마지막 자막/말풍선 후 사진이 머무는 여운 — 충분히 읽도록 1s 추가
   minDurSec: 4.0,
 };
 
