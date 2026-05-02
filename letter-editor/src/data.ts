@@ -1078,10 +1078,10 @@ export const defaultConfig: VideoConfig = {
   audio: {
     trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26) — Act I
     trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49) — Act II 분당부터 끝까지
-    trackBStartSec: 172,                 // 2:52 = A 페이드아웃 종료 (원본 2:40 대비 12s 더 재생)
-    crossfadeSec: 4,                     // A 페이드아웃 4s [2:48~2:52]
-    trackBGapSec: 1.2,                   // 2:52~2:53.2 살짝 휴지 (호흡 한 번)
-    trackBFadeInSec: 5,                  // B 페이드인 5s [2:53.2~2:58.2] — smoothstep 곡선으로 잔잔하게 진입
+    trackBStartSec: 178,                 // 2:58 = A 페이드아웃 종료 (원본 2:40 대비 18s 더 재생)
+    crossfadeSec: 8,                     // A 페이드아웃 8s [2:50~2:58] — 길게 빼서 확 안 줄어들게
+    trackBGapSec: 1.2,                   // 2:58~2:59.2 살짝 휴지 (호흡 한 번)
+    trackBFadeInSec: 5,                  // B 페이드인 5s [2:59.2~3:04.2] — smoothstep 곡선으로 잔잔하게 진입
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)
