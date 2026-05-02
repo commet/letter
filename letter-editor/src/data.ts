@@ -436,6 +436,13 @@ export const PHOTO_CAPTION_TIMING = {
   minDurSec: 4.0,
 };
 
+// True if the cap is a speech-bubble (color-coded by speaker, instant-display).
+// Exported so callers can decide between bubble-aware and typing-based dur logic.
+export function isBubbleCap(c: CaptionEntry): boolean {
+  const k = resolveCaptionBgKind(c);
+  return k === "bubble-yellow" || k === "bubble-purple";
+}
+
 function captionsBySpeaker(caps: CaptionEntry[]): Map<string, CaptionEntry[]> {
   const map = new Map<string, CaptionEntry[]>();
   for (const cap of caps) {
@@ -459,9 +466,28 @@ function streamFrames(caps: CaptionEntry[]): number {
 // Natural scene duration for any caption set. For a pair scene, pass LEFT's caps +
 // RIGHT's caps combined (caller's responsibility) so cross-photo speaker grouping
 // works. For a single, just its own caps.
+//
+// Bubble-aware: speech bubbles (슬기/예찬) appear instantly via enrichCaptionsForRender
+// — typing-speed × char-count is irrelevant. Allocating dur via streamFrames over-shoots
+// massively (e.g. 3 bubbles → 23s when the actual chat needs ~10s, leaving 13s of dead
+// air after the last bubble). For bubble-only scenes we use:
+//   head(1s) + (N-1) × maxGap(3s) + tail(2s)
+// which mirrors enrichCaptionsForRender's distribution math (headFrames=30, maxGap=90).
+// Mixed (bubble + typing) scenes still fall through to the typing formula since the
+// typing caption sets the ceiling.
 export function computeSceneDurationSec(allCaps: CaptionEntry[], fallback?: number): number {
   const t = PHOTO_CAPTION_TIMING;
   if (allCaps.length === 0) return Math.max(t.minDurSec, fallback ?? t.minDurSec);
+
+  if (allCaps.every(isBubbleCap)) {
+    const N = allCaps.length;
+    const headSec = 1.0;     // matches enrich's headFrames = 30 @ 30fps
+    const maxGapSec = 3.0;   // matches enrich's maxGap = 90 @ 30fps
+    const tailSec = 2.0;     // comfortable read time after last bubble
+    const naturalSec = headSec + Math.max(0, N - 1) * maxGapSec + tailSec;
+    return Math.max(t.minDurSec, naturalSec);
+  }
+
   const streams = captionsBySpeaker(allCaps);
   let maxFrames = 0;
   for (const caps of streams.values()) maxFrames = Math.max(maxFrames, streamFrames(caps));

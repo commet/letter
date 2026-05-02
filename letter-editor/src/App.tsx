@@ -41,6 +41,7 @@ import {
   getPhotoStartFrame,
   computeChatDurationSec,
   computeSceneDurationSec,
+  isBubbleCap,
   repackCaptions,
 } from "./data";
 import { buildArrowPath, arrowStroke, arrowHeadPath, arrowNeedsOutline, ARROW_OUTLINE_COLOR, ARROW_PRESETS, type ArrowPreset } from "./arrow";
@@ -1636,9 +1637,13 @@ const migratePhotoCaptionTimings = (cfg: VideoConfig): VideoConfig => {
     const partnerCaps = partner?.captions ?? [];
     const allCaps = [...ownCaps, ...partnerCaps];
     if (allCaps.length === 0) continue;
-    // Bump-up only — preserve user-set extensions (matches fitPhoto policy).
+    // Bubble-only: snap to natural (typing-formula's stale 23s+ values get clamped
+    // back to ~9s). Typing/mixed: bump-up only (preserve emotional holds).
+    const allBubble = allCaps.every(isBubbleCap);
     const naturalDur = computeSceneDurationSec(allCaps, p.durationSec);
-    const newDur = Math.round(Math.max(p.durationSec ?? 0, naturalDur) * 10) / 10;
+    const newDur = Math.round(
+      (allBubble ? naturalDur : Math.max(p.durationSec ?? 0, naturalDur)) * 10
+    ) / 10;
     const repacked = repackCaptions(allCaps, newDur);
     const ownLen = ownCaps.length;
     const newOwn = repacked.slice(0, ownLen);
@@ -2469,11 +2474,17 @@ export const App: React.FC = () => {
     if (allCaps.length === 0) {
       return { photo: p, partner, sceneDur: p.durationSec };
     }
-    // Bump-up only: respect user-set extensions (e.g., for emotional hold on the first
-    // photo) — never shrink below current dur. Auto-fit only kicks in when content
-    // exceeds available time.
+    // For bubble-only scenes, SNAP to the natural dur (not max). The old typing-based
+    // formula over-allocated by ~2-3× for bubbles (chars × rate is irrelevant when
+    // bubbles appear instantly), leaving long dead air after the last bubble. Snap-to-
+    // natural fixes that even when current dur was previously bumped up by the old
+    // formula. For typing/mixed scenes, keep bump-up-only behavior so a user-set
+    // emotional hold isn't clipped.
+    const allBubble = allCaps.every(isBubbleCap);
     const naturalDur = computeSceneDurationSec(allCaps, p.durationSec);
-    const sceneDur = Math.round(Math.max(p.durationSec ?? 0, naturalDur) * 10) / 10;
+    const sceneDur = Math.round(
+      (allBubble ? naturalDur : Math.max(p.durationSec ?? 0, naturalDur)) * 10
+    ) / 10;
     // Repack across the combined list, then split back to each photo. Speakers
     // group across photos so cross-photo streams (slki on LEFT photo, yechan on
     // RIGHT photo) line up correctly.
