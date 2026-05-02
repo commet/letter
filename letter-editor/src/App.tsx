@@ -1640,7 +1640,11 @@ const migratePhotoCaptionTimings = (cfg: VideoConfig): VideoConfig => {
     // Bubble-only: snap to natural (typing-formula's stale 23s+ values get clamped
     // back to ~9s). Typing/mixed: bump-up only (preserve emotional holds).
     const allBubble = allCaps.every(isBubbleCap);
-    const naturalDur = computeSceneDurationSec(allCaps, p.durationSec);
+    // Act 1 (애기 사진) needs longer linger after the bubble — sub-1-yr-old photos
+    // invite "감탄" that doesn't fit the standard caption tail. +1.5s only on Act 1
+    // photos that have captions (gated by the empty-allCaps continue above).
+    const actBonusSec = p.act === 1 ? 1.5 : 0;
+    const naturalDur = computeSceneDurationSec(allCaps, p.durationSec) + actBonusSec;
     const newDur = Math.round(
       (allBubble ? naturalDur : Math.max(p.durationSec ?? 0, naturalDur)) * 10
     ) / 10;
