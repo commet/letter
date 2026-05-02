@@ -2660,9 +2660,12 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     if (audio?.trackB) {
       const volB = (f: number) => {
         // Sequence-local frame: f=0 is when track B begins (= transitionF + gapF).
-        // Fade in over bFadeInF (independent of A's xfF) using sinCurve so the rise
-        // is gentle even when A's fade-out was short.
-        const fadeIn = sinCurve(Math.min(1, f / bFadeInF));
+        // Smoothstep curve sin²(t·π/2) = (1-cos(π·t))/2 — zero slope at t=0 so
+        // the rise is barely perceptible at first, avoiding the "sudden onset"
+        // of a plain sinCurve which has slope π/2 at t=0.
+        const t = Math.min(1, f / bFadeInF);
+        const s = sinCurve(t);
+        const fadeIn = s * s;
         const remain = trackBLocalDur - f;
         const fadeOut = Math.min(1, remain / fadeOutF);
         return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
