@@ -1080,7 +1080,7 @@ export const defaultConfig: VideoConfig = {
     trackBStartSec: 160,                 // 2:40 = A 페이드아웃 종료 (단조 진입 직전)
     crossfadeSec: 4,                     // A 페이드아웃 4s [2:36~2:40]
     trackBGapSec: 0.8,                   // 2:40~2:40.8 짧은 정적 (분리감만 살짝)
-    trackBFadeInSec: 8,                  // B 페이드인 8s [2:42~2:50] — 천천히 부드럽게 진입
+    trackBFadeInSec: 5,                  // B 페이드인 5s [2:40.8~2:45.8] — 자연스럽게 빠르게 도달
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)
