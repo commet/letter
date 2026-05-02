@@ -3139,12 +3139,11 @@ export const App: React.FC = () => {
                   const fmt = (sec: number) => {
                     const m = Math.floor(sec / 60);
                     const s = sec - m * 60;
-                    // Preserve a single fractional digit when present so 167.5 displays
-                    // as "2:47.5" instead of being rounded to "2:48".
-                    const sStr = Number.isInteger(s)
-                      ? s.toString().padStart(2, "0")
-                      : s.toFixed(1).padStart(4, "0");
-                    return `${m}:${sStr}`;
+                    // Preserve fractional digits (up to 2) when present, so 167.65 displays
+                    // as "2:47.65" not "2:48". Trailing zeros stripped: 167.5 → "2:47.5".
+                    const fixed = s.toFixed(2).replace(/\.?0+$/, "");
+                    const [whole, frac] = fixed.split(".");
+                    return `${m}:${whole.padStart(2, "0")}${frac ? "." + frac : ""}`;
                   };
                   // Parse "m:ss[.f]" or plain seconds. Also accepts "m:sss" 3-digit
                   // shorthand where the last digit is treated as tenths (e.g. "2:475"
