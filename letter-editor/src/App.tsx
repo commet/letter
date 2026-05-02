@@ -1688,28 +1688,10 @@ const migrateChatAutoDuration = (cfg: VideoConfig): VideoConfig => {
   return changed ? { ...cfg, chatInterludes: next } : cfg;
 };
 
-// Hard-remove stale "유학/카투사" chats (legacy chat-4 + a duplicate with random id).
-// They were deleted from defaults but lingered in Supabase saved configs and kept
-// surfacing whenever a manual delete failed to persist (debounce / peer broadcast /
-// etc). Match by id, header substring, OR characteristic message text — the duplicate
-// has neither matching id nor header, so message-text detection is the catch-all.
-const STALE_CHAT_IDS = new Set(["chat-4", "ci1777534138021"]);
-const STALE_CHAT_HEADER_SUBSTRS = ["바다를 사이에 두고"];
-const STALE_CHAT_MESSAGE_SUBSTRS = ["뉴욕으로 유학을 가게 됐지", "카투사 입대로 한국 속의 미국"];
-const migrateRemoveStaleChats = (cfg: VideoConfig): VideoConfig => {
-  const chats = cfg.chatInterludes ?? [];
-  const cleaned = chats.filter((c) => {
-    if (STALE_CHAT_IDS.has(c.id)) return false;
-    if (c.header && STALE_CHAT_HEADER_SUBSTRS.some((s) => c.header!.includes(s))) return false;
-    const msgsHit = (c.messages ?? []).some((m) =>
-      STALE_CHAT_MESSAGE_SUBSTRS.some((s) => (m.text ?? "").includes(s))
-    );
-    if (msgsHit) return false;
-    return true;
-  });
-  if (cleaned.length === chats.length) return cfg;
-  return { ...cfg, chatInterludes: cleaned };
-};
+// (제거됨) chat-4 / "바다를 사이에 두고" / "유학·카투사" 메시지를 매 로드마다 자동 삭제하던
+// migrateRemoveStaleChats. 사용자가 chat-4 (Act IV 카투사·뉴욕 대사) 복구를 요청해서
+// 이 stale-killer 자체가 버그가 됨. 호출 사이트도 같이 제거. DB가 authoritative.
+const migrateRemoveStaleChats = (cfg: VideoConfig): VideoConfig => cfg;
 
 // Migrate BGM track-B anchor to an ABSOLUTE timestamp (trackBStartSec). Earlier
 // versions used trackBStartAct: 2 (anchored to Act II title-card frame), but as
