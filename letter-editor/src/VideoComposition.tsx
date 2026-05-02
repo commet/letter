@@ -2586,7 +2586,6 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     const fadeInF  = Math.max(1, Math.round((audio?.fadeInSec  ?? 1.5) * fps));
     const fadeOutF = Math.max(1, Math.round((audio?.fadeOutSec ?? 2.5) * fps));
     const xfF      = Math.max(1, Math.round((audio?.crossfadeSec ?? 6) * fps));
-    const xfHalf   = Math.round(xfF / 2);
     // If trackBStartAct is set, anchor the crossfade center to the Act's title card
     // start frame in the timeline (sequence-of-items minus crossfade overlap).
     // trackBStartActOffsetSec lets the user push the transition past the anchor
@@ -2605,32 +2604,37 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
         actAnchorF += Math.round(audio.trackBStartActOffsetSec * fps);
       }
     }
+    // transitionF is now the moment Track A finishes fading out AND Track B begins
+    // fading in — sequential handoff, NOT a center-aligned crossfade. The earlier
+    // equal-power crossfade made both tracks audible at ~70% during the overlap which
+    // sounded muddy; the new model keeps only one track playing at any moment with a
+    // brief silence-meeting point at transitionF. crossfadeSec is now the fade
+    // duration (applied identically to A's fade-out and B's fade-in).
     const transitionF = actAnchorF != null
       ? actAnchorF
       : audio?.trackBStartSec != null
         ? Math.round(audio.trackBStartSec * fps)
         : Math.round(totalF * 0.65);
-    const trackBSeqStart = Math.max(0, transitionF - xfHalf);
+    const trackBSeqStart = transitionF;
     const trackBLocalDur = Math.max(1, totalF - trackBSeqStart);
-    // Equal-power crossfade curves keep perceived combined loudness ~constant
-    // through the transition (linear crossfade dips ~30% at midpoint, sounds odd).
-    // cosCurve: 1 → 0  (track A fading out)
-    // sinCurve: 0 → 1  (track B fading in)
+    // Equal-power curves still used so each individual fade has constant perceived
+    // loudness — but A and B no longer run concurrently, so there's no double-track
+    // dip at the midpoint to compensate for.
     const cosCurve = (t: number) => Math.cos(Math.max(0, Math.min(1, t)) * Math.PI / 2);
     const sinCurve = (t: number) => Math.sin(Math.max(0, Math.min(1, t)) * Math.PI / 2);
 
     if (audio?.trackA) {
-      const xfStart = transitionF - xfHalf;
-      const xfEnd   = transitionF + xfHalf;
-      const aSeqDur = audio.trackB ? Math.min(totalF, xfEnd) : totalF;
+      const aFadeStart = Math.max(0, transitionF - xfF);
+      const aSeqDur = audio.trackB ? Math.min(totalF, transitionF) : totalF;
       const volA = (f: number) => {
         const fadeIn = Math.min(1, f / fadeInF);
         let fadeOut = 1;
         if (audio.trackB) {
-          if (f >= xfEnd) fadeOut = 0;
-          else if (f >= xfStart) fadeOut = cosCurve((f - xfStart) / Math.max(1, xfEnd - xfStart));
+          if (f >= transitionF) fadeOut = 0;
+          else if (f >= aFadeStart) {
+            fadeOut = cosCurve((f - aFadeStart) / Math.max(1, transitionF - aFadeStart));
+          }
         } else {
-          // No track B → fade out at video end
           const remain = totalF - f;
           fadeOut = Math.min(1, remain / fadeOutF);
         }
@@ -2648,8 +2652,9 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     }
     if (audio?.trackB) {
       const volB = (f: number) => {
-        // Equal-power fade in over the crossfade window starting at sequence frame 0.
-        const fadeIn = sinCurve(f / xfF);
+        // Sequence-local frame: f=0 is when track B begins playing (= transitionF).
+        // Fade in over xfF frames using sinCurve so the rise mirrors A's cos descent.
+        const fadeIn = sinCurve(Math.min(1, f / xfF));
         const remain = trackBLocalDur - f;
         const fadeOut = Math.min(1, remain / fadeOutF);
         return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
