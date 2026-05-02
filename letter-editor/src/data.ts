@@ -1061,7 +1061,7 @@ const defaultPhotos: PhotoEntry[] = [
 const defaultActTitles: Record<number, ActTitle> = {
   1: { chapter: "Act I",   kr: "각자의 시작",         year: "1988 · 1993" },
   2: { chapter: "Act II",  kr: "함께의 시작",         year: "1994 — " },
-  3: { chapter: "Act III", kr: "같이, 또 따로",       year: "2008 — 2015" },
+  3: { chapter: "Act III", kr: "같이, 또 따로",       year: "2008 —" },
   4: { chapter: "Act IV",  kr: "바다를 사이에 두고",  year: "2016 — 2025" },
   5: { chapter: "Act V",   kr: "여기, 오늘",          year: "2026" },
 };
@@ -1156,7 +1156,7 @@ export const defaultConfig: VideoConfig = {
     {
       id: "chat-3",
       afterPhotoIndex: 25,   // Act III 타이틀 + jm-3 여정 지도 직후, 여행 식사 1 직전
-      header: "같이, 또 따로 · 2008 — 2015",
+      header: "같이, 또 따로 · 2008 —",
       // 이번에는 슬기가 먼저 — 서사는 추후 결정. 현재 둘 다 공백(... 인디케이터 표시됨).
       messages: [
         {

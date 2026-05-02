@@ -1165,7 +1165,7 @@ const YearMarkerScene: React.FC<{
 const JOURNEY_LOCATIONS = [
   { cx: 260,  cy: 490, label: "각자의 시작",        subtitle: "", year: "1988 · 1993", anchor: "start",  lx: -8,  ly: -34 },
   { cx: 540,  cy: 660, label: "함께의 시작",        subtitle: "", year: "1994 —",      anchor: "middle", lx:  0,  ly:  58 },
-  { cx: 880,  cy: 380, label: "같이, 또 따로",      subtitle: "", year: "2010 —",      anchor: "middle", lx:  0,  ly: -34 },
+  { cx: 880,  cy: 380, label: "같이, 또 따로",      subtitle: "", year: "2008 —",      anchor: "middle", lx:  0,  ly: -34 },
   { cx: 1300, cy: 590, label: "바다를 사이에 두고", subtitle: "", year: "2016 —",      anchor: "middle", lx:  0,  ly:  58 },
   { cx: 1650, cy: 380, label: "여기, 오늘",         subtitle: "", year: "2026",        anchor: "end",    lx:  8,  ly: -34 },
 ];
