@@ -3137,18 +3137,34 @@ export const App: React.FC = () => {
                     setConfig((c) => ({ ...c, audio: { ...(c.audio ?? {}), ...patch } }));
                   const totalSec = Math.max(1, Math.round(totalFrames / config.fps));
                   const fmt = (sec: number) => {
-                    const m = Math.floor(sec / 60), s = Math.round(sec % 60);
-                    return `${m}:${s.toString().padStart(2, "0")}`;
+                    const m = Math.floor(sec / 60);
+                    const s = sec - m * 60;
+                    // Preserve a single fractional digit when present so 167.5 displays
+                    // as "2:47.5" instead of being rounded to "2:48".
+                    const sStr = Number.isInteger(s)
+                      ? s.toString().padStart(2, "0")
+                      : s.toFixed(1).padStart(4, "0");
+                    return `${m}:${sStr}`;
                   };
-                  // Parse "m:ss[.f]" or plain seconds. Returns null on invalid input.
+                  // Parse "m:ss[.f]" or plain seconds. Also accepts "m:sss" 3-digit
+                  // shorthand where the last digit is treated as tenths (e.g. "2:475"
+                  // → 167.5). Returns null on invalid input.
                   const parseTime = (raw: string): number | null => {
                     const t = raw.trim();
                     if (!t) return null;
                     if (t.includes(":")) {
-                      const [mStr, sStr] = t.split(":");
+                      const [mStr, sStrRaw] = t.split(":");
+                      const sStr = sStrRaw.trim();
                       const m = parseInt(mStr, 10);
+                      if (isNaN(m)) return null;
+                      // Shorthand: 3+ digit integer seconds where the value would be
+                      // out-of-range (≥60) → interpret last digit as tenths.
+                      if (/^\d{3,}$/.test(sStr) && parseInt(sStr, 10) >= 60) {
+                        const decoded = parseFloat(sStr.slice(0, -1) + "." + sStr.slice(-1));
+                        return m * 60 + decoded;
+                      }
                       const s = parseFloat(sStr);
-                      if (isNaN(m) || isNaN(s)) return null;
+                      if (isNaN(s)) return null;
                       return m * 60 + s;
                     }
                     const v = parseFloat(t);
@@ -3208,7 +3224,7 @@ export const App: React.FC = () => {
                             />
                             <span style={{ opacity: 0.6 }}>({(a.trackBStartSec ?? 250).toFixed(0)}s / {fmt(totalSec)})</span>
                           </span>
-                          <input type="range" className="slider" min={0} max={totalSec} step={1}
+                          <input type="range" className="slider" min={0} max={totalSec} step={0.5}
                             value={a.trackBStartSec ?? 250}
                             onChange={(e) => updateAudio({ trackBStartSec: parseFloat(e.target.value) })} />
                         </label>
