@@ -2527,15 +2527,17 @@ const EndingScene: React.FC<{
         {ending.date}
       </div>
 
-      {/* Thank-you message */}
+      {/* Thank-you message — Gowun Batang(둥근 명조)으로 정제된 결, 사이즈는 절제. */}
       <div style={{
         position: "absolute",
         left: 0, right: 0, top: "68%",
         textAlign: "center",
-        fontFamily: SERIF_KR,
-        fontSize: 54,
-        letterSpacing: 6,
-        color: onPaper ? "rgba(58,42,24,0.8)" : "rgba(255,255,255,0.8)",
+        fontFamily: "'Gowun Batang', 'Nanum Myeongjo', 'Noto Serif KR', serif",
+        fontWeight: 400,
+        fontSize: 40,
+        letterSpacing: "0.10em",
+        lineHeight: 1.5,
+        color: onPaper ? "rgba(58,42,24,0.78)" : "rgba(255,255,255,0.82)",
         opacity: Math.min(fadeAt(5.8), fadeOut),
       }}>
         {ending.message}
