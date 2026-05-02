@@ -1080,8 +1080,8 @@ export const defaultConfig: VideoConfig = {
     trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49) — Act II 분당부터 끝까지
     trackBStartSec: 188,                 // 3:08 = A 페이드아웃 종료 (페이드아웃 시작 2:55 → 3:00)
     crossfadeSec: 8,                     // A 페이드아웃 8s [3:00~3:08] — 길게 빼서 확 안 줄어들게
-    trackBGapSec: 1.5,                   // 3:08~3:09.5 휴지 (호흡 한 박자)
-    trackBFadeInSec: 6,                  // B 페이드인 6s [3:09.5~3:15.5] — smoothstep으로 자연스럽게 합류
+    trackBGapSec: 0.5,                   // 3:08~3:08.5 휴지 (was 1.5 — 체감 휴지가 길어 단축)
+    trackBFadeInSec: 3,                  // B 페이드인 3s [3:08.5~3:11.5] (was 6 — s² 곡선이라 6초는 체감상 더 김)
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)
