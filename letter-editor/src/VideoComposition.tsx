@@ -1199,8 +1199,14 @@ const JourneyMapScene: React.FC<{
   const subOp   = interpolate(t, [0.06, 0.16, 0.92, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
   const capOp   = interpolate(t, [0.72, 0.85, 0.95, 1.0], [0, 0.85, 0.85, 0], { extrapolateRight: "clamp" });
 
-  // Base fade-in (shared) and global fade-out
-  const baseFade = interpolate(t, [0.08, 0.22, 0.92, 1.0], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  // Base fade-in (shared) and global fade-out.
+  // extrapolateLeft: "clamp" is critical — without it, baseFade goes NEGATIVE for
+  // t<0.08 (default extrapolateLeft is "extend"). That negative leaks into derived
+  // values like futureOp/emphasizedOp and, through their own interpolate calls with
+  // a left-extending extrapolation, flips sign and produces POSITIVE extrapolated
+  // opacity at frame 0 — which renders as a single-frame flash of the emphasized
+  // present-step graphic before the proper fade-in begins.
+  const baseFade = interpolate(t, [0.08, 0.22, 0.92, 1.0], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   // Past: solid (already traveled, confidently drawn)
   const pastOp   = baseFade * 0.82;
@@ -1224,14 +1230,14 @@ const JourneyMapScene: React.FC<{
         t,
         [0.08, 0.22, presentEmphasizeStart, presentEmphasizeEnd],
         [0, futureOp, futureOp, 0],
-        { extrapolateRight: "clamp" },
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
       )
     : 0;
   const emphasizedOp = interpolate(
     t,
     [presentEmphasizeStart, presentEmphasizeEnd, 0.92, 1.0],
     [0, baseFade, baseFade, 0],
-    { extrapolateRight: "clamp" },
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
 
   // Scale grows into emphasis
