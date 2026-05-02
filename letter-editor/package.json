@@ -19,6 +19,7 @@
   "devDependencies": {
     "@remotion/bundler": "^4.0.456",
     "@remotion/cli": "^4.0.456",
+    "@remotion/google-fonts": "^4.0.456",
     "@remotion/renderer": "^4.0.456",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
