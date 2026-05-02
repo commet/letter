@@ -842,7 +842,7 @@ const TitleCardScene: React.FC<{
             WebkitMaskImage: illuMask,
             maskImage: illuMask,
           }}>
-            <Img src={`/assets/acts/act-${act}.svg`} style={{
+            <Img src={staticFile(`assets/acts/act-${act}.svg`)} style={{
               width: "100%", height: "100%", objectFit: "contain",
               display: "block",
             }} />
@@ -2156,7 +2156,7 @@ const SplitScene: React.FC<{
     // Use Claude Design P0-3 real polaroid paper texture
     const polaroidBase: React.CSSProperties = {
       backgroundColor: "white",
-      backgroundImage: "url('/assets/polaroid/polaroid-paper.png')",
+      backgroundImage: `url('${staticFile("assets/polaroid/polaroid-paper.png")}')`,
       backgroundSize: "100% 100%",
       backgroundRepeat: "no-repeat",
       padding: "20px 20px 70px 20px",
@@ -2235,7 +2235,7 @@ const SplitScene: React.FC<{
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "relative", width: "92%", height: "88%" }}>
             <div style={{ ...polaroidBase, left: "3%", top: "4%", transform: `rotate(-3deg) scale(${scale})`, transformOrigin: "center" }}>
-              <Img src={`/assets/polaroid/${leftTape}.png`} style={tapeL} />
+              <Img src={staticFile(`assets/polaroid/${leftTape}.png`)} style={tapeL} />
               <div style={imgFrameStyle}>
                 <Img src={srcOf(left)} style={{
                   maxWidth: "100%", maxHeight: "100%",
@@ -2253,7 +2253,7 @@ const SplitScene: React.FC<{
               <div style={captionStyle}>{leftLabel}</div>
             </div>
             <div style={{ ...polaroidBase, right: "3%", top: "8%", transform: `rotate(2.5deg) scale(${scale})`, transformOrigin: "center" }}>
-              <Img src={`/assets/polaroid/${rightTape}.png`} style={tapeR} />
+              <Img src={staticFile(`assets/polaroid/${rightTape}.png`)} style={tapeR} />
               <div style={imgFrameStyle}>
                 <Img src={srcOf(right)} style={{
                   maxWidth: "100%", maxHeight: "100%",
