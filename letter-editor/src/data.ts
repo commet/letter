@@ -1079,7 +1079,7 @@ export const defaultConfig: VideoConfig = {
     trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49) — Act II 분당부터 끝까지
     trackBStartSec: 160,                 // 2:40 = A 페이드아웃 종료 (단조 진입 직전)
     crossfadeSec: 4,                     // A 페이드아웃 4s [2:36~2:40]
-    trackBGapSec: 2,                     // 2:40~2:42 정적 (BGM 1과 BGM 2 명확히 분리)
+    trackBGapSec: 0.8,                   // 2:40~2:40.8 짧은 정적 (분리감만 살짝)
     trackBFadeInSec: 8,                  // B 페이드인 8s [2:42~2:50] — 천천히 부드럽게 진입
     volume: 0.30,
     fadeInSec: 1.5,
