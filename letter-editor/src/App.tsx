@@ -3140,6 +3140,20 @@ export const App: React.FC = () => {
                     const m = Math.floor(sec / 60), s = Math.round(sec % 60);
                     return `${m}:${s.toString().padStart(2, "0")}`;
                   };
+                  // Parse "m:ss[.f]" or plain seconds. Returns null on invalid input.
+                  const parseTime = (raw: string): number | null => {
+                    const t = raw.trim();
+                    if (!t) return null;
+                    if (t.includes(":")) {
+                      const [mStr, sStr] = t.split(":");
+                      const m = parseInt(mStr, 10);
+                      const s = parseFloat(sStr);
+                      if (isNaN(m) || isNaN(s)) return null;
+                      return m * 60 + s;
+                    }
+                    const v = parseFloat(t);
+                    return isNaN(v) ? null : v;
+                  };
                   return (
                     <div className="field-row" style={{ flexDirection: "column", gap: 10 }}>
                       <label className="field">
@@ -3171,7 +3185,29 @@ export const App: React.FC = () => {
                         </label>
                       ) : (
                         <label className="slider-label" style={{ width: "100%" }}>
-                          <span>전환 시점: {fmt(a.trackBStartSec ?? 250)} ({(a.trackBStartSec ?? 250).toFixed(0)}s / {fmt(totalSec)})</span>
+                          <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            전환 시점:
+                            <input
+                              className="input input-sm"
+                              style={{ width: 70 }}
+                              type="text"
+                              key={a.trackBStartSec ?? 250}
+                              defaultValue={fmt(a.trackBStartSec ?? 250)}
+                              placeholder="2:48"
+                              onBlur={(e) => {
+                                const parsed = parseTime(e.target.value);
+                                if (parsed != null && parsed >= 0 && parsed <= totalSec) {
+                                  updateAudio({ trackBStartSec: parsed });
+                                } else {
+                                  e.target.value = fmt(a.trackBStartSec ?? 250);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              }}
+                            />
+                            <span style={{ opacity: 0.6 }}>({(a.trackBStartSec ?? 250).toFixed(0)}s / {fmt(totalSec)})</span>
+                          </span>
                           <input type="range" className="slider" min={0} max={totalSec} step={1}
                             value={a.trackBStartSec ?? 250}
                             onChange={(e) => updateAudio({ trackBStartSec: parseFloat(e.target.value) })} />
