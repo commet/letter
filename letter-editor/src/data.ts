@@ -484,7 +484,7 @@ export function computeSceneDurationSec(allCaps: CaptionEntry[], fallback?: numb
     const N = allCaps.length;
     const headSec = 1.0;     // matches enrich's headFrames = 30 @ 30fps
     const maxGapSec = 4.0;   // matches enrich's maxGap = 120 @ 30fps
-    const tailSec = 4.0;     // comfortable read time + breath before transition
+    const tailSec = 5.0;     // 말풍선 씬 끝부분 여운 +1s (was 4) — 충분히 읽고 다음 씬으로
     const naturalSec = headSec + Math.max(0, N - 1) * maxGapSec + tailSec;
     return Math.max(t.minDurSec, naturalSec);
   }
