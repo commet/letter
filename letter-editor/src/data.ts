@@ -560,7 +560,14 @@ export type AudioConfig = {
                                     //   (positive = transition later, negative = earlier).
                                     //   Lets you keep track A playing past the Act anchor without
                                     //   abandoning the act-anchored semantics.
-  crossfadeSec?: number;    // crossfade duration (default 4)
+  crossfadeSec?: number;    // A's fade-out duration in seconds (default 4). Misnomer kept for back-compat.
+  trackBFadeInSec?: number; // B's fade-in duration. Defaults to crossfadeSec if unset.
+                            // Setting longer than crossfadeSec gives B a softer entrance
+                            // — useful when B's intro instruments sound abrupt at fast fade.
+  trackBGapSec?: number;    // silence gap between A's end (trackBStartSec) and B's start.
+                            // Default 0 = sequential handoff. Increase to clearly separate
+                            // the two tracks aurally — even at zero overlap, perceptually
+                            // adjacent fade tails can feel like "overlap"; a 1-2s gap fixes that.
   volume?: number;          // master volume 0-1 (default 0.30)
   fadeInSec?: number;       // fade in at video start (default 1.5)
   fadeOutSec?: number;      // fade out at video end  (default 2.5)
@@ -1070,8 +1077,10 @@ export const defaultConfig: VideoConfig = {
   audio: {
     trackA: "audio/bgm-1.mp3",          // 주여 지난 밤 내 꿈에 (266s ≈ 4:26) — Act I
     trackB: "audio/bgm-2.mp3",          // 은혜 (289s ≈ 4:49) — Act II 분당부터 끝까지
-    trackBStartSec: 160,                 // 2:40 = A 종료 + B 시작 (BGM-1 단조 시작 직전 컷오프)
-    crossfadeSec: 4,                     // A 페이드아웃 4s [156~160], B 페이드인 4s [160~164]
+    trackBStartSec: 160,                 // 2:40 = A 페이드아웃 종료 (단조 진입 직전)
+    crossfadeSec: 4,                     // A 페이드아웃 4s [2:36~2:40]
+    trackBGapSec: 2,                     // 2:40~2:42 정적 (BGM 1과 BGM 2 명확히 분리)
+    trackBFadeInSec: 8,                  // B 페이드인 8s [2:42~2:50] — 천천히 부드럽게 진입
     volume: 0.30,
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)

@@ -2586,6 +2586,11 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     const fadeInF  = Math.max(1, Math.round((audio?.fadeInSec  ?? 1.5) * fps));
     const fadeOutF = Math.max(1, Math.round((audio?.fadeOutSec ?? 2.5) * fps));
     const xfF      = Math.max(1, Math.round((audio?.crossfadeSec ?? 6) * fps));
+    // B's fade-in can be independently slower than A's fade-out so the new track
+    // doesn't feel rushed in. trackBGapSec inserts silence between A's tail and B's
+    // start — perceptually separates the two tracks even with zero mathematical overlap.
+    const bFadeInF = Math.max(1, Math.round((audio?.trackBFadeInSec ?? audio?.crossfadeSec ?? 6) * fps));
+    const gapF     = Math.max(0, Math.round((audio?.trackBGapSec ?? 0) * fps));
     // If trackBStartAct is set, anchor the crossfade center to the Act's title card
     // start frame in the timeline (sequence-of-items minus crossfade overlap).
     // trackBStartActOffsetSec lets the user push the transition past the anchor
@@ -2615,7 +2620,7 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
       : audio?.trackBStartSec != null
         ? Math.round(audio.trackBStartSec * fps)
         : Math.round(totalF * 0.65);
-    const trackBSeqStart = transitionF;
+    const trackBSeqStart = transitionF + gapF;
     const trackBLocalDur = Math.max(1, totalF - trackBSeqStart);
     // Equal-power curves still used so each individual fade has constant perceived
     // loudness — but A and B no longer run concurrently, so there's no double-track
@@ -2652,9 +2657,10 @@ export const MainVideo: React.FC<VideoConfig> = (config) => {
     }
     if (audio?.trackB) {
       const volB = (f: number) => {
-        // Sequence-local frame: f=0 is when track B begins playing (= transitionF).
-        // Fade in over xfF frames using sinCurve so the rise mirrors A's cos descent.
-        const fadeIn = sinCurve(Math.min(1, f / xfF));
+        // Sequence-local frame: f=0 is when track B begins (= transitionF + gapF).
+        // Fade in over bFadeInF (independent of A's xfF) using sinCurve so the rise
+        // is gentle even when A's fade-out was short.
+        const fadeIn = sinCurve(Math.min(1, f / bFadeInF));
         const remain = trackBLocalDur - f;
         const fadeOut = Math.min(1, remain / fadeOutF);
         return masterVol * Math.max(0, Math.min(fadeIn, fadeOut));
