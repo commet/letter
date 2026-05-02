@@ -146,11 +146,12 @@ export const enrichCaptionsForRender = <T extends {
       const bubbleIdx = caps.slice(0, i).reduce((n, _, j) => n + (isBubbleAt(j) ? 1 : 0), 0);
       const headFrames = 30;       // ~1.0s of stillness before first bubble — lets the
                                    // photo register before the conversation starts.
-      const tailFrac = 0.13;       // last 13% kept clear so final bubble reads
+      const tailFrac = 0.22;       // last 22% kept clear so final bubble has comfortable
+                                   // read + visible breath before the scene transitions.
       const usable = Math.max(1, D * (1 - tailFrac) - headFrames);
       const naturalGap = totalBubbles > 1 ? usable / (totalBubbles - 1) : 0;
-      const minGap = 40;           // 1.33s — quickest before it feels rushed
-      const maxGap = 90;           // 3.0s  — slowest before it feels dead
+      const minGap = 50;           // 1.67s — quickest before it feels rushed
+      const maxGap = 120;          // 4.0s  — slowest before it feels dead
       const gap = Math.max(minGap, Math.min(maxGap, naturalGap));
       fromT = Math.min(0.92, (headFrames + bubbleIdx * gap) / D);
       toT = 0.97;
@@ -482,8 +483,8 @@ export function computeSceneDurationSec(allCaps: CaptionEntry[], fallback?: numb
   if (allCaps.every(isBubbleCap)) {
     const N = allCaps.length;
     const headSec = 1.0;     // matches enrich's headFrames = 30 @ 30fps
-    const maxGapSec = 3.0;   // matches enrich's maxGap = 90 @ 30fps
-    const tailSec = 2.0;     // comfortable read time after last bubble
+    const maxGapSec = 4.0;   // matches enrich's maxGap = 120 @ 30fps
+    const tailSec = 4.0;     // comfortable read time + breath before transition
     const naturalSec = headSec + Math.max(0, N - 1) * maxGapSec + tailSec;
     return Math.max(t.minDurSec, naturalSec);
   }
