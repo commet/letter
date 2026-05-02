@@ -1565,8 +1565,7 @@ const ChatInterludeScene: React.FC<{
     }
   }
 
-  // Cursor blink (for the active typing message).
-  const cursorOn = Math.floor(frame / 9) % 2 === 0;
+  // (Cursor removed — char fade-in 자체가 타이핑 진행 표시 역할. 별도 깜빡이는 커서는 시야 분산 + 끝부분 blink 잔상 이슈 있어 제거.)
 
   return (
     <AbsoluteFill>
@@ -1630,7 +1629,6 @@ const ChatInterludeScene: React.FC<{
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
-          const isTyping = typingT > 0 && typingT < typeFraction && chars.length > 0;
           const isEmpty = chars.length === 0;
           // Speaker drives side + color so it matches the photo-caption bubble convention:
           // 슬기 → 왼쪽 노랑, 예찬 → 오른쪽 보라. Falls back to msg.side if speaker is something else.
@@ -1713,17 +1711,9 @@ const ChatInterludeScene: React.FC<{
                         <span key={ci} style={{ opacity: charOp }}>{ch}</span>
                       );
                     })}
-                    {isTyping && cursorOn && (
-                      <span style={{
-                        display: "inline-block",
-                        width: 3,
-                        height: 36,
-                        background: palette.text,
-                        marginLeft: 6,
-                        verticalAlign: "text-bottom",
-                        opacity: 0.8,
-                      }} />
-                    )}
+                    {/* Cursor 제거: char fade-in이 이미 타이핑 진행을 보여주는데 커서까지 있으면
+                        시야가 분산되고, 9-frame blink 주기 때문에 chars가 다 채워진 직후의 짧은
+                        오버랩 구간에 커서가 잠깐씩 깜빡이는 게 거슬렸음. */}
                   </>
                 )}
               </div>
