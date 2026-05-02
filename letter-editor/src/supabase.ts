@@ -32,10 +32,18 @@ export async function loadConfig(): Promise<VideoConfig | null> {
     ?? defaultConfig.chatInterludes
     ?? [];
 
-  // Merge with defaults to ensure all fields exist (handles schema evolution)
+  // Merge with defaults to ensure all fields exist (handles schema evolution).
+  // Audio is deep-merged so newly-added fields in defaultConfig.audio (e.g.
+  // trackBOffsetSec) propagate to existing saved configs. Without this, the
+  // shallow spread `...raw` clobbers the entire audio object with whatever
+  // the user last saved, masking any default tweaks shipped via data.ts.
+  const mergedAudio = (raw.audio || defaultConfig.audio)
+    ? { ...(defaultConfig.audio ?? {}), ...(raw.audio ?? {}) }
+    : undefined;
   return {
     ...defaultConfig,
     ...raw,
+    audio: mergedAudio,
     chatInterludes: mergedChats,
     photos: raw.photos.map((p) => {
       // Fill missing fields via nullish fallback instead of spread-over-spread.
