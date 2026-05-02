@@ -1636,7 +1636,9 @@ const migratePhotoCaptionTimings = (cfg: VideoConfig): VideoConfig => {
     const partnerCaps = partner?.captions ?? [];
     const allCaps = [...ownCaps, ...partnerCaps];
     if (allCaps.length === 0) continue;
-    const newDur = Math.round(computeSceneDurationSec(allCaps, p.durationSec) * 10) / 10;
+    // Bump-up only — preserve user-set extensions (matches fitPhoto policy).
+    const naturalDur = computeSceneDurationSec(allCaps, p.durationSec);
+    const newDur = Math.round(Math.max(p.durationSec ?? 0, naturalDur) * 10) / 10;
     const repacked = repackCaptions(allCaps, newDur);
     const ownLen = ownCaps.length;
     const newOwn = repacked.slice(0, ownLen);
@@ -2467,7 +2469,11 @@ export const App: React.FC = () => {
     if (allCaps.length === 0) {
       return { photo: p, partner, sceneDur: p.durationSec };
     }
-    const sceneDur = Math.round(computeSceneDurationSec(allCaps, p.durationSec) * 10) / 10;
+    // Bump-up only: respect user-set extensions (e.g., for emotional hold on the first
+    // photo) — never shrink below current dur. Auto-fit only kicks in when content
+    // exceeds available time.
+    const naturalDur = computeSceneDurationSec(allCaps, p.durationSec);
+    const sceneDur = Math.round(Math.max(p.durationSec ?? 0, naturalDur) * 10) / 10;
     // Repack across the combined list, then split back to each photo. Speakers
     // group across photos so cross-photo streams (slki on LEFT photo, yechan on
     // RIGHT photo) line up correctly.

@@ -1611,23 +1611,26 @@ const ChatInterludeScene: React.FC<{
       }}>
         {msgs.map((msg, i) => {
           const { mStart, mEnd, typeFraction } = slotBounds[i];
-          // Local progress inside this message's slot (0 → 1).
-          const localT = interpolate(t, [mStart, mEnd], [0, 1], {
+          // Bubble rise-in at the very start of the slot — finishes BEFORE typing starts
+          // so the empty bubble is fully present when text begins streaming in. This
+          // separation is what gives the "bubble first, then text types smoothly inside"
+          // feel rather than the prior "bubble + text both fading in concurrently".
+          const appearWindow = 0.05;
+          const appear = interpolate(t, [mStart, mStart + appearWindow], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
-          // Bubble rise-in at the very start of the slot.
-          const appear = interpolate(t, [mStart, mStart + 0.02], [0, 1], {
+          // Typing progress runs on the slot AFTER the appear window completes.
+          const typingT = interpolate(t, [mStart + appearWindow, mEnd], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
           const chars = Array.from(msg.text ?? "");
-          const typeProgress = interpolate(localT, [0, Math.max(0.001, typeFraction)], [0, chars.length], {
+          const typeProgress = interpolate(typingT, [0, Math.max(0.001, typeFraction)], [0, chars.length], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           });
-          const visibleCount = Math.floor(typeProgress);
-          const isTyping = localT > 0 && localT < typeFraction && chars.length > 0;
+          const isTyping = typingT > 0 && typingT < typeFraction && chars.length > 0;
           const isEmpty = chars.length === 0;
           // Speaker drives side + color so it matches the photo-caption bubble convention:
           // 슬기 → 왼쪽 노랑, 예찬 → 오른쪽 보라. Falls back to msg.side if speaker is something else.
@@ -1677,6 +1680,7 @@ const ChatInterludeScene: React.FC<{
                 fontWeight: 500,
                 letterSpacing: "-0.005em",
                 wordBreak: "keep-all",
+                whiteSpace: "pre-wrap",  // preserve user-typed \n line breaks (shift+enter)
               }}>
                 {isEmpty ? (
                   // Typing indicator — three bouncing dots (use bubble's text color so dots
@@ -1698,7 +1702,17 @@ const ChatInterludeScene: React.FC<{
                   </div>
                 ) : (
                   <>
-                    {chars.slice(0, visibleCount).join("")}
+                    {/* Per-character opacity ramp — each char fades in over a small window
+                        as typeProgress passes its index. Smoother than discrete Math.floor
+                        slicing which made each char "pop" every framesPerChar frames. */}
+                    {chars.map((ch, ci) => {
+                      const fadeWidth = 1.5;  // chars across which a single char fades in
+                      const charOp = Math.max(0, Math.min(1, (typeProgress - ci) / fadeWidth));
+                      if (ch === "\n") return <br key={ci} />;
+                      return (
+                        <span key={ci} style={{ opacity: charOp }}>{ch}</span>
+                      );
+                    })}
                     {isTyping && cursorOn && (
                       <span style={{
                         display: "inline-block",

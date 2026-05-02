@@ -1050,7 +1050,7 @@ export const defaultConfig: VideoConfig = {
     fadeInSec: 1.5,
     fadeOutSec: 8.0,                     // 영상 반복 재생 고려해 자연스러운 페이드아웃 (was 2.5)
   },
-  titleCardSec: 4.0,   // slightly longer for breathing
+  titleCardSec: 6.0,   // longer breath for the opening — sets the tone
   endingSec: 13.0,     // extended for held silence + botanical sprig + message breath
   crossfadeSec: 0.6,
   fps: 30,
